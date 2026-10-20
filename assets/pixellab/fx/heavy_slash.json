@@ -1,0 +1,235 @@
+{
+ "frames": [
+  {
+   "filename": "hollow-road-heavy-slash 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 112,
+    "h": 152
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 112,
+    "h": 152
+   },
+   "sourceSize": {
+    "w": 112,
+    "h": 152
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 50
+  },
+  {
+   "filename": "hollow-road-heavy-slash 1.png",
+   "frame": {
+    "x": 112,
+    "y": 0,
+    "w": 112,
+    "h": 152
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 112,
+    "h": 152
+   },
+   "sourceSize": {
+    "w": 112,
+    "h": 152
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 50
+  },
+  {
+   "filename": "hollow-road-heavy-slash 2.png",
+   "frame": {
+    "x": 224,
+    "y": 0,
+    "w": 112,
+    "h": 152
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 112,
+    "h": 152
+   },
+   "sourceSize": {
+    "w": 112,
+    "h": 152
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 50
+  },
+  {
+   "filename": "hollow-road-heavy-slash 3.png",
+   "frame": {
+    "x": 0,
+    "y": 152,
+    "w": 112,
+    "h": 152
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 112,
+    "h": 152
+   },
+   "sourceSize": {
+    "w": 112,
+    "h": 152
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 50
+  },
+  {
+   "filename": "hollow-road-heavy-slash 4.png",
+   "frame": {
+    "x": 112,
+    "y": 152,
+    "w": 112,
+    "h": 152
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 112,
+    "h": 152
+   },
+   "sourceSize": {
+    "w": 112,
+    "h": 152
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 50
+  },
+  {
+   "filename": "hollow-road-heavy-slash 5.png",
+   "frame": {
+    "x": 224,
+    "y": 152,
+    "w": 112,
+    "h": 152
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 112,
+    "h": 152
+   },
+   "sourceSize": {
+    "w": 112,
+    "h": 152
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 50
+  },
+  {
+   "filename": "hollow-road-heavy-slash 6.png",
+   "frame": {
+    "x": 0,
+    "y": 304,
+    "w": 112,
+    "h": 152
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 112,
+    "h": 152
+   },
+   "sourceSize": {
+    "w": 112,
+    "h": 152
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 50
+  },
+  {
+   "filename": "hollow-road-heavy-slash 7.png",
+   "frame": {
+    "x": 112,
+    "y": 304,
+    "w": 112,
+    "h": 152
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 112,
+    "h": 152
+   },
+   "sourceSize": {
+    "w": 112,
+    "h": 152
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 50
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hollow-road-heavy-slash.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 336,
+   "h": 456
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 56,
+   "y": 76
+  },
+  "frameTags": [
+   {
+    "name": "hollow-road-heavy-slash",
+    "from": 0,
+    "to": 7,
+    "direction": "forward"
+   }
+  ]
+ }
+}

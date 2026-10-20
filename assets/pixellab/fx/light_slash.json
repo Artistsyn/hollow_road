@@ -1,205 +1,205 @@
 {
  "frames": [
   {
-   "filename": "hollow-road-slash 0.png",
+   "filename": "hollow-road-light-slash 0.png",
    "frame": {
     "x": 0,
     "y": 0,
-    "w": 96,
-    "h": 96
+    "w": 176,
+    "h": 72
    },
    "rotated": false,
    "trimmed": false,
    "spriteSourceSize": {
     "x": 0,
     "y": 0,
-    "w": 96,
-    "h": 96
+    "w": 176,
+    "h": 72
    },
    "sourceSize": {
-    "w": 96,
-    "h": 96
+    "w": 176,
+    "h": 72
    },
    "pivot": {
     "x": 0.5,
     "y": 0.5
    },
-   "duration": 63
+   "duration": 50
   },
   {
-   "filename": "hollow-road-slash 1.png",
+   "filename": "hollow-road-light-slash 1.png",
    "frame": {
-    "x": 96,
+    "x": 176,
     "y": 0,
-    "w": 96,
-    "h": 96
+    "w": 176,
+    "h": 72
    },
    "rotated": false,
    "trimmed": false,
    "spriteSourceSize": {
     "x": 0,
     "y": 0,
-    "w": 96,
-    "h": 96
+    "w": 176,
+    "h": 72
    },
    "sourceSize": {
-    "w": 96,
-    "h": 96
+    "w": 176,
+    "h": 72
    },
    "pivot": {
     "x": 0.5,
     "y": 0.5
    },
-   "duration": 63
+   "duration": 50
   },
   {
-   "filename": "hollow-road-slash 2.png",
+   "filename": "hollow-road-light-slash 2.png",
    "frame": {
-    "x": 192,
+    "x": 352,
     "y": 0,
-    "w": 96,
-    "h": 96
+    "w": 176,
+    "h": 72
    },
    "rotated": false,
    "trimmed": false,
    "spriteSourceSize": {
     "x": 0,
     "y": 0,
-    "w": 96,
-    "h": 96
+    "w": 176,
+    "h": 72
    },
    "sourceSize": {
-    "w": 96,
-    "h": 96
+    "w": 176,
+    "h": 72
    },
    "pivot": {
     "x": 0.5,
     "y": 0.5
    },
-   "duration": 63
+   "duration": 50
   },
   {
-   "filename": "hollow-road-slash 3.png",
+   "filename": "hollow-road-light-slash 3.png",
    "frame": {
     "x": 0,
-    "y": 96,
-    "w": 96,
-    "h": 96
+    "y": 72,
+    "w": 176,
+    "h": 72
    },
    "rotated": false,
    "trimmed": false,
    "spriteSourceSize": {
     "x": 0,
     "y": 0,
-    "w": 96,
-    "h": 96
+    "w": 176,
+    "h": 72
    },
    "sourceSize": {
-    "w": 96,
-    "h": 96
+    "w": 176,
+    "h": 72
    },
    "pivot": {
     "x": 0.5,
     "y": 0.5
    },
-   "duration": 63
+   "duration": 50
   },
   {
-   "filename": "hollow-road-slash 4.png",
+   "filename": "hollow-road-light-slash 4.png",
    "frame": {
-    "x": 96,
-    "y": 96,
-    "w": 96,
-    "h": 96
+    "x": 176,
+    "y": 72,
+    "w": 176,
+    "h": 72
    },
    "rotated": false,
    "trimmed": false,
    "spriteSourceSize": {
     "x": 0,
     "y": 0,
-    "w": 96,
-    "h": 96
+    "w": 176,
+    "h": 72
    },
    "sourceSize": {
-    "w": 96,
-    "h": 96
+    "w": 176,
+    "h": 72
    },
    "pivot": {
     "x": 0.5,
     "y": 0.5
    },
-   "duration": 63
+   "duration": 50
   },
   {
-   "filename": "hollow-road-slash 5.png",
+   "filename": "hollow-road-light-slash 5.png",
    "frame": {
-    "x": 192,
-    "y": 96,
-    "w": 96,
-    "h": 96
+    "x": 352,
+    "y": 72,
+    "w": 176,
+    "h": 72
    },
    "rotated": false,
    "trimmed": false,
    "spriteSourceSize": {
     "x": 0,
     "y": 0,
-    "w": 96,
-    "h": 96
+    "w": 176,
+    "h": 72
    },
    "sourceSize": {
-    "w": 96,
-    "h": 96
+    "w": 176,
+    "h": 72
    },
    "pivot": {
     "x": 0.5,
     "y": 0.5
    },
-   "duration": 63
+   "duration": 50
   },
   {
-   "filename": "hollow-road-slash 6.png",
+   "filename": "hollow-road-light-slash 6.png",
    "frame": {
     "x": 0,
-    "y": 192,
-    "w": 96,
-    "h": 96
+    "y": 144,
+    "w": 176,
+    "h": 72
    },
    "rotated": false,
    "trimmed": false,
    "spriteSourceSize": {
     "x": 0,
     "y": 0,
-    "w": 96,
-    "h": 96
+    "w": 176,
+    "h": 72
    },
    "sourceSize": {
-    "w": 96,
-    "h": 96
+    "w": 176,
+    "h": 72
    },
    "pivot": {
     "x": 0.5,
     "y": 0.5
    },
-   "duration": 63
+   "duration": 50
   }
  ],
  "meta": {
   "app": "PixelLab VFX Creator",
-  "image": "hollow-road-slash.png",
+  "image": "hollow-road-light-slash.png",
   "format": "RGBA8888",
   "size": {
-   "w": 288,
-   "h": 288
+   "w": 528,
+   "h": 216
   },
   "scale": "1",
   "anchor": {
    "kind": "origin",
-   "x": 48,
-   "y": 48
+   "x": 88,
+   "y": 36
   },
   "frameTags": [
    {
-    "name": "hollow-road-slash",
+    "name": "hollow-road-light-slash",
     "from": 0,
     "to": 6,
     "direction": "forward"

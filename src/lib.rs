@@ -9,7 +9,11 @@ mod anim;
 mod art;
 mod fight;
 mod fx;
+mod gear;
 mod game;
+mod shrine;
+mod side;
+mod world;
 #[cfg(test)]
 mod shots;
 

@@ -1,0 +1,72 @@
+{
+ "version": 1,
+ "name": "Hollowmere",
+ "start": "road",
+ "stops": {
+  "road": {
+   "scene": "road_to_hollowmere.json",
+   "next": {
+    "Fork": {
+     "left": "vale_edge",
+     "right": "chapel_edge",
+     "fork": {
+      "steer_m": 6.0,
+      "approach_m": 40.0,
+      "wedge_m": -1.0
+     }
+    }
+   }
+  },
+  "vale_edge": {
+   "scene": "vale_edge.json",
+   "next": {
+    "Go": {
+     "to": "vale",
+     "transition": {
+      "blend_m": 5.0
+     }
+    }
+   }
+  },
+  "chapel_edge": {
+   "scene": "chapel_edge.json",
+   "next": {
+    "Go": {
+     "to": "chapel",
+     "transition": {
+      "threshold": "Gate",
+      "marker": "RuinedArch"
+     }
+    }
+   }
+  },
+  "vale": {
+   "scene": "wretched_vale.json",
+   "next": {
+    "Go": {
+     "to": "gate"
+    }
+   }
+  },
+  "chapel": {
+   "scene": "chapel_road.json",
+   "next": {
+    "Go": {
+     "to": "gate"
+    }
+   }
+  },
+  "gate": {
+   "scene": "hollowmere_gate.json",
+   "next": "End"
+  },
+  "sanctum": {
+   "scene": "sanctum.json",
+   "next": "End"
+  },
+  "hollow": {
+   "scene": "side_hollow.json",
+   "next": "End"
+  }
+ }
+}

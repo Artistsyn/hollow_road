@@ -28,14 +28,15 @@ impl Clip {
     /// The frame for `t` of a loop `period` long.
     pub fn looped(&self, t: f32, period: f32) -> &Arc<RgbaImage> { self.at((t / period).rem_euclid(1.0), false) }
 
-    /// The first `count` frames of a sprite sheet cut in `cell`-pixel squares, row by row, marked
-    /// as pixel art: how a Pixellab effect exports (`<name>.png` beside `<name>.json`).
-    pub fn from_grid(path: &Path, cell: u32, count: usize) -> Option<Clip> {
+    /// The first `count` frames of a sprite sheet cut in `cell` (width, height) pixel cells, row
+    /// by row, marked as pixel art: how a Pixellab effect exports (`<name>.png` beside
+    /// `<name>.json`).
+    pub fn from_grid(path: &Path, (cw, ch): (u32, u32), count: usize) -> Option<Clip> {
         let sheet = image::open(path).ok()?.to_rgba8();
-        let cols = (sheet.width() / cell).max(1);
+        let cols = (sheet.width() / cw.max(1)).max(1);
         let frames: Vec<Arc<RgbaImage>> = (0..count as u32)
-            .filter(|i| (i / cols + 1) * cell <= sheet.height())
-            .map(|i| Arc::new(image::imageops::crop_imm(&sheet, (i % cols) * cell, (i / cols) * cell, cell, cell).to_image()))
+            .filter(|i| (i / cols + 1) * ch <= sheet.height())
+            .map(|i| Arc::new(image::imageops::crop_imm(&sheet, (i % cols) * cw, (i / cols) * ch, cw, ch).to_image()))
             .collect();
         if frames.is_empty() { return None; }
         let mirrored: Vec<_> = frames.iter().map(|f| Arc::new(image::imageops::flip_horizontal(f.as_ref()))).collect();
@@ -52,6 +53,8 @@ pub struct Sheet {
     pub ground: f32,
     pub figure: f32,
     pub canvas: (u32, u32),
+    /// Where the spin starts and ends in `roll_spun` (frames), so the turn fills a roll's travel.
+    pub roll_keys: (usize, usize),
 }
 
 impl Sheet {
@@ -83,7 +86,8 @@ impl Sheet {
         // Stand and height from the first frame of the steadiest clip there is.
         let reference = ["idle", "walk", "shamble", "light"].iter().find_map(|n| clips.get(*n)).or_else(|| clips.values().next())?.frames[0].clone();
         let (top, bottom) = opaque_rows(&reference)?;
-        Some(Sheet { clips, ground: bottom as f32 + 1.0, figure: (bottom + 1 - top) as f32, canvas })
+        let roll_keys = side_roll(&mut clips, &reference, bottom).or_else(|| spin_roll(&mut clips)).unwrap_or((0, 0));
+        Some(Sheet { clips, ground: bottom as f32 + 1.0, figure: (bottom + 1 - top) as f32, canvas, roll_keys })
     }
 
     pub fn clip(&self, name: &str) -> Option<&Clip> { self.clips.get(name) }
@@ -95,6 +99,97 @@ impl Sheet {
         let (w, h) = (self.canvas.0 as f32 * k, self.canvas.1 as f32 * k);
         ((feet.0 - 0.5 * w, feet.1 - self.ground * k), (w, h))
     }
+}
+
+/// Steps in the full turn of a roll's tuck.
+const SPIN_STEPS: usize = 8;
+
+/// A `roll_spun` clip from a `roll` clip: the crouch into the tuck, the tuck turned a full circle
+/// clockwise (the top going right, as a roll to the right turns) and kept on the ground, then the
+/// rise. Pixellab draws a roll as a tuck in place; the turn is what makes it read as a roll.
+/// Returns where the spin starts and ends.
+fn spin_roll(clips: &mut HashMap<String, Clip>) -> Option<(usize, usize)> {
+    let roll = clips.get("roll")?;
+    let n = roll.frames.len();
+    if n < 4 { return None; }
+    // The tuck: the lowest drawing in the clip's middle.
+    let height = |f: &RgbaImage| opaque_rows(f).map_or(u32::MAX, |(t, b)| b - t);
+    let tuck = (n / 4..n * 3 / 4 + 1).min_by_key(|&i| height(&roll.frames[i]))?;
+    let src = roll.frames[tuck].as_ref();
+    let (x0, y0, x1, y1) = opaque_box(src)?;
+    let pivot = ((x0 + x1) as f32 * 0.5, (y0 + y1) as f32 * 0.5);
+    let spun = (0..SPIN_STEPS).map(|k| {
+        let r = rotated(src, 360.0 * k as f32 / SPIN_STEPS as f32, pivot);
+        // Back down onto the tuck's lowest row: a turning body rolls along the ground.
+        let drop = opaque_rows(&r).map_or(0, |(_, b)| y1 as i64 - b as i64);
+        let mut out = RgbaImage::new(src.width(), src.height());
+        image::imageops::overlay(&mut out, &r, 0, drop);
+        Arc::new(out)
+    });
+    let mut frames: Vec<Arc<RgbaImage>> = roll.frames[tuck / 2..tuck].to_vec();
+    let start = frames.len();
+    frames.extend(spun);
+    let end = frames.len();
+    frames.extend(roll.frames[tuck + 1..].iter().cloned());
+    let mirrored: Vec<_> = frames.iter().map(|f| Arc::new(image::imageops::flip_horizontal(f.as_ref()))).collect();
+    for f in frames.iter().chain(&mirrored) { quartz::set_pixel_art(f, true); }
+    clips.insert("roll_spun".into(), Clip { frames, mirrored });
+    Some((start, end))
+}
+
+/// A `roll_side` clip, the roll as a Souls game shows it from behind: the figure turns side-on to
+/// the way it rolls, dips, dives over the leading shoulder, turns a full circle along the ground,
+/// lands in a crouch and turns back. Built from the side-on clips (`e_idle`, `e_roll` for the dip
+/// and the landing crouch, `e_flip` for the dive, the tuck and the coming out) with the tuck turned
+/// in between, every frame set down on the ground row `ground`. Returns where the turn over the
+/// shoulder starts and ends.
+fn side_roll(clips: &mut HashMap<String, Clip>, stand: &Arc<RgbaImage>, ground: u32) -> Option<(usize, usize)> {
+    let (side, dip, flip) = (clips.get("e_idle")?.frames[0].clone(), clips.get("e_roll")?, clips.get("e_flip")?);
+    if dip.frames.len() < 13 || flip.frames.len() < 6 { return None; }
+    let grounded = |f: &RgbaImage| -> Arc<RgbaImage> {
+        let drop = opaque_rows(f).map_or(0, |(_, b)| ground as i64 - b as i64);
+        let mut out = RgbaImage::new(f.width(), f.height());
+        image::imageops::overlay(&mut out, f, 0, drop);
+        Arc::new(out)
+    };
+    let tuck = flip.frames[2].as_ref();
+    let (x0, y0, x1, y1) = opaque_box(tuck)?;
+    let pivot = ((x0 + x1) as f32 * 0.5, (y0 + y1) as f32 * 0.5);
+    let mut frames = vec![stand.clone(), side.clone()];
+    frames.extend(dip.frames[2..5].iter().map(|f| grounded(f)));
+    let start = frames.len();
+    frames.push(grounded(&flip.frames[1]));
+    frames.extend((0..6).map(|k| grounded(&rotated(tuck, 60.0 * k as f32, pivot))));
+    frames.push(grounded(&flip.frames[4]));
+    let end = frames.len();
+    frames.extend(dip.frames[11..13].iter().map(|f| grounded(f)));
+    frames.extend([side, stand.clone()]);
+    let mirrored: Vec<_> = frames.iter().map(|f| Arc::new(image::imageops::flip_horizontal(f.as_ref()))).collect();
+    for f in frames.iter().chain(&mirrored) { quartz::set_pixel_art(f, true); }
+    clips.insert("roll_side".into(), Clip { frames, mirrored });
+    Some((start, end))
+}
+
+/// `img` turned `degrees` clockwise on screen about `pivot`, nearest pixel (it stays pixel art).
+pub fn rotated(img: &RgbaImage, degrees: f32, pivot: (f32, f32)) -> RgbaImage {
+    let (s, c) = degrees.to_radians().sin_cos();
+    let (w, h) = img.dimensions();
+    RgbaImage::from_fn(w, h, |x, y| {
+        let (dx, dy) = (x as f32 + 0.5 - pivot.0, y as f32 + 0.5 - pivot.1);
+        // The source pixel: the destination turned back.
+        let (sx, sy) = (pivot.0 + dx * c + dy * s, pivot.1 - dx * s + dy * c);
+        if sx < 0.0 || sy < 0.0 || sx >= w as f32 || sy >= h as f32 { return image::Rgba([0, 0, 0, 0]); }
+        *img.get_pixel(sx as u32, sy as u32)
+    })
+}
+
+/// The smallest box (x0, y0, x1, y1), inclusive, holding every visible pixel.
+fn opaque_box(img: &RgbaImage) -> Option<(u32, u32, u32, u32)> {
+    let (top, bottom) = opaque_rows(img)?;
+    let col = |x: u32| (top..=bottom).any(|y| img.get_pixel(x, y)[3] > 32);
+    let left = (0..img.width()).find(|&x| col(x))?;
+    let right = (0..img.width()).rev().find(|&x| col(x))?;
+    Some((left, top, right, bottom))
 }
 
 /// The first and last rows with a visible pixel.
@@ -147,11 +242,20 @@ mod tests {
         }
         let path = std::env::temp_dir().join(format!("hollow_road_grid_{}.png", std::process::id()));
         sheet.save(&path).unwrap();
-        let clip = Clip::from_grid(&path, 4, 3).unwrap();
+        let clip = Clip::from_grid(&path, (4, 4), 3).unwrap();
         let _ = std::fs::remove_file(&path);
         assert_eq!(clip.frames.len(), 3);
         assert_eq!((clip.frames[1].get_pixel(0, 0)[1], clip.frames[2].get_pixel(3, 3)[2]), (255, 255), "second is green, third blue");
         assert!(quartz::is_pixel_art(&clip.frames[0]) && quartz::is_pixel_art(&clip.mirrored[2]));
+    }
+
+    #[test]
+    fn a_quarter_turn_takes_the_top_to_the_right() {
+        let mut img = RgbaImage::new(9, 9);
+        img.put_pixel(4, 1, image::Rgba([255, 0, 0, 255]));
+        let r = rotated(&img, 90.0, (4.5, 4.5));
+        assert_eq!(r.get_pixel(7, 4)[0], 255, "top went right");
+        assert_eq!(opaque_box(&r), Some((7, 4, 7, 4)));
     }
 
     /// Every clip of every character, a row each, numbered by frame:
@@ -160,7 +264,7 @@ mod tests {
     #[ignore]
     fn sheets() {
         let root = Path::new(env!("CARGO_MANIFEST_DIR"));
-        for name in ["wayfarer", "wayfarer_ne", "husk"] {
+        for name in ["wayfarer", "wayfarer_ne", "keeper", "smith", "husk", "lancer", "wretch", "shieldbearer"] {
             let Some(s) = Sheet::load(&root.join("assets/pixellab").join(name)) else { continue };
             let mut clips: Vec<_> = s.clips.iter().collect();
             clips.sort_by_key(|c| c.0.clone());

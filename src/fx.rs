@@ -6,9 +6,12 @@
 //! inward), its colour how the blow was met. Bursts age on fight ticks: they hold at full
 //! brightness through a hitstop and stretch out in slow motion, like the rest of the fight.
 //!
-//! The slash is Pixellab's crescent (`assets/pixellab/fx/slash.png`, made in its VFX workbench),
-//! drawn as pixel art in front of the hero from the moment a swing goes live: flattened and
-//! mirrored for the light's swipe from right to left, full height for the heavy coming down.
+//! The slashes are Pixellab effects made in its VFX workbench (`assets/pixellab/fx/`): the light
+//! is a swipe from right to left along a flat ellipse, drawn in perspective so it lies across the
+//! road in front of the hero; the heavy is an overhead chop. Each is drawn as pixel art at its
+//! own aspect ratio from the moment a swing goes live, behind the hero and in front of every
+//! enemy. (Pictures are drawn cover-fitted: one squeezed into a box of another shape loses its
+//! top and bottom, which is how the first, squashed slash came out clipped.)
 
 use crate::anim::Clip;
 use crate::fight::{Event, Fight, Move, HERO_D, LANE_W, SHOULDER};
@@ -38,24 +41,43 @@ struct Burst { x: f32, at: At, y: f32, metres: f32, rgb: [u8; 3], side: ImpactSi
 type Spot = ((f32, f32), (f32, f32));
 
 pub struct Fx {
-    slash: Option<Clip>,
+    light: Option<Clip>,
+    heavy: Option<Clip>,
     bursts: Vec<Burst>,
+}
+
+/// A Pixellab effect export: `<name>.png`, a grid of frames, and `<name>.json`, which names every
+/// frame and gives the cell's size.
+fn effect(dir: &Path, name: &str) -> Option<Clip> {
+    let json = std::fs::read_to_string(dir.join(format!("{name}.json"))).ok()?;
+    let count = json.matches("\"filename\"").count();
+    let frame = &json[json.find("\"frame\"")?..];
+    let number = |key: &str| -> Option<u32> {
+        let rest = &frame[frame.find(key)? + key.len()..];
+        rest.trim_start_matches(|c: char| c == ':' || c.is_whitespace()).split(|c: char| !c.is_ascii_digit()).next()?.parse().ok()
+    };
+    Clip::from_grid(&dir.join(format!("{name}.png")), (number("\"w\"")?, number("\"h\"")?), count)
 }
 
 impl Fx {
     pub fn load() -> Fx {
         let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("assets/pixellab/fx");
-        // The export's layout names every frame; the sheet holds them in 96-pixel cells.
-        let count = std::fs::read_to_string(dir.join("slash.json")).map(|j| j.matches("\"filename\"").count()).unwrap_or(0);
-        Fx { slash: Clip::from_grid(&dir.join("slash.png"), 96, count), bursts: Vec::new() }
+        Fx { light: effect(&dir, "light_slash"), heavy: effect(&dir, "heavy_slash"), bursts: Vec::new() }
     }
 
     /// Start the bursts for what the fight just did.
     pub fn on_events(&mut self, events: &[Event], fight: &Fight) {
-        let h = &fight.hero;
+        let on_enemy = |i: usize| fight.enemies.get(i).map(|e| (e.lane as f32 * LANE_W, e.s - 0.25));
+        self.on_events_at(events, (fight.hero.x + SHOULDER, HERO_D), 1.0, on_enemy);
+    }
+
+    /// The same for a hero standing `hero` (across, metres ahead of the camera) facing `fw` along
+    /// the road (1 away from the camera, -1 toward it), and enemies where `on_enemy` says (across,
+    /// road metres): the side-on fight, whose hero faces along the road either way.
+    pub fn on_events_at(&mut self, events: &[Event], hero: (f32, f32), fw: f32, on_enemy: impl Fn(usize) -> Option<(f32, f64)>) {
         // The hero as drawn, and a little in front of them (where a buckler meets a blade).
-        let hero_x = h.x + SHOULDER;
-        let on_enemy = |i: usize| fight.enemies.get(i).map(|e| (e.lane as f32 * LANE_W, At::Road(e.s - 0.25)));
+        let (hero_x, hd) = hero;
+        let on_enemy = |i: usize| on_enemy(i).map(|(x, s)| (x, At::Road(s)));
         for e in events {
             let burst = |x: f32, at: At, y: f32, metres: f32, rgb: [u8; 3], side: ImpactSide, ticks: u32| {
                 Burst { x, at, y, metres, rgb, side, left: ticks, total: ticks }
@@ -66,11 +88,25 @@ impl Fx {
                     Move::Riposte => burst(x, at, 1.15, 1.9, [255, 150, 90], ImpactSide::Dealt, 32),
                     _ => burst(x, at, 1.15, 1.2, [255, 228, 184], ImpactSide::Dealt, 20),
                 }),
+                Event::Deflected { enemy } => on_enemy(enemy).map(|(x, at)| burst(x - 0.2, at, 1.1, 1.0, [200, 222, 255], ImpactSide::Dealt, 14)),
                 Event::StanceBroken { enemy } => on_enemy(enemy).map(|(x, at)| burst(x, at, 1.3, 2.2, [255, 246, 222], ImpactSide::Dealt, 30)),
-                Event::Parried { .. } => Some(burst(hero_x + 0.2, At::Near(HERO_D + 0.6), 1.25, 2.0, [255, 214, 110], ImpactSide::Dealt, 26)),
-                Event::Blocked { .. } => Some(burst(hero_x + 0.15, At::Near(HERO_D + 0.45), 1.1, 1.0, [170, 205, 255], ImpactSide::Dealt, 16)),
-                Event::GuardBroken => Some(burst(hero_x + 0.15, At::Near(HERO_D + 0.4), 1.1, 1.7, [255, 140, 50], ImpactSide::Taken, 26)),
-                Event::Struck { .. } => Some(burst(hero_x, At::Near(HERO_D - 0.05), 1.15, 1.5, [230, 40, 30], ImpactSide::Taken, 22)),
+                // A perfect roll: a cold flash at its feet as it stumbles through empty air.
+                Event::JustDodge { enemy } => on_enemy(enemy).map(|(x, at)| burst(x, at, 0.55, 1.8, [150, 225, 255], ImpactSide::Dealt, 28)),
+                // The glint on the attacker the moment its attack commits, in its warning colour.
+                Event::Commits { enemy, kind, parry } => on_enemy(enemy).map(|(x, at)| burst(x + 0.15, at, 1.55, 0.7, crate::game::warning_rgb(kind, parry), ImpactSide::Dealt, 12)),
+                Event::Parried { .. } => Some(burst(hero_x + 0.2, At::Near(hd + fw * 0.8), 1.25, 1.4, [255, 214, 110], ImpactSide::Dealt, 26)),
+                // Met on the buckler: pale sparks for a guard that held, hot ones for one that let
+                // some through, a big orange crack for one smashed open, grey for a fumbled parry.
+                Event::Blocked { chip } if chip <= 0.0 => Some(burst(hero_x + 0.15, At::Near(hd + fw * 0.45), 1.1, 0.9, [190, 215, 255], ImpactSide::Dealt, 14)),
+                Event::Blocked { .. } => Some(burst(hero_x + 0.15, At::Near(hd + fw * 0.45), 1.1, 1.25, [255, 176, 96], ImpactSide::Dealt, 20)),
+                Event::GuardBroken { .. } => Some(burst(hero_x + 0.15, At::Near(hd + fw * 0.4), 1.1, 1.7, [255, 140, 50], ImpactSide::Taken, 26)),
+                Event::ParryMissed { .. } => Some(burst(hero_x + 0.2, At::Near(hd + fw * 0.5), 1.15, 1.15, [190, 130, 130], ImpactSide::Taken, 20)),
+                // Taken: a small red crack for a flinch, a big one for a heavy blow, amber for a
+                // stagger, and low and wide at the feet for a knockdown.
+                Event::Struck { heavy: false, .. } => Some(burst(hero_x, At::Near(hd - fw * 0.05), 1.15, 1.0, [230, 40, 30], ImpactSide::Taken, 16)),
+                Event::Struck { heavy: true, .. } => Some(burst(hero_x, At::Near(hd - fw * 0.05), 1.15, 1.65, [230, 40, 30], ImpactSide::Taken, 24)),
+                Event::Staggered { .. } => Some(burst(hero_x, At::Near(hd - fw * 0.05), 1.1, 1.9, [255, 150, 50], ImpactSide::Taken, 30)),
+                Event::KnockedDown { .. } => Some(burst(hero_x, At::Near(hd - fw * 0.1), 0.45, 2.3, [200, 30, 24], ImpactSide::Taken, 34)),
                 _ => None,
             };
             let Some(b) = b else { continue };
@@ -89,20 +125,20 @@ impl Fx {
 
     /// The slash's frame now and where it goes: a swing from the moment its live frames begin.
     fn slash_now(&self, fight: &Fight) -> Option<(Arc<image::RgbaImage>, f32, f32, f32, (f32, f32))> {
-        let clip = self.slash.as_ref()?;
         let a = fight.hero.act?;
-        let windup = a.mv.spec().frames.0;
-        let since = a.t.checked_sub(windup)?;
-        let k = (since / SLASH_STEP) as usize;
-        if k >= clip.frames.len() { return None; }
-        let x = fight.hero.x + SHOULDER + 0.1;
-        // (frame, across, ahead, height of its middle, width and height in metres)
-        match a.mv {
-            Move::Light => Some((clip.mirrored[k].clone(), x, HERO_D + 1.0, 1.0, (2.0, 1.0))),
-            Move::Heavy => Some((clip.frames[k].clone(), x, HERO_D + 1.1, 1.2, (1.9, 2.1))),
-            Move::Riposte => Some((clip.frames[k].clone(), x, HERO_D + 1.1, 1.25, (2.4, 2.6))),
-            _ => None,
-        }
+        // (the clip, its width in metres, how far ahead and how high its middle is)
+        let (clip, width, ahead, high) = match a.mv {
+            // Where the blade passes: most of the way to its reach, at chest height.
+            Move::Light => (self.light.as_ref()?, 2.6, 2.0, 1.3),
+            Move::Heavy => (self.heavy.as_ref()?, 1.4, 1.6, 1.15),
+            Move::Riposte => (self.heavy.as_ref()?, 1.7, 1.6, 1.2),
+            _ => return None,
+        };
+        let since = a.t.checked_sub(a.mv.spec().frames.0)?;
+        let frame = clip.frames.get((since / SLASH_STEP) as usize)?;
+        // At the picture's own aspect, so none of it is cropped.
+        let height = width * frame.height() as f32 / frame.width() as f32;
+        Some((frame.clone(), fight.hero.x + SHOULDER + 0.1, HERO_D + ahead, high, (width, height)))
     }
 
     /// Put the slash and the bursts where the road drawn now says they are.
@@ -166,7 +202,7 @@ mod tests {
     #[test]
     fn a_hit_bursts_on_its_enemy_and_ages_on_fight_ticks_only() {
         let fight = Fight::new(vec![Enemy::new(Archetype::Husk, 10.0, 1)]);
-        let mut fx = Fx { slash: None, bursts: Vec::new() };
+        let mut fx = Fx { light: None, heavy: None, bursts: Vec::new() };
         fx.on_events(&[Event::Hit { enemy: 0, mv: Move::Light }, Event::Whiffed(Move::Light)], &fight);
         assert_eq!(fx.playing(), 1, "a whiff makes no burst");
         let b = fx.bursts[0];
@@ -181,8 +217,8 @@ mod tests {
     #[test]
     fn being_struck_cracks_inward_at_the_hero_and_the_oldest_burst_gives_way() {
         let fight = Fight::new(Vec::new());
-        let mut fx = Fx { slash: None, bursts: Vec::new() };
-        fx.on_events(&[Event::Struck { damage: 10.0 }], &fight);
+        let mut fx = Fx { light: None, heavy: None, bursts: Vec::new() };
+        fx.on_events(&[Event::Struck { damage: 10.0, heavy: false }], &fight);
         assert_eq!((fx.bursts[0].side, fx.bursts[0].at), (ImpactSide::Taken, At::Near(HERO_D - 0.05)));
         // Aged below a fresh block's life (16), so it is the first to give way.
         fx.tick(10);
