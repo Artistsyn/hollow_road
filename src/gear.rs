@@ -43,39 +43,74 @@ pub struct Kit {
     pub souls: f32,
     /// Weight worn, against `Stats::capacity`.
     pub load: f32,
+    /// The weapon held: what it needs and how it scales (`Stats::damage`).
+    pub arms: Arms,
 }
 
-impl Default for Kit {
-    fn default() -> Kit {
-        Kit { damage: 1.0, taken: 1.0, poise: 0.0, guard: 1.0, chip: 1.0, parry: 0, roll: 1.0, strike: 1.0, regen: 1.0, heal: 1.0, hp: 0.0, stamina: 0.0, souls: 1.0, load: 0.0 }
+/// How much a level of an attribute raises a weapon's damage, by the weapon's letter for it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Grade { S, A, B, C, D, E, No }
+
+impl Grade {
+    /// Its share of `Stats::soft`: B takes it whole.
+    pub fn share(self) -> f32 {
+        match self { Grade::S => 1.4, Grade::A => 1.2, Grade::B => 1.0, Grade::C => 0.75, Grade::D => 0.5, Grade::E => 0.25, Grade::No => 0.0 }
+    }
+    pub fn letter(self) -> &'static str {
+        match self { Grade::S => "S", Grade::A => "A", Grade::B => "B", Grade::C => "C", Grade::D => "D", Grade::E => "E", Grade::No => "-" }
     }
 }
 
-/// A piece: its name, where it goes, its weight, a line saying what it does, and what it does.
+/// The attributes a weapon names, in the order of `needs` and `scales`.
+pub const ATTRIBUTES: [&str; 3] = ["Might", "Dexterity", "Focus"];
+
+/// A weapon's side of a strike: its damage at no attribute, the levels of might, dexterity and
+/// focus it needs (under any of them it is wielded weakly: `Stats::weak`), and its grade in each.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Arms { pub base: f32, pub needs: [u32; 3], pub scales: [Grade; 3] }
+
+/// The Wayfarer's sword: balanced, needing nothing. What a kit holds when no weapon is named.
+pub const SWORD: Arms = Arms { base: 1.0, needs: [0, 0, 0], scales: [Grade::C, Grade::C, Grade::No] };
+
+impl Default for Kit {
+    fn default() -> Kit {
+        Kit { damage: 1.0, taken: 1.0, poise: 0.0, guard: 1.0, chip: 1.0, parry: 0, roll: 1.0, strike: 1.0, regen: 1.0, heal: 1.0, hp: 0.0, stamina: 0.0, souls: 1.0, load: 0.0, arms: SWORD }
+    }
+}
+
+/// A piece: its name, where it goes, its weight, a line saying what it does, and what it does;
+/// a weapon also its `Arms`.
 pub struct Item {
     pub name: &'static str,
     pub slot: Slot,
     pub weight: f32,
     pub text: &'static str,
     pub apply: fn(&mut Kit),
+    pub arms: Option<Arms>,
 }
 
 const fn item(name: &'static str, slot: Slot, weight: f32, text: &'static str, apply: fn(&mut Kit)) -> Item {
-    Item { name, slot, weight, text, apply }
+    Item { name, slot, weight, text, apply, arms: None }
 }
+
+const fn weapon(name: &'static str, weight: f32, arms: Arms, text: &'static str, apply: fn(&mut Kit)) -> Item {
+    Item { name, slot: Slot::Weapon, weight, text, apply, arms: Some(arms) }
+}
+
+use Grade::{A, B, D, No};
 
 /// Every piece there is. Indices are what a [`Loadout`] holds, so add to the end.
 pub const ITEMS: &[Item] = &[
     // What the hero sets out with.
-    item("Wayfarer's Sword", Slot::Weapon, 3.0, "balanced", |_| {}),
+    weapon("Wayfarer's Sword", 3.0, SWORD, "balanced", |_| {}),
     item("Pilgrim's Buckler", Slot::Offhand, 1.5, "parries", |_| {}),
     item("Wayfarer's Hood", Slot::Head, 0.5, "light", |_| {}),
     item("Wayfarer's Cloak", Slot::Body, 2.0, "light", |_| {}),
     item("Leather Wraps", Slot::Hands, 0.5, "light", |_| {}),
     item("Road Boots", Slot::Legs, 1.0, "light", |_| {}),
     // Off the dead.
-    item("Husk Cleaver", Slot::Weapon, 6.0, "+22% damage, strikes cost 20% more", |k| { k.damage *= 1.22; k.strike *= 1.2; }),
-    item("Lancer's Shortspear", Slot::Weapon, 4.0, "+8% damage, strikes cost 15% less", |k| { k.damage *= 1.08; k.strike *= 0.85; }),
+    weapon("Husk Cleaver", 6.0, Arms { base: 1.22, needs: [4, 0, 0], scales: [A, No, No] }, "heavy, strikes cost 20% more", |k| k.strike *= 1.2),
+    weapon("Lancer's Shortspear", 4.0, Arms { base: 1.08, needs: [1, 3, 0], scales: [D, B, No] }, "quick, strikes cost 15% less", |k| k.strike *= 0.85),
     item("Kite Shield", Slot::Offhand, 6.0, "blocks cost 35% less, half the chip", |k| { k.guard *= 0.65; k.chip *= 0.5; }),
     item("Duelist's Parma", Slot::Offhand, 1.0, "parry live 4 ticks longer", |k| k.parry += 4),
     item("Iron Helm", Slot::Head, 3.0, "-5% damage taken, +5 poise", |k| { k.taken *= 0.95; k.poise += 5.0; }),
@@ -90,6 +125,9 @@ pub const ITEMS: &[Item] = &[
     item("Keeper's Sigil", Slot::Talisman, 0.0, "+15 health, +10 stamina", |k| { k.hp += 15.0; k.stamina += 10.0; }),
     // The Bell Warden's.
     item("Warden's Bell", Slot::Talisman, 1.0, "+10 poise, +8% damage", |k| { k.poise += 10.0; k.damage *= 1.08; }),
+    // Weapons for the attributes past might.
+    weapon("Duelist's Rapier", 2.5, Arms { base: 0.95, needs: [0, 6, 0], scales: [No, A, No] }, "light, strikes cost 10% less", |k| k.strike *= 0.9),
+    weapon("Rimed Sabre", 3.5, Arms { base: 1.0, needs: [0, 2, 5], scales: [No, D, B] }, "cold-forged, runs on focus", |_| {}),
 ];
 
 /// The index of the piece called `name`.
@@ -100,9 +138,9 @@ pub fn find(name: &str) -> usize { ITEMS.iter().position(|i| i.name == name).unw
 pub fn drops(k: Archetype) -> &'static [&'static str] {
     match k {
         Archetype::Husk => &["Husk Cleaver", "Pilgrim's Token", "Hoarder's Ring"],
-        Archetype::Lancer => &["Lancer's Shortspear", "Lancer's Greaves", "Ring of the Quiet Step"],
+        Archetype::Lancer => &["Lancer's Shortspear", "Lancer's Greaves", "Ring of the Quiet Step", "Duelist's Rapier"],
         Archetype::Shieldbearer => &["Kite Shield", "Iron Helm", "Shieldbearer's Gauntlets", "Chain Hauberk"],
-        Archetype::Wretch => &["Ember Ring", "Duelist's Parma", "Vigil Ring", "Keeper's Sigil"],
+        Archetype::Wretch => &["Ember Ring", "Duelist's Parma", "Vigil Ring", "Keeper's Sigil", "Rimed Sabre"],
     }
 }
 
@@ -127,6 +165,7 @@ impl Loadout {
         for &i in self.worn.iter().flatten() {
             (ITEMS[i].apply)(&mut k);
             k.load += ITEMS[i].weight;
+            if let Some(a) = ITEMS[i].arms { k.arms = a; }
         }
         k
     }
@@ -162,7 +201,7 @@ mod tests {
     fn the_starting_kit_changes_nothing_and_a_piece_changes_what_it_says() {
         let mut l = Loadout::starting();
         let k = l.kit();
-        assert_eq!(Kit { load: 0.0, ..k }, Kit::default());
+        assert_eq!(Kit { load: 0.0, ..k }, Kit::default(), "the sword is the kit's own default");
         assert!(k.load > 5.0 && k.load < 10.0, "{}", k.load);
         let mail = find("Chain Hauberk");
         assert!(!l.wear(3, Some(mail)), "not owned yet");
@@ -171,6 +210,17 @@ mod tests {
         let k = l.kit();
         assert!((k.taken - 0.88).abs() < 1e-6 && k.poise == 12.0);
         assert!(!l.wear(0, Some(mail)), "mail is not a weapon");
+    }
+
+    #[test]
+    fn the_weapon_held_brings_its_needs_and_grades() {
+        let mut l = Loadout::starting();
+        assert_eq!(l.kit().arms, SWORD);
+        let cleaver = find("Husk Cleaver");
+        l.gain(cleaver);
+        assert!(l.wear(0, Some(cleaver)));
+        assert_eq!((l.kit().arms.needs, l.kit().arms.scales[0]), ([4, 0, 0], Grade::A));
+        for i in ITEMS { assert_eq!(i.arms.is_some(), i.slot == Slot::Weapon, "{}", i.name); }
     }
 
     #[test]

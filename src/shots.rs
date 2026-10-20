@@ -194,6 +194,12 @@ impl Play {
         let kinds: Vec<_> = g.fight.enemies.iter().filter(|e| e.alive()).map(|e| e.kind).collect();
         let _ = g.world.felled(kinds);
         for e in g.fight.enemies.iter_mut() { e.ai = crate::fight::Ai::Dead; }
+        // An ambush's foes too (the boss is fought in its own capture).
+        if let crate::game::Mode::Side(a) = &mut g.mode {
+            if a.why != crate::game::Why::Boss && a.t >= 140 {
+                for f in &mut a.side.foes { (f.hp, f.ai) = (0.0, crate::side::Ai::Dead); }
+            }
+        }
     }
     /// Tick (clearing every place on the way when asked) until `pred` holds of the walk.
     fn walk_until(&mut self, n: u32, clear: bool, pred: impl Fn(&quartz_path_forge::WalkState) -> bool) -> bool {
@@ -460,13 +466,13 @@ fn boss() {
     for _ in 0..6000 {
         p.fell_all();
         p.ticks(1);
-        if matches!(p.mode(), Mode::Boss(_)) { met = true; break; }
+        if matches!(p.mode(), Mode::Side(_)) { met = true; break; }
     }
     p.key("w", KeyboardState::Released);
     assert!(met, "the boss never stepped out");
     p.ticks(40);
     p.shot("b01_swing");
-    assert!(p.until_mode(400, |m| matches!(m, Mode::Boss(a) if a.t >= 140)));
+    assert!(p.until_mode(400, |m| matches!(m, Mode::Side(a) if a.t >= 140)));
     p.ticks(20);
     {
         let pf = p.canvas.get_plugin::<quartz_path_forge::PathForgePlugin>().unwrap();
@@ -480,12 +486,12 @@ fn boss() {
     // Each blow from where it would be thrown, the hero in front of it.
     let throw = |p: &mut Play, i: usize, gap: f32| {
         let a = arena(p);
-        a.side.boss.s = a.side.hero.s + gap;
-        a.side.boss.facing = -1.0;
+        a.side.foes[0].s = a.side.hero.s + gap;
+        a.side.foes[0].facing = -1.0;
         a.side.hero.facing = 1.0;
-        a.side.boss.ai = Ai::Blow { i, t: 0, hit: false, from: a.side.boss.s };
+        a.side.foes[0].ai = Ai::Blow { i, t: 0, hit: false, from: a.side.foes[0].s };
     };
-    let windup = |p: &mut Play, i: usize| arena(p).side.boss.timed(i).frames.0;
+    let windup = |p: &mut Play, i: usize| arena(p).side.foes[0].timed(i).frames.0;
     throw(&mut p, 1, 2.2);
     let w = windup(&mut p, 1);
     p.ticks(w * 8 / 10);
@@ -511,14 +517,14 @@ fn boss() {
         a.side.hero.hp = a.side.hero.stats.max_hp();
         (a.side.hero.reel, a.side.hero.reeling, a.side.hero.act) = (crate::fight::Reel::None, 0, None);
         a.side.hero.s = a.side.hero.s.clamp(-4.0, 3.0);
-        a.side.boss.s = a.side.hero.s + 1.6;
-        a.side.boss.ai = Ai::Open(150);
+        a.side.foes[0].s = a.side.hero.s + 1.6;
+        a.side.foes[0].ai = Ai::Open(150);
     }
     p.ticks(10);
     p.shot("b07_open");
-    arena(&mut p).side.boss.hp = 5.0;
+    arena(&mut p).side.foes[0].hp = 5.0;
     p.click(prism::event::MouseButton::Left, false);
-    assert!(p.until_mode(120, |m| matches!(m, Mode::Boss(a) if a.side.won())), "the last blow did not fell it");
+    assert!(p.until_mode(120, |m| matches!(m, Mode::Side(a) if a.side.won())), "the last blow did not fell it");
     p.ticks(50);
     p.shot("b08_felled");
     let souls = p.game().world.souls;
@@ -565,19 +571,30 @@ fn side_path() {
     p.shot("s03_hollow");
     let road_dead = p.game().world.detour.as_ref().map(|d| d.foes.iter().filter(|e| !e.alive()).count());
     // Clear it and walk to its end, where something was left.
-    let mut owned = 0;
+    // Its chest is a trap: walking up to it springs an ambush, and only then does it open.
+    let owned = p.game().world.gear.owned.len();
     p.key("w", KeyboardState::Pressed);
-    for _ in 0..4000 {
+    let mut trap = false;
+    for _ in 0..6000 {
+        if !trap && matches!(p.mode(), crate::game::Mode::Side(_)) {
+            trap = true;
+            p.key("w", KeyboardState::Released);
+            assert!(!p.game().world.cache_taken, "not before the trap is beaten");
+            p.until_mode(300, |m| matches!(m, crate::game::Mode::Side(a) if a.t >= 170));
+            p.shot("s04a_chest_trap");
+            p.key("w", KeyboardState::Pressed);
+        }
         p.fell_all();
-        owned = p.game().world.gear.owned.len();
         p.ticks(1);
         if p.game().world.cache_taken { break; }
     }
+    assert!(trap, "the chest never sprang");
     assert!(p.game().world.cache_taken, "the cache was never reached");
+    assert!(p.until_playing(400));
     p.ticks(20);
     p.shot("s04_found");
     let g = p.game();
-    assert_eq!(g.world.gear.owned.len(), owned + 1, "a piece was left there");
+    assert!(g.world.gear.owned.len() > owned, "a piece was left there");
     eprintln!("[side] found {}", crate::gear::ITEMS[*g.world.gear.owned.last().unwrap()].name);
     let mut back = false;
     for _ in 0..1200 {
@@ -601,7 +618,63 @@ fn side_path() {
     assert_eq!(Some(dead), road_dead, "the road's dead stayed down");
 }
 
+/// An ambush in the Wretched Vale: the spring, the yard with a pack on both sides, a warning, a
+/// foe felled, the last down, and the road again.
+/// `cargo test --release ambush -- --ignored --nocapture` writes target/shots/a*.png.
+#[test]
+#[ignore]
+fn ambush() {
+    use crate::game::{Mode, Why};
+    let mut p = Play::started();
+    p.game().world.warping = Some("vale".into());
+    p.canvas.run(Action::RunPlugin { name: "path_forge".into(), data: "warp:vale".into() });
+    assert!(p.walk_until(3000, false, |s| s.stop.as_deref() == Some("vale")), "never reached the vale");
+    p.ticks(10);
+    p.key("w", KeyboardState::Pressed);
+    let mut sprung = false;
+    for _ in 0..8000 {
+        // Clear the road's own enemies, not the ambush.
+        let g = p.game();
+        for e in g.fight.enemies.iter_mut() { e.ai = crate::fight::Ai::Dead; }
+        p.ticks(1);
+        if matches!(p.mode(), Mode::Side(_)) { sprung = true; break; }
+    }
+    p.key("w", KeyboardState::Released);
+    assert!(sprung, "the ambush never sprang");
+    assert!(matches!(arena(&mut p).why, Why::Ambush(0)));
+    p.ticks(20);
+    p.shot("a01_sprung");
+    assert!(p.until_mode(400, |m| matches!(m, Mode::Side(a) if a.t >= 140)));
+    p.ticks(30);
+    p.shot("a02_yard");
+    eprintln!("[ambush] foes {:?}", arena(&mut p).side.foes.iter().map(|f| (f.breed.name, f.s)).collect::<Vec<_>>());
+    // Wait for a warning on the ground.
+    for _ in 0..600 {
+        if arena(&mut p).side.foes.iter().any(|f| f.warning().is_some_and(|w| w.4 > 0.6)) { break; }
+        p.ticks(1);
+    }
+    p.shot("a03_warning");
+    // One down, then the rest.
+    { let a = arena(&mut p); a.side.hero.hp = a.side.hero.stats.max_hp(); let f = &mut a.side.foes[0]; (f.hp, f.ai) = (0.0, crate::side::Ai::Dead); }
+    p.ticks(40);
+    p.shot("a04_one_down");
+    let souls = p.game().world.souls;
+    for f in &mut arena(&mut p).side.foes { (f.hp, f.ai) = (0.0, crate::side::Ai::Dead); }
+    p.ticks(50);
+    p.shot("a05_cleared");
+    assert!(p.until_playing(400), "never back on the road");
+    let w = &p.game().world;
+    assert!(w.cleared.contains(&("vale", 0)) && w.souls > souls, "remembered, and paid: {:?} {}", w.cleared, w.souls);
+    p.ticks(160);
+    p.shot("a06_road_again");
+    // Beaten stays beaten.
+    p.key("w", KeyboardState::Pressed);
+    p.ticks(120);
+    p.key("w", KeyboardState::Released);
+    assert!(matches!(p.mode(), Mode::Play));
+}
+
 /// The boss fight under way in the capture.
 fn arena(p: &mut Play) -> &mut crate::game::Arena {
-    match &mut p.game().mode { crate::game::Mode::Boss(a) => a, _ => panic!("not in the boss fight") }
+    match &mut p.game().mode { crate::game::Mode::Side(a) => a, _ => panic!("not in the boss fight") }
 }

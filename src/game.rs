@@ -53,12 +53,13 @@ const SIDE_VIEW: &str = r#"{"view":"side_left","side":-5.0,"eye_height":2.0,"hor
 /// Ticks the yard stands still while the camera swings round, and after the boss falls.
 const ARENA_IN: u32 = 140;
 const ARENA_OUT: u32 = 150;
-/// Ticks the boss's stagger is drawn over (its open time).
-const OPEN_T: u32 = 150;
+/// Ticks the yard stays after an ambush's last foe falls.
+const AMBUSH_OUT: u32 = 80;
 /// Degrees the camera turns to look down a side path, and ticks it looks before the walk goes.
 const PEEK_YAW: f32 = 38.0;
 const PEEK_T: u32 = 60;
 const BOSS_HELP: &str = "A/D move   Space+A/D roll   W jump   LMB strike   Shift+LMB heavy   RMB guard   Shift+RMB parry   R drink      jump the low sweep and the ring  ·  roll through the charge";
+const AMBUSH_HELP: &str = "A/D move   Space+A/D roll   W jump   LMB strike   Shift+LMB heavy (cuts through all in reach)   RMB guard   Shift+RMB parry   R drink      jump a low sweep  ·  roll through a lunge or pounce";
 /// A spot on the canvas: top-left and size.
 type Rect = ((f32, f32), (f32, f32));
 
@@ -99,6 +100,7 @@ const SHRINE: &str = "shrine";
 const SIGNPOST: &str = "signpost";
 /// The souls left where the hero fell.
 const STAIN: &str = "stain";
+const CHEST: &str = "chest";
 /// The keeper and the smith, in the sanctum (and the smith by the road until met).
 const KEEPER: &str = "keeper";
 const SMITH: &str = "smith";
@@ -165,7 +167,7 @@ pub fn setup(canvas: &mut Canvas) {
     canvas.add_game_object(BOSS.to_owned(), sprite(BOSS, 40));
     let world = World::new(0.0);
     for i in 0..world::MOST_FOES { canvas.add_game_object(enemy_id(i), sprite(&enemy_id(i), 10)); }
-    for id in [SHRINE, SIGNPOST, STAIN, KEEPER, SMITH] { canvas.add_game_object(id.to_owned(), sprite(id, 5)); }
+    for id in [SHRINE, SIGNPOST, STAIN, KEEPER, SMITH, CHEST] { canvas.add_game_object(id.to_owned(), sprite(id, 5)); }
     // The slash in front of the hero, so behind them (60) and over every enemy (50 and under);
     // the hit bursts over everything on the road. A burst's object is a clear picture that only
     // carries its effect.
@@ -249,8 +251,8 @@ pub(crate) enum Mode {
     Wake(u32),
     /// Words with someone met on the road.
     Meet(Meeting),
-    /// The boss fight, side-on.
-    Boss(Box<Arena>),
+    /// A side-on fight: the boss, or an ambush.
+    Side(Box<Arena>),
     /// Turning to look down a side path (-1 left, 1 right), `t` ticks in, before walking down it.
     Peek(u32, i8),
 }
@@ -258,7 +260,11 @@ pub(crate) enum Mode {
 /// The boss fight under way: the fight, ticks since it began (the camera swings round first),
 /// and ticks since the boss fell.
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct Arena { pub side: SideFight, pub t: u32, pub done: u32 }
+pub(crate) struct Arena { pub side: SideFight, pub t: u32, pub done: u32, pub why: Why }
+
+/// What a side-on fight is: the boss at the gate, or one of the place's ambushes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Why { Boss, Ambush(usize) }
 
 /// What a fade to black leads to.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -362,6 +368,8 @@ pub struct Pilgrimage {
     flourish: u32,
     /// The kit's shrine and signpost pictures.
     props: Option<(Arc<RgbaImage>, Arc<RgbaImage>)>,
+    /// A cache's chest, shut and opened.
+    chest: Option<(Arc<RgbaImage>, Arc<RgbaImage>)>,
 }
 
 /// An attack's warning colour, by how it can be met: gold for a parry, red for a blow that only
@@ -378,6 +386,13 @@ pub(crate) fn warning_rgb(kind: Kind, parry: bool) -> [u8; 3] {
 fn kit_picture(name: &str) -> Option<Arc<RgbaImage>> {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(format!("assets/kits/hollowmere/{name}/{name}_1.png"));
     let img = Arc::new(image::open(path).ok()?.to_rgba8());
+    set_pixel_art(&img, true);
+    Some(img)
+}
+
+/// A still Pixellab picture (`assets/pixellab/<path>`), as pixel art.
+fn pixellab_picture(path: &str) -> Option<Arc<RgbaImage>> {
+    let img = Arc::new(image::open(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("assets/pixellab").join(path)).ok()?.to_rgba8());
     set_pixel_art(&img, true);
     Some(img)
 }
@@ -415,7 +430,7 @@ impl Pilgrimage {
             staged: Vec::new(),
             fight, presses, pending: Input::default(), owed: 0.0, slow: (0, 1.0), dead_for: 0,
             art: Art::new(), hero_sheet: load_sheet("wayfarer_ne").or_else(|| load_sheet("wayfarer")), enemy_sheets: Archetype::ALL.iter().filter_map(|&k| Some((k, load_sheet(kind_art(k).0)?))).collect(), font, ticks: 0, frames: (0, 0), last_frame: None, last_speed: 0.0, last_marks: Vec::new(), last_marks_frame: None, relit: RefCell::new(Relighter::new()), last_shadows: RefCell::new((Vec::new(), Vec::new(), None)), tracer: RefCell::new(TerrainCollisionPlugin::new()), boss_sheet: load_sheet("bell_warden"), side_pending: SideInput::default(), fx: Fx::load(),
-            world, mode: Mode::Front(Front::Title), calling: None, fade: (1.0, 0.0), keeper_sheet: load_sheet("keeper"), smith_sheet: load_sheet("smith"), banner: (String::new(), 0), callout: (String::new(), [0; 3], 0), flourish: 0, props: kit_picture("shrine").zip(kit_picture("signpost")),
+            world, mode: Mode::Front(Front::Title), calling: None, fade: (1.0, 0.0), keeper_sheet: load_sheet("keeper"), smith_sheet: load_sheet("smith"), banner: (String::new(), 0), callout: (String::new(), [0; 3], 0), flourish: 0, props: kit_picture("shrine").zip(kit_picture("signpost")), chest: pixellab_picture("chest/shut.png").zip(pixellab_picture("chest/open.png")),
         }
     }
 
@@ -556,7 +571,7 @@ impl Pilgrimage {
     /// The warnings on the road for every attack under way: where it will land, how it is met;
     /// and at a fork, a trail up the side the hero leans toward.
     fn marks(&self, walked: f64) -> Vec<GroundMark> {
-        if let Mode::Boss(a) = &self.mode { return Self::side_marks(a); }
+        if let Mode::Side(a) = &self.mode { return Self::side_marks(a); }
         let lean = self.world.signpost.filter(|_| !self.world.chose).zip(self.world.lean).map(|(sign, b)| {
             let side = match b { quartz_path_forge::Branch::Left => -1.0, quartz_path_forge::Branch::Right => 1.0 };
             let to = ((sign - walked) as f32 - world::SIGNPOST_PAST).max(HERO_D + 1.0);
@@ -761,7 +776,7 @@ impl Pilgrimage {
 
     /// Put the hero and the enemies where the road drawn now says they stand.
     fn place(&self, c: &mut Canvas, walked: f64) {
-        if let Mode::Boss(a) = &self.mode { return self.place_side(c, a); }
+        if let Mode::Side(a) = &self.mode { return self.place_side(c, a); }
         let Some(pf) = c.get_plugin::<PathForgePlugin>() else { return };
         // A frame lit where it stands, by the road's light there.
         // Each frame drawn, as drawn (where, in what rect, from what picture), for its shadow.
@@ -883,6 +898,12 @@ impl Pilgrimage {
             (d > 0.8).then(|| (((fx - 0.5 * w, fy - 0.2 * w), (w, 0.2 * w)), self.art.stain.clone(), 2))
         });
         placed.push((STAIN.to_owned(), stain));
+        // The place's cache: a chest at its metre, beside the path, shut until it is taken.
+        let chest = self.world.here().cache.filter(|_| !resting).zip(self.chest.as_ref()).and_then(|(c, (shut, open))| {
+            let img = if self.world.cache_taken { open } else { shut };
+            prop(img, Some(self.world.base + (c + HERO_D) as f64), 1.1, 0.95, &mut stands)
+        });
+        placed.push((CHEST.to_owned(), chest));
         self.relit.borrow_mut().trim();
         let shadow_img = self.shadows(c, pf, &stands, &seen.into_inner());
         Self::show_shadows(c, shadow_img);
@@ -971,7 +992,7 @@ impl Pilgrimage {
             Some(s.place(pf.project_on(c, 0.0, y, d)?, metres, pf.scale_on(c, d)?))
         };
         let mut stands = Vec::new();
-        let (h, b) = (&a.side.hero, &a.side.boss);
+        let h = &a.side.hero;
         // While the camera swings round the hero walks from where they stood into the yard.
         let k = (a.t as f32 / ARENA_IN as f32).min(1.0);
         let k = k * k * (3.0 - 2.0 * k);
@@ -983,17 +1004,30 @@ impl Pilgrimage {
         });
         if hero.is_some() { stands.push((0.0, hd, art::HERO_METRES, 0.55)); }
         let head = hero.as_ref().map(|(((x, y), (w, _)), _, _)| (x + 0.5 * w - 900.0, (y - 150.0).max(240.0)));
-        let bd = ARENA_D + b.s;
-        // It steps out once the camera has come round (before, it would stand in its way).
-        let boss = self.boss_sheet.as_ref().filter(|_| k > 0.8).and_then(|s| {
-            let img = self.boss_frame(s, a, dir)?;
-            let r = sheet_at(s, bd, 0.0, BOSS_METRES)?;
-            Some((r, lit(r, img, 0.0, bd), 40))
-        });
-        if boss.is_some() { stands.push((0.0, bd, BOSS_METRES, 1.4)); }
+        // The foes step out once the camera has come round (before, they would stand in its way):
+        // the Warden as the boss, an ambush's as the road's enemies.
+        let foe = |f: &side::Foe, sheet: Option<&Sheet>, metres: f32, layer: i32, stands: &mut Vec<(f32, f32, f32, f32)>| {
+            let s = sheet.filter(|_| k > 0.8)?;
+            let fd = ARENA_D + f.s;
+            let img = self.foe_frame(s, f, h.s, dir)?;
+            let r = sheet_at(s, fd, 0.0, metres)?;
+            stands.push((0.0, fd, metres, 0.45 * metres));
+            Some((r, lit(r, img, 0.0, fd), layer))
+        };
+        let boss = (a.why == Why::Boss).then(|| a.side.foes.first().and_then(|f| foe(f, self.boss_sheet.as_ref(), BOSS_METRES, 40, &mut stands))).flatten();
         let mut placed: Vec<(String, Option<(Rect, Arc<RgbaImage>, i32)>)> = vec![(HERO.to_owned(), hero), (BOSS.to_owned(), boss)];
-        for i in 0..world::MOST_FOES { placed.push((enemy_id(i), None)); }
-        for id in [SHRINE, SIGNPOST, STAIN, KEEPER, SMITH] { placed.push((id.to_owned(), None)); }
+        for i in 0..world::MOST_FOES {
+            let drawn = match (a.why, a.side.foes.get(i)) {
+                (Why::Ambush(_), Some(f)) => {
+                    let kind = f.breed.kind.unwrap_or(Archetype::Husk);
+                    let sheet = self.enemy_sheets.iter().find(|(s, _)| *s == kind).map(|(_, s)| s);
+                    foe(f, sheet, kind_art(kind).1, 40 - i as i32, &mut stands)
+                }
+                _ => None,
+            };
+            placed.push((enemy_id(i), drawn));
+        }
+        for id in [SHRINE, SIGNPOST, STAIN, KEEPER, SMITH, CHEST] { placed.push((id.to_owned(), None)); }
         self.relit.borrow_mut().trim();
         let shadow_img = self.shadows(c, pf, &stands, &seen.into_inner());
         Self::show_shadows(c, shadow_img);
@@ -1028,32 +1062,37 @@ impl Pilgrimage {
         }
     }
 
-    /// The boss's frame: its blows phased to their ticks, open, walking, standing, falling.
-    fn boss_frame(&self, s: &Sheet, a: &Arena, dir: f32) -> Option<Arc<RgbaImage>> {
-        let b = &a.side.boss;
-        // Its clips face left.
-        let mirror = b.facing * dir > 0.0;
-        let at = |n: &str, k: f32| s.clip(n).or_else(|| s.clip("idle")).map(|c| c.at(k.clamp(0.0, 0.999), mirror).clone());
-        match b.ai {
-            side::Ai::Dead => at("death", a.done as f32 / 60.0),
-            side::Ai::Open(n) => at("stagger", ((OPEN_T - n.min(OPEN_T)) as f32 / 50.0).fract()),
+    /// A side-on foe's frame: its blows phased to their ticks, open, walking, standing, falling.
+    /// Its clips face left; an ambusher's side-on ones are its road sheet's `w_` clips (until it
+    /// has them, its road drawing stands in).
+    fn foe_frame(&self, s: &Sheet, f: &side::Foe, hero_s: f32, dir: f32) -> Option<Arc<RgbaImage>> {
+        let mirror = f.facing * dir > 0.0;
+        let pre = if f.breed.kind.is_some() { "w_" } else { "" };
+        let clip = |n: &str| s.clip(&format!("{pre}{n}")).or_else(|| s.clip(&format!("{pre}walk"))).or_else(|| s.clip("idle"));
+        let at = |n: &str, k: f32| clip(n).map(|c| c.at(k.clamp(0.0, 0.999), mirror).clone());
+        match f.ai {
+            // Without a fall of its own to play, a felled foe is gone.
+            side::Ai::Dead => s.clip(&format!("{pre}death")).map(|c| c.at((f.down as f32 / 60.0).min(0.999), mirror).clone()),
+            side::Ai::Open(n) => at("stagger", ((f.breed.open - n.min(f.breed.open)) as f32 / 50.0).fract()),
             side::Ai::Blow { i, t, .. } => {
-                let blow = b.timed(i);
-                s.clip(blow.name).or_else(|| s.clip("idle")).map(|c| { let n = c.frames.len(); phased(c, blow.frames, t, (n * 5 / 10, n * 7 / 10), mirror) })
+                let blow = f.timed(i);
+                clip(blow.name).map(|c| { let n = c.frames.len(); phased(c, blow.frames, t, (n * 5 / 10, n * 7 / 10), mirror) })
             }
-            side::Ai::Wait(_) if (a.side.hero.s - b.s).abs() > 3.0 => at("walk", (b.s / 1.8).rem_euclid(1.0)),
-            side::Ai::Wait(_) => at("idle", (self.ticks as f32 / 100.0).fract()),
+            side::Ai::Wait(_) if (hero_s - f.s).abs() > f.breed.keep + 0.05 => at("walk", (f.s / 1.8).rem_euclid(1.0)),
+            // Standing: its idle, or the first of its walk.
+            side::Ai::Wait(_) => if s.clip(&format!("{pre}idle")).is_some() { at("idle", (self.ticks as f32 / 100.0).fract()) } else { at("walk", 0.0) },
         }
     }
 
-    /// The side-on fight's warning on the ground.
+    /// The side-on fight's warnings on the ground, one for each foe winding up or live.
     fn side_marks(a: &Arena) -> Vec<GroundMark> {
-        let Some((from, to, kind, parry, progress)) = a.side.boss.warning() else { return Vec::new() };
-        let live = progress >= 1.0;
-        let al = if live { 200 } else { (70.0 + 90.0 * progress) as u8 };
-        let [r, g, b] = warning_rgb(kind, parry);
-        let fill = match kind { Kind::Physical => Fill::Solid, Kind::GuardBreak => Fill::Stripes, Kind::Unblockable => Fill::Dots };
-        vec![GroundMark { x: (-1.1, 1.1), d: (ARENA_D + from, ARENA_D + to), color: [r, g, b, al], fill, edge: Some([r.saturating_add(40), g.saturating_add(40), b.saturating_add(40), al.saturating_add(40)]) }]
+        a.side.foes.iter().filter_map(|f| f.warning()).map(|(from, to, kind, parry, progress)| {
+            let live = progress >= 1.0;
+            let al = if live { 200 } else { (70.0 + 90.0 * progress) as u8 };
+            let [r, g, b] = warning_rgb(kind, parry);
+            let fill = match kind { Kind::Physical => Fill::Solid, Kind::GuardBreak => Fill::Stripes, Kind::Unblockable => Fill::Dots };
+            GroundMark { x: (-1.1, 1.1), d: (ARENA_D + from, ARENA_D + to), color: [r, g, b, al], fill, edge: Some([r.saturating_add(40), g.saturating_add(40), b.saturating_add(40), al.saturating_add(40)]) }
+        }).collect()
     }
 
     /// This tick's presses for the side-on fight, joined to any waiting; held keys as they are.
@@ -1106,10 +1145,11 @@ impl Pilgrimage {
         set("bar_st_back", Some(1.0));
         set("bar_hp", Some(h.hp / h.stats.max_hp()));
         set("bar_st", Some(h.stamina / h.stats.max_stamina()));
-        if let Mode::Boss(a) = &self.mode {
-            let b = &a.side.boss;
-            set("bar_foe", Some(b.hp / side::Boss::max_hp()));
-            set("bar_foe_stance", Some(if matches!(b.ai, side::Ai::Open(_)) { 0.0 } else { b.stance / side::Boss::max_stance() }));
+        if let Mode::Side(a) = &self.mode {
+            // The boss; in an ambush, the nearest still standing.
+            let b = a.side.nearest().map(|i| &a.side.foes[i]);
+            set("bar_foe", b.map(|b| b.hp / b.max_hp()));
+            set("bar_foe_stance", b.map(|b| if matches!(b.ai, side::Ai::Open(_)) { 0.0 } else { b.stance / b.max_stance() }));
             return;
         }
         set("bar_foe", foe.map(|e| e.hp / e.kind.hp()));
@@ -1140,8 +1180,8 @@ impl Pilgrimage {
         let s = c.base_scale();
         let text = Text::new(vec![Span::new(line, 52.0 * s, Some(64.0 * s), font.clone(), Color(236, 228, 210, 255), 0.0)], Some(3600.0 * s), Align::Left, None);
         if let Some(o) = c.get_game_object_mut(HUD) { o.set_drawable(Box::new(text)); }
-        let boss = matches!(self.mode, Mode::Boss(_));
-        let help = if boss { BOSS_HELP } else { "W/S walk   A/D roll   Shift run   Space backstep   LMB strike   Shift+LMB heavy   RMB guard   Shift+RMB parry   R drink   E rest      warnings: gold parry  ·  orange roll or block  ·  purple roll" };
+        let boss = matches!(self.mode, Mode::Side(_));
+        let help = if let Mode::Side(a) = &self.mode { if a.why == Why::Boss { BOSS_HELP } else { AMBUSH_HELP } } else { "W/S walk   A/D roll   Shift run   Space backstep   LMB strike   Shift+LMB heavy   RMB guard   Shift+RMB parry   R drink   E rest      warnings: gold parry  ·  orange roll or block  ·  purple roll" };
         let help = Text::new(vec![Span::new(help.into(), 40.0 * s, Some(50.0 * s), font.clone(), Color(236, 228, 210, 190), 0.0)], Some(3720.0 * s), Align::Left, None);
         if let Some(o) = c.get_game_object_mut(HELP) { o.visible = self.mode == Mode::Play || boss; o.set_drawable(Box::new(help)); }
         // The banner, fading out over its last second.
@@ -1184,6 +1224,8 @@ impl Pilgrimage {
                 Note::Found(what) => format!("Found: {what}"),
                 Note::Wore(what) => format!("Wearing {what}"),
                 Note::Vanquished(who, souls) => format!("{who} falls  ·  {souls} souls"),
+                Note::Ambushed(false) => "Ambush!".into(),
+                Note::Ambushed(true) => "The chest was a trap!".into(),
                 Note::Pilgrimage(n) => format!("Hollowmere reached ({n}). The road begins again."),
             };
             self.banner = (line, 240);
@@ -1306,6 +1348,7 @@ impl QuartzPlugin for Pilgrimage {
         let ahead = pf.walked_ahead();
         let stop_now = pf.state().stop.clone();
         let side_path = self.world.side_path_at(&self.fight, ahead, &pf.state().side_paths);
+        let ambush = if self.mode == Mode::Play { self.world.ambush_due(&self.fight, ahead) } else { None };
         // Count the road's new frames (its rate is its own, not the game's).
         if let Some(img) = pf.current_image() {
             if !self.last_frame.as_ref().is_some_and(|l| Arc::ptr_eq(l, img)) { self.frames.0 += 1; self.last_frame = Some(img.clone()); }
@@ -1344,7 +1387,17 @@ impl QuartzPlugin for Pilgrimage {
                 let h = &self.fight.hero;
                 let side = SideFight::new(h.stats, h.hp, h.stamina, h.flasks);
                 notes.push(Note::Arrived(BOSS_NAME));
-                Mode::Boss(Box::new(Arena { side, t: 0, done: 0 }))
+                Mode::Side(Box::new(Arena { side, t: 0, done: 0, why: Why::Boss }))
+            }
+            Mode::Play if ambush.is_some() => {
+                // Foes spring out: the camera swings round, and they are fought along the road.
+                let k = ambush.unwrap_or(0);
+                let a = &self.world.here().ambushes[k];
+                let at: Vec<(&'static side::Breed, f32)> = a.foes.iter().map(|&(kind, s)| (side::breed_of(kind), s)).collect();
+                Self::swing(c, SIDE_VIEW);
+                let h = &self.fight.hero;
+                notes.push(Note::Ambushed(a.chest));
+                Mode::Side(Box::new(Arena { side: SideFight::ambush(h.stats, h.hp, h.stamina, h.flasks, &at), t: 0, done: 0, why: Why::Ambush(k) }))
             }
             Mode::Play => Mode::Play,
             Mode::Dying(t) if t >= DIE_T => { self.fade.1 = 1.0; Mode::Out(Next::Respawn) }
@@ -1411,20 +1464,26 @@ impl QuartzPlugin for Pilgrimage {
             Mode::Rise(t) => Mode::Rise(t + 1),
             Mode::Wake(t) if t >= WAKE_T => Mode::Play,
             Mode::Wake(t) => Mode::Wake(t + 1),
-            Mode::Boss(a) if a.side.hero.dead => {
+            Mode::Side(a) if a.side.hero.dead => {
                 Self::swing(c, "home");
                 let h = &mut self.fight.hero;
                 (h.hp, h.dead) = (0.0, true);
                 Mode::Dying(0)
             }
-            Mode::Boss(a) if a.side.won() && a.done >= ARENA_OUT => {
-                notes.extend(self.world.boss_felled(BOSS_NAME, BOSS_SOULS));
+            Mode::Side(a) if a.side.won() && a.done >= if a.why == Why::Boss { ARENA_OUT } else { AMBUSH_OUT } => {
+                match a.why {
+                    Why::Boss => notes.extend(self.world.boss_felled(BOSS_NAME, BOSS_SOULS)),
+                    Why::Ambush(k) => {
+                        let fallen = a.side.foes.iter().filter_map(|f| f.breed.kind).collect();
+                        notes.extend(self.world.ambush_cleared(k, fallen));
+                    }
+                }
                 Self::swing(c, "home");
                 let h = &mut self.fight.hero;
                 (h.hp, h.stamina, h.flasks) = (a.side.hero.hp, a.side.hero.stamina, a.side.hero.flasks);
                 Mode::Play
             }
-            Mode::Boss(a) => Mode::Boss(a),
+            Mode::Side(a) => Mode::Side(a),
             Mode::Meet(mut m) => {
                 if keys.iter().fold(false, |done, k| done || m.press(*k)) {
                     self.world.met_smith = true;
@@ -1454,7 +1513,7 @@ impl QuartzPlugin for Pilgrimage {
                 first = false;
                 events.extend(self.fight.tick(&i, ahead));
             }
-        } else if matches!(self.mode, Mode::Boss(_)) {
+        } else if matches!(self.mode, Mode::Side(_)) {
             let bi = self.side_input(c, &presses);
             self.owed += dt / Canvas::TICK;
             let mut first = true;
@@ -1464,14 +1523,14 @@ impl QuartzPlugin for Pilgrimage {
                 let i = if first { bi } else { SideInput { left: bi.left, right: bi.right, guard: bi.guard, ..SideInput::default() } };
                 if first { self.side_pending = SideInput::default(); }
                 first = false;
-                let Mode::Boss(a) = &mut self.mode else { break };
+                let Mode::Side(a) = &mut self.mode else { break };
                 // Nothing moves while the camera swings round.
                 if a.t < ARENA_IN { a.t += 1; continue; }
                 if a.side.won() { a.done += 1; }
                 events.extend(a.side.tick(&i));
             }
             // The bars and the HUD read the road fight's hero.
-            if let Mode::Boss(a) = &self.mode {
+            if let Mode::Side(a) = &self.mode {
                 let (h, s) = (&mut self.fight.hero, &a.side.hero);
                 (h.hp, h.stamina, h.flasks) = (s.hp.max(0.0), s.stamina, s.flasks);
             }
@@ -1492,14 +1551,14 @@ impl QuartzPlugin for Pilgrimage {
         // A follow-through runs on fight ticks, and gives way to whatever the hero does next.
         self.flourish = if self.fight.hero.act.is_some() || self.fight.hero.reeling > 0 { 0 } else { self.flourish.saturating_sub(ran) };
         match &self.mode {
-            Mode::Boss(a) => {
-                let (hs, bs, fw) = (a.side.hero.s, a.side.boss.s, a.side.hero.facing);
-                self.fx.on_events_at(&events, (0.0, ARENA_D + hs), fw, |_| Some((0.0, walked + (ARENA_D + bs) as f64)));
+            Mode::Side(a) => {
+                let (hs, fw) = (a.side.hero.s, a.side.hero.facing);
+                self.fx.on_events_at(&events, (0.0, ARENA_D + hs), fw, |i| a.side.foes.get(i).map(|f| (0.0, walked + (ARENA_D + f.s) as f64)));
             }
             _ => self.fx.on_events(&events, &self.fight),
         }
         // Souls (and shards) for the fallen (the boss's come when the fight ends).
-        let road = !matches!(self.mode, Mode::Boss(_));
+        let road = !matches!(self.mode, Mode::Side(_));
         let fallen: Vec<Archetype> = events.iter().filter(|_| road).filter_map(|e| match *e { Event::Felled { enemy } => self.fight.enemies.get(enemy).map(|e| e.kind), _ => None }).collect();
         let found = self.world.felled(fallen);
         self.dead_for = if let Mode::Dying(t) = self.mode { t } else { 0 };

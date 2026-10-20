@@ -431,8 +431,11 @@ pub struct Stats {
     pub vigor: u32,
     /// Stamina: 6 a level.
     pub endurance: u32,
-    /// Strike damage: 6% a level.
+    /// The attributes a weapon asks for and scales with (`gear::Arms`): heavy weapons on
+    /// might, quick ones on dexterity, rune-worked ones on focus.
     pub might: u32,
+    pub dexterity: u32,
+    pub focus: u32,
     /// The weapon's and the armour's upgrade at the smith (+0 to `GEAR_MAX`): 8% more strike
     /// damage, and 5% less damage taken, a step. Not levels: they do not raise a level's cost.
     pub weapon: u32,
@@ -441,16 +444,40 @@ pub struct Stats {
     pub kit: crate::gear::Kit,
 }
 
+/// What a weapon held without the attributes it needs hits for, of itself, and what its strikes
+/// then cost, of their usual.
+pub const WEAK: f32 = 0.6;
+pub const WEAK_STRIKE: f32 = 1.25;
+
 /// The highest upgrade the smith can forge.
 pub const GEAR_MAX: u32 = 5;
 
 impl Stats {
-    pub fn level(&self) -> u32 { self.vigor + self.endurance + self.might }
+    pub fn level(&self) -> u32 { self.vigor + self.endurance + self.might + self.dexterity + self.focus }
+    /// Might, dexterity and focus, in the order a weapon names them.
+    pub fn attributes(&self) -> [u32; 3] { [self.might, self.dexterity, self.focus] }
+    /// What `level`s of an attribute add to a weapon graded B in it: 6% a level to 10, 3% to 20,
+    /// 1% past that.
+    pub fn soft(level: u32) -> f32 {
+        let l = level as f32;
+        0.06 * l.min(10.0) + 0.03 * (l - 10.0).clamp(0.0, 10.0) + 0.01 * (l - 20.0).max(0.0)
+    }
+    /// The attributes (by `gear::ATTRIBUTES` index) the weapon held needs more of.
+    pub fn lacking(&self) -> Vec<usize> { (0..3).filter(|&i| self.attributes()[i] < self.kit.arms.needs[i]).collect() }
+    /// Held without what it needs: it hits for `WEAK` of itself and its strikes cost more.
+    pub fn weak(&self) -> bool { !self.lacking().is_empty() }
+    /// The weapon's strike before the smith and the rest of the kit: its base, raised by each
+    /// attribute it scales with.
+    pub fn arms_damage(&self) -> f32 {
+        let a = &self.kit.arms;
+        let at = self.attributes();
+        a.base * (1.0 + (0..3).map(|i| a.scales[i].share() * Self::soft(at[i])).sum::<f32>()) * if self.weak() { WEAK } else { 1.0 }
+    }
     /// Souls the next level costs.
     pub fn level_cost(&self) -> u32 { 60 + 20 * self.level() }
     pub fn max_hp(&self) -> f32 { HP + 8.0 * self.vigor as f32 + self.kit.hp }
     pub fn max_stamina(&self) -> f32 { STAMINA + 6.0 * self.endurance as f32 + self.kit.stamina }
-    pub fn damage(&self) -> f32 { (1.0 + 0.06 * self.might as f32) * (1.0 + 0.08 * self.weapon as f32) * self.kit.damage }
+    pub fn damage(&self) -> f32 { self.arms_damage() * (1.0 + 0.08 * self.weapon as f32) * self.kit.damage }
     /// What is left of a blow after the armour.
     pub fn taken(&self) -> f32 { (1.0 - 0.05 * self.armour as f32) * self.kit.taken }
     /// Poise at full: hits' worth before a stagger.
@@ -462,7 +489,7 @@ impl Stats {
     pub fn cost(&self, m: Move, base: f32) -> f32 {
         match m {
             Move::Step(_) | Move::Backstep => base * self.kit.roll * if self.burdened() { 1.4 } else { 1.0 },
-            Move::Light | Move::Heavy => base * self.kit.strike,
+            Move::Light | Move::Heavy => base * self.kit.strike * if self.weak() { WEAK_STRIKE } else { 1.0 },
             _ => base,
         }
     }
@@ -1249,6 +1276,32 @@ mod tests {
     }
 
     #[test]
+    fn a_weapon_scales_with_what_it_names_and_is_weak_without_what_it_needs() {
+        let mut st = Stats::default();
+        let mut l = crate::gear::Loadout::starting();
+        let rapier = crate::gear::find("Duelist's Rapier");
+        l.gain(rapier);
+        l.wear(0, Some(rapier));
+        st.kit = l.kit();
+        assert!(st.weak() && st.lacking() == vec![1]);
+        assert!((st.damage() - 0.95 * WEAK).abs() < 1e-5 && st.cost(Move::Light, 10.0) > 10.0 * 0.9);
+        st.dexterity = 6;
+        let at6 = st.damage();
+        assert!((at6 - 0.95 * (1.0 + 1.2 * 0.36)).abs() < 1e-5, "{at6}");
+        // Might does nothing for it; dexterity keeps paying, more slowly past 10.
+        st.might = 10;
+        assert_eq!(st.damage(), at6);
+        let step = |st: &mut Stats| { let d = st.damage(); st.dexterity += 1; st.damage() - d };
+        st.dexterity = 9;
+        let early = step(&mut st);
+        st.dexterity = 15;
+        let late = step(&mut st);
+        st.dexterity = 25;
+        let past = step(&mut st);
+        assert!(early > late && late > past && past > 0.0, "{early} {late} {past}");
+    }
+
+    #[test]
     fn what_is_worn_changes_the_numbers_and_a_heavy_load_makes_rolls_dear() {
         let mut st = Stats::default();
         let roll = Move::Step(1).spec().stamina;
@@ -1263,6 +1316,10 @@ mod tests {
         st.kit = l.kit();
         assert!(st.burdened(), "{} of {}", st.kit.load, st.capacity());
         assert!(st.cost(Move::Step(1), roll) > 1.3 * roll && st.cost(Move::Light, 12.0) > 12.0);
+        // The cleaver wants might 4: short of it, it is swung weakly.
+        assert!(st.weak() && st.damage() < 0.75, "{}", st.damage());
+        st.might = 4;
+        assert!(!st.weak());
         assert!(st.max_hp() > HP && st.poise() > POISE && st.taken() < 1.0 && st.damage() > 1.2);
         // Endurance carries it.
         st.endurance = 10;

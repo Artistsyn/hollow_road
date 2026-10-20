@@ -31,30 +31,45 @@ pub struct Place {
     /// Something left at the end of the place this many metres in: a piece of gear the hero
     /// lacks, or souls.
     pub cache: Option<f32>,
+    /// Ambushes waiting along it (`Ambush`).
+    pub ambushes: &'static [Ambush],
 }
+
+/// Foes that spring out on the hero: the camera swings round and they are fought side-on
+/// (`side::SideFight::ambush`) until every one is down. Sprung `at` metres into the place, or, for
+/// a `chest`, on reaching the place's cache, which then opens only once they are beaten. Each
+/// stands `s` metres along the road from the hero (both sides: it is an ambush). Once beaten it
+/// stays beaten, like the boss.
+#[derive(Debug)]
+pub struct Ambush { pub at: f32, pub foes: &'static [(Archetype, f32)], pub chest: bool }
 
 use Archetype::{Husk, Lancer, Shieldbearer, Wretch};
 
 /// The first stretch teaches one kind at a time; each branch then leans on what it taught (the
 /// marsh: fast wretches in packs; the chapel: shields and lances together); the gate mixes them.
 pub const PLACES: [Place; 7] = [
-    Place { id: "road", title: "The Road to Hollowmere", length: 64.0, shrine: Some(1.5), smith: Some(59.0), boss: None, explore: None, cache: None,
+    Place { id: "road", title: "The Road to Hollowmere", length: 64.0, shrine: Some(1.5), smith: Some(59.0), boss: None, explore: None, cache: None, ambushes: &[],
         foes: &[(Husk, 12.0, 0), (Lancer, 26.0, 1), (Wretch, 38.0, -1), (Shieldbearer, 52.0, 0)] },
     // Each branch begins under the road's own sky, its ground and trees turning toward where it
     // leads; the change of light comes after, through a crossing (a blend into the marsh, a ruined
     // arch into the graveyard), which handles it far better than a fork can.
-    Place { id: "vale_edge", title: "The Marsh Edge", length: 26.0, shrine: None, smith: None, boss: None, explore: None, cache: None,
+    Place { id: "vale_edge", title: "The Marsh Edge", length: 26.0, shrine: None, smith: None, boss: None, explore: None, cache: None, ambushes: &[],
         foes: &[(Wretch, 14.0, 0)] },
-    Place { id: "chapel_edge", title: "The Chapel Edge", length: 26.0, shrine: None, smith: None, boss: None, explore: None, cache: None,
+    Place { id: "chapel_edge", title: "The Chapel Edge", length: 26.0, shrine: None, smith: None, boss: None, explore: None, cache: None, ambushes: &[],
         foes: &[(Lancer, 15.0, 0)] },
+    // The marsh's wretches come as a pack out of the reeds; the graves hold a lancer and a husk.
     Place { id: "vale", title: "The Wretched Vale", length: 56.0, shrine: None, smith: None, boss: None, explore: None, cache: None,
+        ambushes: &[Ambush { at: 30.0, foes: &[(Wretch, -3.4), (Wretch, 3.0), (Husk, 4.6)], chest: false }],
         foes: &[(Wretch, 12.0, -1), (Wretch, 15.0, 1), (Husk, 26.0, 0), (Wretch, 36.0, 0), (Lancer, 46.0, -1)] },
     Place { id: "chapel", title: "Chapel Road", length: 58.0, shrine: None, smith: None, boss: None, explore: Some("hollow"), cache: None,
+        ambushes: &[Ambush { at: 38.0, foes: &[(Lancer, -3.6), (Husk, 3.2)], chest: false }],
         foes: &[(Shieldbearer, 12.0, 0), (Lancer, 22.0, 1), (Husk, 32.0, -1), (Shieldbearer, 44.0, 0), (Lancer, 47.0, -1)] },
-    Place { id: "gate", title: "Hollowmere Gate", length: 46.0, shrine: Some(2.0), smith: None, boss: Some(40.0), explore: None, cache: None,
+    Place { id: "gate", title: "Hollowmere Gate", length: 46.0, shrine: Some(2.0), smith: None, boss: Some(40.0), explore: None, cache: None, ambushes: &[],
         foes: &[(Lancer, 14.0, 1), (Shieldbearer, 18.0, -1), (Wretch, 30.0, 0), (Husk, 36.0, 1)] },
-    // Down a side path off Chapel Road: a dead end among the graves, with something left there.
+    // Down a side path off Chapel Road: a dead end among the graves, with something left there,
+    // and the chest is a trap.
     Place { id: "hollow", title: "A Hollow Among the Graves", length: 24.0, shrine: None, smith: None, boss: None, explore: None, cache: Some(20.0),
+        ambushes: &[Ambush { at: 19.0, foes: &[(Husk, 3.0), (Wretch, -3.2)], chest: true }],
         foes: &[(Wretch, 11.0, 0), (Husk, 15.0, 1)] },
 ];
 
@@ -114,6 +129,8 @@ pub enum Note {
     Wore(&'static str),
     /// A boss felled, and the souls it gave.
     Vanquished(&'static str, u32),
+    /// Foes sprang out (true: from a chest).
+    Ambushed(bool),
     /// The journey's end reached: the road again, every place full.
     Pilgrimage(u32),
 }
@@ -166,6 +183,8 @@ pub struct World {
     /// is taken.
     pub explored: Vec<&'static str>,
     pub cache_taken: bool,
+    /// Ambushes beaten: (place, which).
+    pub cleared: Vec<(&'static str, usize)>,
     /// The next warp keeps the hero as they are (a detour), rather than whole again (a respawn).
     keep_hero: bool,
 }
@@ -180,7 +199,7 @@ pub const SIDE_REACH: f32 = 1.6;
 
 impl World {
     pub fn new(walked: f64) -> World {
-        World { at: START.into(), base: walked, sent: false, warping: None, checkpoint: START.into(), souls: 0, stain: None, pilgrimages: 0, signpost: None, lean: None, chose: false, chose_at: None, shards: 0, met_keeper: false, met_smith: false, talks: [0, 0], gear: crate::gear::Loadout::starting(), fallen: [0; 4], luck: 0, boss_beaten: false, detour: None, explored: Vec::new(), cache_taken: false, keep_hero: false }
+        World { at: START.into(), base: walked, sent: false, warping: None, checkpoint: START.into(), souls: 0, stain: None, pilgrimages: 0, signpost: None, lean: None, chose: false, chose_at: None, shards: 0, met_keeper: false, met_smith: false, talks: [0, 0], gear: crate::gear::Loadout::starting(), fallen: [0; 4], luck: 0, boss_beaten: false, detour: None, explored: Vec::new(), cache_taken: false, cleared: Vec::new(), keep_hero: false }
     }
 
     pub fn here(&self) -> &'static Place { place(&self.at).unwrap_or(&PLACES[0]) }
@@ -275,6 +294,35 @@ impl World {
         notes
     }
 
+    /// Whether ambush `k` of the place the hero is in has been beaten.
+    fn beaten(&self, k: usize) -> bool { self.cleared.contains(&(self.here().id, k)) }
+
+    /// Whether this place's cache is a trap not yet sprung and beaten.
+    fn trapped(&self) -> bool { self.here().ambushes.iter().enumerate().any(|(k, a)| a.chest && !self.beaten(k)) }
+
+    /// The ambush to spring where the hero stands, if any: past its metre, not beaten, none of the
+    /// road's own enemies close (the ambush is its own fight), the hero on their feet.
+    pub fn ambush_due(&self, fight: &Fight, walked: f64) -> Option<usize> {
+        if fight.hero.dead || self.warping.is_some() { return None; }
+        if fight.enemies.iter().any(|e| e.alive() && e.gap(walked).abs() < 8.0) { return None; }
+        let into = walked - self.base;
+        self.here().ambushes.iter().enumerate()
+            .find(|&(k, a)| !self.beaten(k) && into >= a.at as f64 && (!a.chest || (!self.cache_taken && fight.enemies.iter().all(|e| !e.alive()))))
+            .map(|(k, _)| k)
+    }
+
+    /// Ambush `k` beaten: remembered, its dead's souls and leavings, and a trapped chest opened.
+    pub fn ambush_cleared(&mut self, k: usize, fallen: Vec<Archetype>) -> Vec<Note> {
+        let at = (self.here().id, k);
+        if !self.cleared.contains(&at) { self.cleared.push(at); }
+        let mut notes = self.felled(fallen);
+        if self.here().ambushes[k].chest && !self.cache_taken {
+            self.cache_taken = true;
+            notes.extend(self.open_cache());
+        }
+        notes
+    }
+
     /// Where the hero stands on the road: the walk's metres plus the hero's own distance.
     fn standing(walked: f64) -> f64 { walked + HERO_D as f64 }
 
@@ -312,13 +360,14 @@ impl World {
         Go::Warp(self.checkpoint.clone())
     }
 
-    /// Spend souls on one level of `which` (0 vigor, 1 endurance, 2 might); the new level.
+    /// Spend souls on one level of `which` (0 vigor, 1 endurance, 2 might, 3 dexterity, 4 focus);
+    /// the new level.
     pub fn rise(&mut self, fight: &mut Fight, which: usize) -> Option<Note> {
         let st = &mut fight.hero.stats;
         let cost = st.level_cost();
         if self.souls < cost { return None; }
         self.souls -= cost;
-        match which { 0 => st.vigor += 1, 1 => st.endurance += 1, _ => st.might += 1 }
+        match which { 0 => st.vigor += 1, 1 => st.endurance += 1, 2 => st.might += 1, 3 => st.dexterity += 1, _ => st.focus += 1 }
         let lvl = st.level();
         fight.hero = crate::fight::Hero::with(*st);
         Some(Note::Rose(lvl))
@@ -446,7 +495,7 @@ impl World {
         }
         let clear = fight.enemies.iter().all(|e| !e.alive());
         // What was left at the end of a side path, taken by walking up to it.
-        if let (Some(c), false) = (self.here().cache, self.cache_taken) {
+        if let (Some(c), false, false) = (self.here().cache, self.cache_taken, self.trapped()) {
             if clear && walked - self.base >= c as f64 - 1.0 {
                 self.cache_taken = true;
                 notes.extend(self.open_cache());
@@ -567,7 +616,8 @@ mod tests {
         assert_eq!(w.rise(&mut f, 0), Some(Note::Rose(1)));
         assert_eq!((w.souls, f.hero.hp, f.hero.stats.level_cost()), (85, 108.0, 80));
         assert_eq!(w.rise(&mut f, 2), Some(Note::Rose(2)));
-        assert!(w.souls == 5 && (f.hero.stats.damage() - 1.06).abs() < 1e-6);
+        // The starting sword takes might at C.
+        assert!(w.souls == 5 && (f.hero.stats.damage() - 1.045).abs() < 1e-6, "{}", f.hero.stats.damage());
     }
 
     #[test]
@@ -594,6 +644,9 @@ mod tests {
         fell(&mut f);
         let (go, notes) = w.tick(&mut f, 152.0, Some("hollow"), None, true);
         assert_eq!(go, None, "a side path leads nowhere, even at the journey's end");
+        // Its cache is a trapped chest: beaten, it opens.
+        assert!(notes.is_empty() && w.ambush_due(&f, 152.0) == Some(0), "{notes:?}");
+        let notes = w.ambush_cleared(0, Vec::new());
         assert!(matches!(notes.as_slice(), [Note::Found(_)]), "{notes:?}");
         assert!(w.can_come_back(&f, 153.0));
         assert_eq!(w.come_back(), Some(Go::Warp("chapel".into())));
@@ -604,6 +657,28 @@ mod tests {
         assert!(!f.enemies[0].alive() && f.enemies[1].alive());
         assert!((f.enemies[1].s - (170.0 - 8.0 + 60.0)).abs() < 1e-9, "{}", f.enemies[1].s);
         assert!(w.side_path_at(&f, 170.0, &mouth).is_none(), "walked already");
+    }
+
+    #[test]
+    fn an_ambush_springs_once_and_a_trapped_chest_opens_only_after_it() {
+        let mut w = World::new(0.0);
+        let mut f = Fight::new(Vec::new());
+        w.tick(&mut f, 100.0, Some("vale"), None, false);
+        fell(&mut f);
+        assert_eq!(w.ambush_due(&f, 100.0 + 29.0), None, "not yet");
+        assert_eq!(w.ambush_due(&f, 100.0 + 30.5), Some(0));
+        let souls = w.souls;
+        let notes = w.ambush_cleared(0, vec![Wretch, Wretch, Husk]);
+        assert!(w.souls > souls && !notes.is_empty());
+        assert_eq!(w.ambush_due(&f, 100.0 + 31.0), None, "beaten stays beaten");
+        // The hollow's chest: walking up to it springs the trap instead of opening it.
+        w.tick(&mut f, 200.0, Some("hollow"), None, false);
+        fell(&mut f);
+        let (_, notes) = w.tick(&mut f, 200.0 + 21.0, Some("hollow"), None, true);
+        assert!(!w.cache_taken && notes.is_empty(), "{notes:?}");
+        assert_eq!(w.ambush_due(&f, 200.0 + 21.0), Some(0));
+        let notes = w.ambush_cleared(0, vec![Husk, Wretch]);
+        assert!(w.cache_taken && notes.iter().any(|n| matches!(n, Note::Found(_) | Note::Recovered(300))), "{notes:?}");
     }
 
     #[test]

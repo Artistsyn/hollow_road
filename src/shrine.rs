@@ -10,8 +10,8 @@
 //! The keeper (Maren) and the smith (Brannoc) are stand-ins: their names and lines wait on the
 //! story (the design doc's wanderers, its open question 11).
 
-use crate::fight::{Fight, GEAR_MAX};
-use crate::gear::{ITEMS, SLOTS};
+use crate::fight::{Fight, Stats, GEAR_MAX};
+use crate::gear::{Arms, Grade, ATTRIBUTES, ITEMS, SLOTS};
 use crate::world::{Note, World};
 
 /// A calling: the direction a pilgrim starts in (design doc §8.4).
@@ -166,10 +166,15 @@ impl Sanctum {
             (View::Choices(_), Station::Smith) => vec![("Forge".into(), true), ("Talk".into(), true), ("Step away".into(), true)],
             (View::Levels(_), _) => {
                 let can = w.souls >= st.level_cost();
+                // Each line says what one more level would change, as the hero is now equipped.
+                let up = |f: fn(&mut Stats)| { let mut n = st; f(&mut n); n };
+                let strikes = |name: &str, lvl: u32, n: Stats| (format!("{name} {lvl}   strikes x{:.2} -> x{:.2}", st.damage(), n.damage()), can);
                 vec![
-                    (format!("Vigor {}   health {:.0}", st.vigor, st.max_hp()), can),
-                    (format!("Endurance {}   stamina {:.0}", st.endurance, st.max_stamina()), can),
-                    (format!("Might {}   strikes x{:.2}", st.might, 1.0 + 0.06 * st.might as f32), can),
+                    (format!("Vigor {}   health {:.0} -> {:.0}", st.vigor, st.max_hp(), up(|s| s.vigor += 1).max_hp()), can),
+                    (format!("Endurance {}   stamina {:.0} -> {:.0}", st.endurance, st.max_stamina(), up(|s| s.endurance += 1).max_stamina()), can),
+                    strikes("Might", st.might, up(|s| s.might += 1)),
+                    strikes("Dexterity", st.dexterity, up(|s| s.dexterity += 1)),
+                    strikes("Focus", st.focus, up(|s| s.focus += 1)),
                     ("Back".into(), true),
                 ]
             }
@@ -184,7 +189,13 @@ impl Sanctum {
                 .map(|((_, place), worn)| (format!("{place:<9} {}", worn.map_or("nothing", |i| ITEMS[i].name)), true))
                 .chain([("Back".to_string(), true)]).collect(),
             (View::Wear(p, _), _) => Self::wearable(w, *p).into_iter()
-                .map(|i| (match i { Some(i) => format!("{}   {}", ITEMS[i].name, ITEMS[i].text), None => "Nothing".into() }, true))
+                .map(|i| (match i {
+                    Some(i) => match ITEMS[i].arms {
+                        Some(a) => format!("{}   {}   {}", ITEMS[i].name, arms_line(&a, &st), ITEMS[i].text),
+                        None => format!("{}   {}", ITEMS[i].name, ITEMS[i].text),
+                    },
+                    None => "Nothing".into(),
+                }, true))
                 .chain([("Back".to_string(), true)]).collect(),
             _ => Vec::new(),
         }
@@ -223,7 +234,7 @@ impl Sanctum {
                 return Some(Outcome::Note(Note::Wore(item.map_or("nothing", |i| ITEMS[i].name))));
             }
             (View::Choices(i), Key::Use) => return self.choose(i, w),
-            (View::Levels(i), Key::Use) if i < 3 => return w.rise(f, i).map(Outcome::Note),
+            (View::Levels(i), Key::Use) if i < 5 => return w.rise(f, i).map(Outcome::Note),
             (View::Forge(i), Key::Use) if i < 2 => return w.forge(f, i).map(Outcome::Note),
             (View::Levels(_), Key::Use) => self.view = View::Choices(0),
             (View::Forge(_), Key::Use) => self.view = View::Choices(0),
@@ -304,10 +315,12 @@ impl Sanctum {
             View::Gear(i) | View::Wear(_, i) => {
                 let st = &f.hero.stats;
                 p.title = match &self.view { View::Wear(q, _) => SLOTS[*q].1.into(), _ => "Equipment".into() };
+                let weak = st.lacking().iter().map(|&a| format!("{} {}", ATTRIBUTES[a], st.kit.arms.needs[a])).collect::<Vec<_>>();
                 p.text = format!(
-                    "Carrying {:.1} of {:.0}{}.   Health {:.0}  stamina {:.0}  poise {:.0}  strikes x{:.2}  blows x{:.2}",
+                    "Carrying {:.1} of {:.0}{}.   Health {:.0}  stamina {:.0}  poise {:.0}  strikes x{:.2}  blows x{:.2}{}",
                     st.kit.load, st.capacity(), if st.burdened() { ", burdened: rolls cost more" } else { "" },
                     st.max_hp(), st.max_stamina(), st.poise(), st.damage(), st.taken(),
+                    if weak.is_empty() { String::new() } else { format!("\nToo weak for this weapon: it wants {}.", weak.join(", ")) },
                 );
                 p.choice = *i;
                 p.hint = "W/S choose   E wear   Esc back".into();
@@ -318,6 +331,17 @@ impl Sanctum {
 }
 
 impl Default for Sanctum { fn default() -> Self { Sanctum::new() } }
+
+/// A weapon as the list shows it: what it needs (a need the hero lacks marked with !), its grade
+/// in each attribute, and what it would strike for in the hero's hands.
+pub fn arms_line(a: &Arms, st: &Stats) -> String {
+    const SHORT: [&str; 3] = ["Mt", "Dx", "Fc"];
+    let at = st.attributes();
+    let needs: Vec<String> = (0..3).filter(|&i| a.needs[i] > 0).map(|i| format!("{} {}{}", SHORT[i], a.needs[i], if at[i] < a.needs[i] { "!" } else { "" })).collect();
+    let grades: Vec<String> = (0..3).filter(|&i| a.scales[i] != Grade::No).map(|i| format!("{} {}", SHORT[i], a.scales[i].letter())).collect();
+    let held = Stats { kit: crate::gear::Kit { arms: *a, ..st.kit }, ..*st };
+    format!("needs {}  scales {}  x{:.2}", if needs.is_empty() { "nothing".into() } else { needs.join(" ") }, grades.join(" "), held.damage())
+}
 
 /// Words with someone met on the road, a page at a time.
 #[derive(Clone, Debug, PartialEq)]

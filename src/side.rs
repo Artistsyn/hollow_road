@@ -1,14 +1,19 @@
-//! The side-on boss fight. At the gate the camera swings round to look across the road and the
-//! fight runs along it: the hero walks left and right, rolls with Space and a direction (through
-//! the boss, too, inside the roll's i-frames), jumps, strikes, guards and parries as on the road,
-//! against one great enemy whose blows come high, low along the ground, or as a ring rolling out
-//! across the stones. What jumping is for: a low sweep or the ring passes under a hero in the air.
+//! The side-on fight: a boss at the gate, or an ambush on the road. The camera swings round to
+//! look across the road and the fight runs along it: the hero walks left and right, rolls with
+//! Space and a direction (through an enemy, too, inside the roll's i-frames), jumps, strikes,
+//! guards and parries as on the road, against foes whose blows come high, low along the ground,
+//! as a ring rolling out across the stones, or as a charge. What jumping is for: a low sweep or
+//! the ring passes under a hero in the air.
+//!
+//! Each foe is of a [`Breed`]: its health, stance, size, blows and how it picks them. In an
+//! ambush several stand at once, but only one winds up at a time and the rest keep their
+//! distance, so a crowd presses without its blows landing all together unreadably.
 //!
 //! Positions are metres along the road from the arena's middle (`s`), and up (`y`). Events are
-//! the road fight's own (`fight::Event`, the boss as enemy 0), so hitstop, callouts, bursts and
+//! the road fight's own (`fight::Event`, each foe by its index), so hitstop, callouts, bursts and
 //! sound all follow it unchanged.
 
-use crate::fight::{Event, Kind, Move, Reel, Stats, DOWN_FALL, PERFECT};
+use crate::fight::{Archetype, Event, Kind, Move, Reel, Stats, DOWN_FALL, PERFECT};
 
 /// Half the arena's length: the walls of the gate's yard, metres.
 pub const HALF: f32 = 6.0;
@@ -24,15 +29,12 @@ const JUMP_COST: f32 = 10.0;
 pub const ROLL_T: u32 = 28;
 const ROLL_M: f32 = 3.0;
 const ROLL_IFRAMES: (u32, u32) = (2, 21);
-/// Half the hero's width and the boss's, metres; the boss's height.
+/// Half the hero's width, metres.
 const HERO_HALF: f32 = 0.3;
-pub const BOSS_HALF: f32 = 0.95;
-const BOSS_HEIGHT: f32 = 3.2;
-const BOSS_HP: f32 = 520.0;
-const BOSS_STANCE: f32 = 110.0;
-/// Ticks the boss stays open after its stance breaks or a parry, and what a strike on it then does.
-const OPEN: u32 = 150;
+/// What a strike on a foe left open (by a parry or a broken stance) does, against its usual.
 const OPEN_DAMAGE: f32 = 2.5;
+/// The gap foes keep between their bodies, metres.
+const SPACING: f32 = 0.35;
 
 /// What the player pressed this tick, and what is held.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -113,12 +115,23 @@ impl SideHero {
     fn reel(&mut self, r: Reel) { self.reel = r; self.reeling = r.ticks(); self.act = None; }
 }
 
-/// One of the boss's blows.
+/// How a blow travels once it is live.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Motion {
+    /// Where it was thrown, over its `reach`.
+    Strike,
+    /// A ring rolling out both ways along the ground from where it struck, low.
+    Ring,
+    /// The foe itself running at this speed (m/tick) through its live frames, its body the blow.
+    Charge(f32),
+}
+
+/// One of a foe's blows.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Blow {
     pub name: &'static str,
     pub frames: (u32, u32, u32),
-    /// Metres in front of the boss's middle it covers (from, to), and heights (from, to).
+    /// Metres in front of the foe's middle it covers (from, to), and heights (from, to).
     pub reach: (f32, f32),
     pub height: (f32, f32),
     pub damage: f32,
@@ -126,31 +139,95 @@ pub struct Blow {
     pub parry: bool,
     /// Stamina a guard pays to hold it.
     pub guard: f32,
+    pub motion: Motion,
 }
 
-const fn blow(name: &'static str, frames: (u32, u32, u32), reach: (f32, f32), height: (f32, f32), damage: f32, kind: Kind, parry: bool, guard: f32) -> Blow {
-    Blow { name, frames, reach, height, damage, kind, parry, guard }
+#[allow(clippy::too_many_arguments)]
+const fn blow(name: &'static str, frames: (u32, u32, u32), reach: (f32, f32), height: (f32, f32), damage: f32, kind: Kind, parry: bool, guard: f32, motion: Motion) -> Blow {
+    Blow { name, frames, reach, height, damage, kind, parry, guard, motion }
 }
 
-/// The Bell Warden's blows. `knell`'s reach is the ring's: it rolls out both ways along the
-/// ground from where the hammer struck, so it is placed by `ring` rather than by `reach`.
-pub const BLOWS: [Blow; 4] = [
-    // The bell-hammer brought down overhead: parry it.
-    blow("toll", (48, 6, 42), (0.3, 3.3), (0.0, 3.6), 34.0, Kind::Physical, true, 40.0),
-    // Swung low across the ground: jump it (or block, paying for it).
-    blow("sweep", (40, 8, 38), (-0.7, 3.7), (0.0, 0.75), 24.0, Kind::GuardBreak, false, 45.0),
-    // The hammer rung on the stones: a ring rolls out both ways, low. Jump it or roll through it.
-    blow("knell", (62, 66, 40), (0.0, 0.0), (0.0, 0.55), 28.0, Kind::Unblockable, false, 0.0),
-    // A charge across the yard, shoulder first: roll through it.
-    blow("charge", (34, 42, 38), (-BOSS_HALF, BOSS_HALF), (0.0, 2.6), 30.0, Kind::GuardBreak, false, 50.0),
-];
-/// How fast the knell's ring rolls out, m/tick, and how wide its crest is.
+/// A kind of foe.
+#[derive(Debug, PartialEq)]
+pub struct Breed {
+    pub name: &'static str,
+    /// The road enemy it is drawn as and pays souls as (None: the Bell Warden's own).
+    pub kind: Option<Archetype>,
+    pub hp: f32,
+    pub stance: f32,
+    /// Half its width and its height, metres.
+    pub half: f32,
+    pub height: f32,
+    pub blows: &'static [Blow],
+    /// Which blow next: given whether the hero is within `near` metres and a roll of 0..10.
+    pub pick: fn(bool, u32) -> usize,
+    pub near: f32,
+    /// How fast it closes in while it waits, m/s, and from how far off it stops.
+    pub walk: f32,
+    pub keep: f32,
+    /// Ticks it squares up between blows (plus up to 20 by chance), and how long it stays open.
+    pub rest: u32,
+    pub open: u32,
+    /// Whether past half its health it is quicker and follows its first blow with its second.
+    pub enrages: bool,
+}
+
+/// How fast a ring rolls out, m/tick, and how wide its crest is.
 const RING_V: f32 = 7.0 / TPS;
 const RING_HALF: f32 = 0.35;
-/// How fast the charge runs, m/tick.
-const CHARGE_V: f32 = 8.5 / TPS;
 
-/// What the boss is doing.
+/// The Bell Warden's blows.
+pub const BLOWS: [Blow; 4] = [
+    // The bell-hammer brought down overhead: parry it.
+    blow("toll", (48, 6, 42), (0.3, 3.3), (0.0, 3.6), 34.0, Kind::Physical, true, 40.0, Motion::Strike),
+    // Swung low across the ground: jump it (or block, paying for it).
+    blow("sweep", (40, 8, 38), (-0.7, 3.7), (0.0, 0.75), 24.0, Kind::GuardBreak, false, 45.0, Motion::Strike),
+    // The hammer rung on the stones: a ring rolls out both ways, low. Jump it or roll through it.
+    blow("knell", (62, 66, 40), (0.0, 0.0), (0.0, 0.55), 28.0, Kind::Unblockable, false, 0.0, Motion::Ring),
+    // A charge across the yard, shoulder first: roll through it.
+    blow("charge", (34, 42, 38), (-0.95, 0.95), (0.0, 2.6), 30.0, Kind::GuardBreak, false, 50.0, Motion::Charge(8.5 / TPS)),
+];
+
+/// The boss at the gate.
+pub static WARDEN: Breed = Breed {
+    name: "The Bell Warden", kind: None, hp: 520.0, stance: 110.0, half: 0.95, height: 3.2, blows: &BLOWS,
+    pick: |near, r| match (near, r) { (true, 0..=4) => 0, (true, 5..=8) => 1, (true, _) => 2, (false, 0..=5) => 3, (false, _) => 2 },
+    near: 3.4, walk: 1.3, keep: 3.0, rest: 46, open: 150, enrages: true,
+};
+
+/// The breed a road enemy fights as when it springs an ambush (shieldbearers do not).
+pub fn breed_of(kind: Archetype) -> &'static Breed {
+    match kind { Archetype::Lancer => &LANCER, Archetype::Wretch => &WRETCH, _ => &HUSK }
+}
+
+/// The road's dead, as they spring an ambush: weaker than the Warden and quicker to fall, each
+/// with one blow to parry or block and one to jump or roll.
+pub static HUSK: Breed = Breed {
+    name: "Husk", kind: Some(Archetype::Husk), hp: 70.0, stance: 34.0, half: 0.4, height: 1.9,
+    blows: &[
+        blow("chop", (34, 5, 30), (0.2, 1.6), (0.0, 2.2), 16.0, Kind::Physical, true, 22.0, Motion::Strike),
+        blow("sweep", (30, 6, 28), (-0.3, 1.8), (0.0, 0.7), 14.0, Kind::GuardBreak, false, 26.0, Motion::Strike),
+    ],
+    pick: |_, r| if r < 6 { 0 } else { 1 }, near: 1.8, walk: 0.9, keep: 1.3, rest: 70, open: 110, enrages: false,
+};
+pub static LANCER: Breed = Breed {
+    name: "Lancer", kind: Some(Archetype::Lancer), hp: 62.0, stance: 30.0, half: 0.35, height: 1.9,
+    blows: &[
+        blow("thrust", (28, 4, 26), (0.3, 2.6), (0.6, 1.8), 15.0, Kind::Physical, true, 20.0, Motion::Strike),
+        blow("lunge", (32, 22, 30), (-0.4, 0.4), (0.0, 1.9), 18.0, Kind::GuardBreak, false, 30.0, Motion::Charge(7.5 / TPS)),
+    ],
+    pick: |near, r| if near && r < 7 { 0 } else { 1 }, near: 2.6, walk: 1.1, keep: 2.2, rest: 64, open: 100, enrages: false,
+};
+pub static WRETCH: Breed = Breed {
+    name: "Wretch", kind: Some(Archetype::Wretch), hp: 44.0, stance: 22.0, half: 0.35, height: 1.5,
+    blows: &[
+        blow("rake", (18, 6, 22), (0.1, 1.3), (0.0, 1.6), 10.0, Kind::Physical, false, 16.0, Motion::Strike),
+        blow("pounce", (26, 18, 28), (-0.4, 0.4), (0.0, 1.4), 14.0, Kind::GuardBreak, false, 24.0, Motion::Charge(8.0 / TPS)),
+    ],
+    pick: |near, r| if near && r < 6 { 0 } else { 1 }, near: 1.4, walk: 1.8, keep: 1.0, rest: 48, open: 90, enrages: false,
+};
+
+/// What a foe is doing.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Ai {
     /// Squaring up for this many ticks.
@@ -163,7 +240,8 @@ pub enum Ai {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Boss {
+pub struct Foe {
+    pub breed: &'static Breed,
     pub s: f32,
     pub facing: f32,
     pub hp: f32,
@@ -174,14 +252,22 @@ pub struct Boss {
     pub hurt: u32,
     /// Blows thrown, which picks the next.
     count: u32,
+    /// Ticks since it fell (for the drawing of its fall).
+    pub down: u32,
 }
 
-impl Boss {
-    pub fn max_hp() -> f32 { BOSS_HP }
-    pub fn max_stance() -> f32 { BOSS_STANCE }
+impl Foe {
+    /// A foe of `breed` at `s`, facing `facing`, squaring up for `wait` ticks.
+    pub fn new(breed: &'static Breed, s: f32, facing: f32, wait: u32) -> Foe {
+        Foe { breed, s, facing, hp: breed.hp, stance: breed.stance, stance_wait: 0, ai: Ai::Wait(wait), hurt: 0, count: 0, down: 0 }
+    }
+    pub fn max_hp(&self) -> f32 { self.breed.hp }
+    pub fn max_stance(&self) -> f32 { self.breed.stance }
     pub fn alive(&self) -> bool { self.ai != Ai::Dead }
-    /// Past half its health it is quicker, and follows a toll with a sweep.
-    pub fn enraged(&self) -> bool { self.hp < 0.5 * BOSS_HP }
+    /// A breed that enrages, past half its health: quicker, and its first blow followed by its second.
+    pub fn enraged(&self) -> bool { self.breed.enrages && self.hp < 0.5 * self.breed.hp }
+    /// Winding up or live: the moment others hold back for.
+    fn pressing(&self) -> bool { self.blow().is_some_and(|(_, ph, _)| ph != crate::fight::Phase::Recover) }
     /// The blow under way: which, its phase, how far through the windup (0..1).
     pub fn blow(&self) -> Option<(Blow, crate::fight::Phase, f32)> {
         let Ai::Blow { i, t, .. } = self.ai else { return None };
@@ -189,27 +275,30 @@ impl Boss {
         let ph = if t < b.frames.0 { crate::fight::Phase::Windup } else if t < b.frames.0 + b.frames.1 { crate::fight::Phase::Active } else { crate::fight::Phase::Recover };
         Some((b, ph, (t as f32 / b.frames.0 as f32).min(1.0)))
     }
-    /// Blow `i` as this boss throws it now (quicker windups when enraged).
+    /// Blow `i` as this foe throws it now (quicker windups when enraged).
     pub fn timed(&self, i: usize) -> Blow {
-        let mut b = BLOWS[i];
+        let mut b = self.breed.blows[i];
         if self.enraged() { b.frames.0 = (b.frames.0 as f32 * 0.8) as u32; }
         b
     }
-    /// The knell's ring now: how far out from where it struck, while live.
+    /// A ring blow's ring now: where it struck and how far out it has rolled, while live.
     pub fn ring(&self) -> Option<(f32, f32)> {
-        let Ai::Blow { i: 2, t, from, .. } = self.ai else { return None };
-        let b = self.timed(2);
-        (t >= b.frames.0 && t < b.frames.0 + b.frames.1).then(|| (from + self.facing * 1.4, (t - b.frames.0) as f32 * RING_V))
+        let Ai::Blow { i, t, from, .. } = self.ai else { return None };
+        let b = self.timed(i);
+        (b.motion == Motion::Ring && t >= b.frames.0 && t < b.frames.0 + b.frames.1).then(|| (from + self.facing * 1.4, (t - b.frames.0) as f32 * RING_V))
     }
     /// Where on the ground the blow under way will land, (from, to) metres, for its warning.
     pub fn warning(&self) -> Option<(f32, f32, Kind, bool, f32)> {
         let (b, ph, progress) = self.blow()?;
         if ph == crate::fight::Phase::Recover { return None; }
-        let Ai::Blow { i, .. } = self.ai else { return None };
-        let span = match i {
-            2 => { let (at, r) = self.ring().unwrap_or((self.s + self.facing * 1.4, 0.0)); (at - r - RING_HALF, at + r + RING_HALF) }
-            3 => { let end = (self.s + self.facing * 2.0 * HALF).clamp(-HALF, HALF); (self.s.min(end), self.s.max(end)) }
-            _ => { let (a, z) = (self.s + self.facing * b.reach.0, self.s + self.facing * b.reach.1); (a.min(z), a.max(z)) }
+        let span = match b.motion {
+            Motion::Ring => { let (at, r) = self.ring().unwrap_or((self.s + self.facing * 1.4, 0.0)); (at - r - RING_HALF, at + r + RING_HALF) }
+            Motion::Charge(v) => {
+                let run = v * b.frames.1 as f32 + self.breed.half;
+                let end = (self.s + self.facing * run).clamp(-HALF, HALF);
+                (self.s.min(end), self.s.max(end))
+            }
+            Motion::Strike => { let (a, z) = (self.s + self.facing * b.reach.0, self.s + self.facing * b.reach.1); (a.min(z), a.max(z)) }
         };
         Some((span.0, span.1, b.kind, b.parry, progress))
     }
@@ -219,27 +308,46 @@ impl Boss {
 #[derive(Clone, Debug, PartialEq)]
 pub struct SideFight {
     pub hero: SideHero,
-    pub boss: Boss,
+    pub foes: Vec<Foe>,
     pub ticks: u64,
     /// A count that stands in for chance.
     seed: u32,
 }
 
 impl SideFight {
-    /// The hero, as the road left them, at the yard's left; the boss at its right, facing them.
+    /// The boss fight: the hero, as the road left them, at the yard's left; the Warden at its
+    /// right, facing them.
     pub fn new(stats: Stats, hp: f32, stamina: f32, flasks: u32) -> SideFight {
+        Self::with(stats, hp, stamina, flasks, -HALF + 1.5, vec![Foe::new(&WARDEN, HALF - 2.0, -1.0, 90)])
+    }
+
+    /// An ambush: the hero in the middle, the foes where `at` puts them (metres along), each
+    /// facing the hero and starting a little after the one before.
+    pub fn ambush(stats: Stats, hp: f32, stamina: f32, flasks: u32, at: &[(&'static Breed, f32)]) -> SideFight {
+        let foes = at.iter().enumerate().map(|(k, &(b, s))| Foe::new(b, s.clamp(-HALF + b.half, HALF - b.half), if s > 0.0 { -1.0 } else { 1.0 }, 70 + 45 * k as u32)).collect();
+        Self::with(stats, hp, stamina, flasks, 0.0, foes)
+    }
+
+    fn with(stats: Stats, hp: f32, stamina: f32, flasks: u32, s: f32, foes: Vec<Foe>) -> SideFight {
         SideFight {
             hero: SideHero {
-                stats, hp, stamina, rested: 30, flasks, s: -HALF + 1.5, y: 0.0, vy: 0.0, facing: 1.0, act: None, guarding: false,
+                stats, hp, stamina, rested: 30, flasks, s, y: 0.0, vy: 0.0, facing: 1.0, act: None, guarding: false,
                 reel: Reel::None, reeling: 0, poise: stats.poise(), poise_wait: 0, from: 0.0, landed: false, dead: false, walking: false, buffer: None,
             },
-            boss: Boss { s: HALF - 2.0, facing: -1.0, hp: BOSS_HP, stance: BOSS_STANCE, stance_wait: 0, ai: Ai::Wait(90), hurt: 0, count: 0 },
+            foes,
             ticks: 0,
             seed: 0x51DE,
         }
     }
 
-    pub fn won(&self) -> bool { !self.boss.alive() }
+    /// Every foe down.
+    pub fn won(&self) -> bool { self.foes.iter().all(|f| !f.alive()) }
+
+    /// The living foe nearest the hero, by index.
+    pub fn nearest(&self) -> Option<usize> {
+        let s = self.hero.s;
+        (0..self.foes.len()).filter(|&i| self.foes[i].alive()).min_by(|&a, &b| (self.foes[a].s - s).abs().total_cmp(&(self.foes[b].s - s).abs()))
+    }
 
     fn roll(&mut self, n: u32) -> u32 {
         self.seed = self.seed.wrapping_mul(1_103_515_245).wrapping_add(12_345);
@@ -250,7 +358,7 @@ impl SideFight {
         let mut out = Vec::new();
         self.ticks += 1;
         if !self.hero.dead { self.hero_tick(input, &mut out); }
-        if self.boss.alive() { self.boss_tick(&mut out); }
+        for i in 0..self.foes.len() { if self.foes[i].alive() { self.foe_tick(i, &mut out); } else { self.foes[i].down += 1; } }
         if self.hero.hp <= 0.0 && !self.hero.dead {
             self.hero.dead = true;
             self.hero.hp = 0.0;
@@ -260,7 +368,7 @@ impl SideFight {
     }
 
     fn hero_tick(&mut self, input: &SideInput, out: &mut Vec<Event>) {
-        let boss_s = self.boss.s;
+        let foe_s = self.nearest().map(|i| self.foes[i].s);
         let h = &mut self.hero;
         h.reeling = h.reeling.saturating_sub(1);
         if h.reeling == 0 { h.reel = Reel::None; }
@@ -300,9 +408,9 @@ impl SideFight {
                 h.facing = dir as f32;
                 h.s += dir as f32 * WALK;
                 h.walking = true;
-            } else if dir == 0 && !h.airborne() {
-                // Standing, they face the boss.
-                h.facing = if boss_s >= h.s { 1.0 } else { -1.0 };
+            } else if let (0, false, Some(fs)) = (dir, h.airborne(), foe_s) {
+                // Standing, they face the nearest foe.
+                h.facing = if fs >= h.s { 1.0 } else { -1.0 };
             }
         } else if h.airborne() && dir != 0 && h.act.is_none() {
             h.s += dir as f32 * WALK * 0.8;
@@ -339,53 +447,85 @@ impl SideFight {
             h.act = (t + 1 < a.total()).then_some((a, t + 1));
             if matches!(a, Act::Light | Act::Heavy) && t >= f.0 && t < f.0 + f.1 && !h.landed { self.strike(a, out); }
         }
-        // The yard's walls; and the boss's body, which only a roll passes through.
+        // The yard's walls; and the foes' bodies, which only a roll (or a jump over a small
+        // one) passes through.
         let h = &mut self.hero;
         h.s = h.s.clamp(-HALF + HERO_HALF, HALF - HERO_HALF);
         let rolling = matches!(h.act, Some((Act::Roll(_), _)));
-        let gap = h.s - self.boss.s;
-        if self.boss.alive() && !rolling && h.y < BOSS_HEIGHT * 0.8 && gap.abs() < HERO_HALF + BOSS_HALF {
-            let side = if gap == 0.0 { -self.boss.facing } else { gap.signum() };
-            let s = self.boss.s + side * (HERO_HALF + BOSS_HALF);
-            h.s = if s.abs() > HALF - HERO_HALF { self.boss.s - side * (HERO_HALF + BOSS_HALF) } else { s };
+        for f in self.foes.iter().filter(|f| f.alive()) {
+            let gap = h.s - f.s;
+            let reach = HERO_HALF + f.breed.half;
+            if !rolling && h.y < f.breed.height * 0.8 && gap.abs() < reach {
+                let side = if gap == 0.0 { -f.facing } else { gap.signum() };
+                let s = f.s + side * reach;
+                h.s = if s.abs() > HALF - HERO_HALF { f.s - side * reach } else { s };
+            }
         }
     }
 
-    /// The hero's strike `a` in its live frames: does it reach the boss?
+    /// The hero's strike `a` in its live frames: the nearest foe in front within reach takes it;
+    /// a heavy cleaves through every one there.
     fn strike(&mut self, a: Act, out: &mut Vec<Event>) {
-        let (reach, damage, stance) = match a { Act::Heavy => (2.0, 26.0, 22.0), _ => (1.7, 10.0, 8.0) };
-        let h = &mut self.hero;
-        let b = &mut self.boss;
-        let ahead = (b.s - h.s) * h.facing;
-        if !b.alive() || ahead < -BOSS_HALF || ahead > reach + BOSS_HALF { return; }
-        h.landed = true;
+        let (reach, cleave) = match a { Act::Heavy => (2.0, true), _ => (1.7, false) };
+        let (hs, hf) = (self.hero.s, self.hero.facing);
+        let mut struck: Vec<usize> = (0..self.foes.len()).filter(|&i| {
+            let f = &self.foes[i];
+            let ahead = (f.s - hs) * hf;
+            f.alive() && ahead >= -f.breed.half && ahead <= reach + f.breed.half
+        }).collect();
+        struck.sort_by(|&x, &y| (self.foes[x].s - hs).abs().total_cmp(&(self.foes[y].s - hs).abs()));
+        if !cleave { struck.truncate(1); }
+        if struck.is_empty() { return; }
+        self.hero.landed = true;
+        for i in struck { self.hit(i, a, out); }
+    }
+
+    /// Foe `i` takes the hero's strike `a`.
+    fn hit(&mut self, i: usize, a: Act, out: &mut Vec<Event>) {
+        let (damage, stance) = match a { Act::Heavy => (26.0, 22.0), _ => (10.0, 8.0) };
+        let h = &self.hero;
+        let b = &mut self.foes[i];
         let open = matches!(b.ai, Ai::Open(_));
         b.hp -= damage * h.stats.damage() * if open { OPEN_DAMAGE } else { 1.0 };
         b.hurt = 10;
         b.stance_wait = 0;
-        out.push(Event::Hit { enemy: 0, mv: a.as_move() });
+        out.push(Event::Hit { enemy: i, mv: a.as_move() });
         if b.hp <= 0.0 {
             b.hp = 0.0;
             b.ai = Ai::Dead;
-            out.push(Event::Felled { enemy: 0 });
+            out.push(Event::Felled { enemy: i });
             return;
         }
         if !open {
             b.stance -= stance;
             if b.stance <= 0.0 {
-                b.stance = BOSS_STANCE;
-                b.ai = Ai::Open(OPEN);
-                out.push(Event::StanceBroken { enemy: 0 });
+                b.stance = b.breed.stance;
+                b.ai = Ai::Open(b.breed.open);
+                out.push(Event::StanceBroken { enemy: i });
             }
         }
     }
 
-    fn boss_tick(&mut self, out: &mut Vec<Event>) {
+    fn foe_tick(&mut self, i: usize, out: &mut Vec<Event>) {
         let hero_s = self.hero.s;
-        let b = &mut self.boss;
+        // Another foe winding up or live holds this one back; and it will not walk through one
+        // that stands between it and the hero.
+        let busy = self.foes.iter().enumerate().any(|(j, f)| j != i && f.alive() && f.pressing());
+        let me = self.foes[i].s;
+        let blocked = |step: f32| self.foes.iter().enumerate().any(|(j, f)| {
+            j != i && f.alive() && (f.s - me).signum() == step.signum() && (f.s - hero_s).abs() < (me - hero_s).abs()
+                && (f.s - (me + step)).abs() < f.breed.half + self.foes[i].breed.half + SPACING
+        });
+        let b = &self.foes[i];
+        let step = if hero_s >= b.s { 1.0 } else { -1.0 } * b.breed.walk / TPS;
+        let held = blocked(step);
+        // A charge stops at another's body, too.
+        let charge = match b.ai { Ai::Blow { i: k, .. } => match b.breed.blows[k].motion { Motion::Charge(v) => b.facing * v, _ => 0.0 }, _ => 0.0 };
+        let charge_held = charge != 0.0 && blocked(charge);
+        let b = &mut self.foes[i];
         b.hurt = b.hurt.saturating_sub(1);
         b.stance_wait += 1;
-        if b.stance_wait > 120 { b.stance = (b.stance + 0.4).min(BOSS_STANCE); }
+        if b.stance_wait > 120 { b.stance = (b.stance + 0.4).min(b.breed.stance); }
         match b.ai {
             Ai::Dead => {}
             Ai::Open(0) => b.ai = Ai::Wait(30),
@@ -393,62 +533,69 @@ impl SideFight {
             Ai::Wait(n) => {
                 b.facing = if hero_s >= b.s { 1.0 } else { -1.0 };
                 let gap = (hero_s - b.s).abs();
-                // Closing in at a walk while it waits.
-                if gap > 3.0 { b.s += b.facing * 1.3 / TPS; }
-                if n == 0 {
-                    let near = gap < 3.4;
+                // Closing in at a walk while it waits, unless another stands in its way.
+                if gap > b.breed.keep && !held { b.s += step; }
+                if n == 0 && busy {
+                    // Its turn comes when the other's blow is over.
+                    b.ai = Ai::Wait(10);
+                } else if n == 0 {
+                    let near = gap < b.breed.near;
                     let pick = self.roll(10);
-                    let b = &mut self.boss;
-                    let i = match (near, pick) { (true, 0..=4) => 0, (true, 5..=8) => 1, (true, _) => 2, (false, 0..=5) => 3, (false, _) => 2 };
+                    let b = &mut self.foes[i];
+                    let k = (b.breed.pick)(near, pick).min(b.breed.blows.len() - 1);
                     b.count += 1;
-                    b.ai = Ai::Blow { i, t: 0, hit: false, from: b.s };
-                    out.push(Event::WindsUp { enemy: 0, attack: BLOWS[i].name });
+                    b.ai = Ai::Blow { i: k, t: 0, hit: false, from: b.s };
+                    out.push(Event::WindsUp { enemy: i, attack: b.breed.blows[k].name });
                 } else {
                     b.ai = Ai::Wait(n - 1);
                 }
             }
-            Ai::Blow { i, t, hit, from } => {
-                let blow = b.timed(i);
+            Ai::Blow { i: k, t, hit, from } => {
+                let blow = b.timed(k);
                 let (w, live, rec) = blow.frames;
-                if t == ((w as f32) * 0.7).ceil() as u32 { out.push(Event::Commits { enemy: 0, kind: blow.kind, parry: blow.parry }); }
-                // The charge runs while live, and stops at the wall.
-                if i == 3 && t >= w && t < w + live { b.s = (b.s + b.facing * CHARGE_V).clamp(-HALF + BOSS_HALF, HALF - BOSS_HALF); }
+                if t == ((w as f32) * 0.7).ceil() as u32 { out.push(Event::Commits { enemy: i, kind: blow.kind, parry: blow.parry }); }
+                // A charge runs while live, and stops at the wall.
+                if let Motion::Charge(v) = blow.motion {
+                    if t >= w && t < w + live && !charge_held { b.s = (b.s + b.facing * v).clamp(-HALF + b.breed.half, HALF - b.breed.half); }
+                }
                 let live_now = t >= w && t < w + live;
                 let mut hit = hit;
                 if live_now && !hit { hit = self.blow_lands(i, blow, out); }
-                let b = &mut self.boss;
+                let seed = self.seed;
+                let b = &mut self.foes[i];
                 b.ai = if t + 1 >= w + live + rec {
-                    // Enraged, a toll comes back as a sweep.
-                    if i == 0 && b.enraged() && b.count % 2 == 1 {
+                    // Enraged, its first blow comes back as its second.
+                    if k == 0 && b.enraged() && b.count % 2 == 1 && b.breed.blows.len() > 1 {
                         b.count += 1;
-                        out.push(Event::WindsUp { enemy: 0, attack: BLOWS[1].name });
+                        out.push(Event::WindsUp { enemy: i, attack: b.breed.blows[1].name });
                         Ai::Blow { i: 1, t: 12, hit: false, from: b.s }
                     } else {
-                        Ai::Wait(if b.enraged() { 28 } else { 46 } + self.seed % 20)
+                        Ai::Wait(if b.enraged() { b.breed.rest * 3 / 5 } else { b.breed.rest } + seed % 20)
                     }
                 } else if matches!(b.ai, Ai::Open(_)) { b.ai } else {
-                    Ai::Blow { i, t: t + 1, hit, from }
+                    Ai::Blow { i: k, t: t + 1, hit, from }
                 };
             }
         }
     }
 
-    /// Blow `i` live now: does it meet the hero, and how? True once it has struck (one hit a blow).
+    /// Foe `i`'s blow live now: does it meet the hero, and how? True once it has struck (one hit a
+    /// blow).
     fn blow_lands(&mut self, i: usize, blow: Blow, out: &mut Vec<Event>) -> bool {
-        let b = &self.boss;
+        let b = &self.foes[i];
         let h = &self.hero;
-        let reaches = match i {
-            2 => self.boss.ring().is_some_and(|(at, r)| ((h.s - at).abs() - r).abs() < RING_HALF + HERO_HALF),
-            3 => (h.s - b.s).abs() < BOSS_HALF + HERO_HALF + 0.1,
-            _ => { let ahead = (h.s - b.s) * b.facing; ahead >= blow.reach.0 - HERO_HALF && ahead <= blow.reach.1 + HERO_HALF }
+        let reaches = match blow.motion {
+            Motion::Ring => b.ring().is_some_and(|(at, r)| ((h.s - at).abs() - r).abs() < RING_HALF + HERO_HALF),
+            Motion::Charge(_) => (h.s - b.s).abs() < b.breed.half + HERO_HALF + 0.1,
+            Motion::Strike => { let ahead = (h.s - b.s) * b.facing; ahead >= blow.reach.0 - HERO_HALF && ahead <= blow.reach.1 + HERO_HALF }
         };
         let high_enough = h.y + 1.7 >= blow.height.0 && h.y <= blow.height.1;
         if !reaches || !high_enough || h.dead { return false; }
         if h.invulnerable() {
-            if matches!(h.act, Some((Act::Roll(_), t)) if t <= PERFECT) { out.push(Event::JustDodge { enemy: 0 }); }
+            if matches!(h.act, Some((Act::Roll(_), t)) if t <= PERFECT) { out.push(Event::JustDodge { enemy: i }); }
             return false;
         }
-        let toward = if self.boss.s >= h.s { 1.0 } else { -1.0 };
+        let toward = if self.foes[i].s >= h.s { 1.0 } else { -1.0 };
         let facing_it = h.facing == toward;
         let h = &mut self.hero;
         // A parry, live (and the kit's extra ticks), meets a blow that can be parried.
@@ -457,9 +604,10 @@ impl SideFight {
             let live = t >= f.0 && t < f.0 + f.1 + h.stats.kit.parry;
             if live && blow.parry && facing_it {
                 h.act = None;
-                out.push(Event::Parried { enemy: 0 });
-                self.boss.ai = Ai::Open(OPEN);
-                out.push(Event::StanceBroken { enemy: 0 });
+                out.push(Event::Parried { enemy: i });
+                let f = &mut self.foes[i];
+                f.ai = Ai::Open(f.breed.open);
+                out.push(Event::StanceBroken { enemy: i });
                 return true;
             }
             let damage = blow.damage * 0.5 * h.stats.taken();
@@ -493,7 +641,7 @@ impl SideFight {
         h.hp -= damage;
         h.poise -= damage * 1.3;
         h.poise_wait = 0;
-        // Knocked away from the boss, and out of the air.
+        // Knocked away from the foe, and out of the air.
         h.s += -toward * if blow.kind == Kind::Physical { 0.4 } else { 0.9 };
         if h.airborne() { h.vy = h.vy.min(0.0); }
         // A low blow takes the legs out; a huge guard-breaker floors the hero too.
@@ -529,11 +677,11 @@ mod tests {
         for _ in 0..n { let e = f.tick(&input); if until(f, &e) { return true; } }
         false
     }
-    /// The boss throwing blow `i` at once, `gap` metres in front of the hero.
+    /// The Warden throwing blow `i` at once, `gap` metres in front of the hero.
     fn throwing(i: usize, gap: f32) -> SideFight {
         let mut f = fight();
-        f.boss.s = f.hero.s + gap;
-        f.boss.ai = Ai::Blow { i, t: 0, hit: false, from: f.boss.s };
+        f.foes[0].s = f.hero.s + gap;
+        f.foes[0].ai = Ai::Blow { i, t: 0, hit: false, from: f.foes[0].s };
         f
     }
 
@@ -552,18 +700,18 @@ mod tests {
     #[test]
     fn a_roll_with_a_direction_travels_and_passes_through_the_boss() {
         let mut f = fight();
-        f.boss.s = f.hero.s + 1.5;
-        f.boss.ai = Ai::Wait(500);
+        f.foes[0].s = f.hero.s + 1.5;
+        f.foes[0].ai = Ai::Wait(500);
         let start = f.hero.s;
         f.tick(&SideInput { roll: true, right: true, ..idle() });
         run(&mut f, 60, SideInput { right: true, ..idle() }, |f, _| f.hero.act.is_none());
-        assert!(f.hero.s > f.boss.s, "rolled through to the far side: {} vs boss {}", f.hero.s, f.boss.s);
+        assert!(f.hero.s > f.foes[0].s, "rolled through to the far side: {} vs boss {}", f.hero.s, f.foes[0].s);
         // Walking does not.
         let mut g = fight();
-        g.boss.s = g.hero.s + 1.5;
-        g.boss.ai = Ai::Wait(500);
+        g.foes[0].s = g.hero.s + 1.5;
+        g.foes[0].ai = Ai::Wait(500);
         run(&mut g, 120, SideInput { right: true, ..idle() }, |_, _| false);
-        assert!(g.hero.s < g.boss.s, "walked into its body and stopped");
+        assert!(g.hero.s < g.foes[0].s, "walked into its body and stopped");
         let _ = start;
     }
 
@@ -586,11 +734,11 @@ mod tests {
         run(&mut f, w - 6, idle(), |_, _| false);
         f.tick(&SideInput { parry: true, ..idle() });
         assert!(run(&mut f, 30, idle(), |_, e| e.contains(&Event::Parried { enemy: 0 })));
-        assert!(matches!(f.boss.ai, Ai::Open(_)));
-        let hp = f.boss.hp;
+        assert!(matches!(f.foes[0].ai, Ai::Open(_)));
+        let hp = f.foes[0].hp;
         f.tick(&SideInput { light: true, ..idle() });
-        run(&mut f, 30, idle(), |f, _| f.boss.hp < hp);
-        assert!(hp - f.boss.hp > 20.0, "an open boss takes a strike two and a half times over: {}", hp - f.boss.hp);
+        run(&mut f, 30, idle(), |f, _| f.foes[0].hp < hp);
+        assert!(hp - f.foes[0].hp > 20.0, "an open boss takes a strike two and a half times over: {}", hp - f.foes[0].hp);
     }
 
     #[test]
@@ -609,11 +757,74 @@ mod tests {
     #[test]
     fn strikes_wear_the_boss_down_to_its_death() {
         let mut f = fight();
-        f.boss.s = f.hero.s + 1.5;
-        f.boss.ai = Ai::Wait(u32::MAX / 2);
-        f.boss.hp = 15.0;
+        f.foes[0].s = f.hero.s + 1.5;
+        f.foes[0].ai = Ai::Wait(u32::MAX / 2);
+        f.foes[0].hp = 15.0;
         f.tick(&SideInput { heavy: true, ..idle() });
         assert!(run(&mut f, 60, idle(), |_, e| e.contains(&Event::Felled { enemy: 0 })));
+        assert!(f.won());
+    }
+
+    fn ambushed() -> SideFight {
+        SideFight::ambush(Stats::default(), 100.0, 100.0, 3, &[(&HUSK, -3.0), (&LANCER, 3.0), (&WRETCH, 4.5)])
+    }
+
+    #[test]
+    fn an_ambush_never_has_two_foes_winding_up_at_once() {
+        let mut f = ambushed();
+        f.hero.hp = 1e9;
+        let mut blows = 0;
+        run(&mut f, 4000, idle(), |f, e| {
+            blows += e.iter().filter(|e| matches!(e, Event::WindsUp { .. })).count();
+            assert!(f.foes.iter().filter(|x| x.pressing()).count() <= 1, "two at once at tick {}", f.ticks);
+            false
+        });
+        assert!(blows > 20, "they still fight: {blows} blows");
+        let thrown: std::collections::HashSet<_> = (0..3).filter(|&i| f.foes[i].count > 0).collect();
+        assert_eq!(thrown.len(), 3, "each takes its turn");
+    }
+
+    #[test]
+    fn foes_close_in_without_walking_through_one_another() {
+        let mut f = ambushed();
+        f.hero.hp = 1e9;
+        run(&mut f, 1500, idle(), |f, _| {
+            let (l, w) = (&f.foes[1], &f.foes[2]);
+            assert!(w.s - l.s > l.breed.half + w.breed.half, "the wretch stays behind the lancer: {} {}", l.s, w.s);
+            false
+        });
+        // The hero is knocked about the yard; wherever they end up, the foes have closed in on them.
+        assert!(f.foes.iter().all(|x| (x.s - f.hero.s).abs() < 4.0), "closed in on {}: {:?}", f.hero.s, f.foes.iter().map(|x| x.s).collect::<Vec<_>>());
+    }
+
+    #[test]
+    fn a_heavy_cleaves_both_foes_in_reach_and_a_light_only_the_nearest() {
+        let mk = || {
+            let mut f = SideFight::ambush(Stats::default(), 100.0, 100.0, 3, &[(&HUSK, 0.9), (&HUSK, 1.9)]);
+            f.hero.facing = 1.0;
+            for x in &mut f.foes { x.ai = Ai::Wait(u32::MAX / 2); }
+            f
+        };
+        let mut f = mk();
+        f.tick(&SideInput { heavy: true, ..idle() });
+        run(&mut f, 60, idle(), |f, _| f.hero.act.is_none());
+        assert!(f.foes.iter().all(|x| x.hp < x.max_hp()), "{:?}", f.foes.iter().map(|x| x.hp).collect::<Vec<_>>());
+        let mut g = mk();
+        g.tick(&SideInput { light: true, ..idle() });
+        run(&mut g, 60, idle(), |g, _| g.hero.act.is_none());
+        assert!(g.foes[0].hp < g.foes[0].max_hp() && g.foes[1].hp == g.foes[1].max_hp());
+    }
+
+    #[test]
+    fn an_ambush_is_won_when_the_last_foe_falls() {
+        let mut f = ambushed();
+        for x in &mut f.foes[..2] { x.ai = Ai::Dead; }
+        assert!(!f.won());
+        let w = &mut f.foes[2];
+        (w.s, w.hp, w.ai) = (0.9, 1.0, Ai::Wait(u32::MAX / 2));
+        f.hero.facing = 1.0;
+        f.tick(&SideInput { light: true, ..idle() });
+        assert!(run(&mut f, 60, idle(), |_, e| e.contains(&Event::Felled { enemy: 2 })));
         assert!(f.won());
     }
 
