@@ -1,0 +1,26 @@
+[package]
+name = "hollow_road"
+version = "0.1.0"
+edition = "2021"
+description = "A soulslike pilgrimage down one living road: PathForge draws the road live, Quartz runs the fight on it"
+
+[lib]
+name = "main"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[dependencies]
+quartz = { path = "../quartz" }
+ramp = { package = "ramp2", path = "../ramp" }
+quartz_path_forge = { path = "../quartz_path_forge" }
+image = { version = "0.25", default-features = false, features = ["png"] }
+
+# PathForge draws on the GPU, but its CPU side (and the CPU fallback) is slow unoptimised.
+[profile.dev.package.path_forge]
+opt-level = 3
+[profile.dev.package.image]
+opt-level = 3
+[profile.dev.package.png]
+opt-level = 3
+
+[dev-dependencies]
+pollster = "0.4"
