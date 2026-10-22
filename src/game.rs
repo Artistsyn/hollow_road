@@ -58,8 +58,8 @@ const AMBUSH_OUT: u32 = 80;
 /// Degrees the camera turns to look down a side path, and ticks it looks before the walk goes.
 const PEEK_YAW: f32 = 38.0;
 const PEEK_T: u32 = 60;
-const BOSS_HELP: &str = "A/D move   Space+A/D roll   W jump   LMB strike   Shift+LMB heavy   RMB guard   Shift+RMB parry   R drink   F loose      gold parry  ·  orange roll or block  ·  purple roll  ·  a blow held high: wait for it  ·  a dodged leap leaves it open";
-const AMBUSH_HELP: &str = "A/D move   Space+A/D roll   W jump   LMB strike   Shift+LMB heavy (cuts through all in reach)   RMB guard   Shift+RMB parry   R drink   F loose      jump a low sweep  ·  step off a rune  ·  roll through a lunge or pounce";
+const BOSS_HELP: &str = "A/D move   A A / D D (held) run   Shift+A/D roll   W jump   LMB strike   Shift+LMB heavy   RMB guard   Shift+RMB parry   R drink   F ranged attack   C cast      gold parry  ·  orange roll or block  ·  purple roll  ·  a blow held high: wait for it  ·  a dodged leap leaves it open";
+const AMBUSH_HELP: &str = "A/D move   A A / D D (held) run   Shift+A/D roll   W jump   LMB strike   Shift+LMB heavy (cuts through all in reach)   RMB guard   Shift+RMB parry   R drink   F ranged attack   C cast      jump a low sweep  ·  step off a rune  ·  roll through a lunge or pounce";
 /// A spot on the canvas: top-left and size.
 type Rect = ((f32, f32), (f32, f32));
 
@@ -314,19 +314,32 @@ pub fn setup(canvas: &mut Canvas) {
 
     let presses = Arc::new(Mutex::new(Vec::new()));
     let q = presses.clone();
-    canvas.on_key_press(move |_c, k| q.lock().unwrap().push(Press::Key(k.clone())));
+    canvas.on_key_press(move |c, k| { let shift = shift_held(c); q.lock().unwrap().push(Press::Key(k.clone(), shift)); });
     let q = presses.clone();
     canvas.on_mouse_press(move |c, b, _| { let shift = shift_held(c); q.lock().unwrap().push(Press::Mouse(b, shift)); });
     canvas.add_plugin(Pilgrimage::new(Fight::new(world.foes()), world, presses));
 }
 
-/// A key or a click, as it came (a click with whether Shift was down).
+/// A key or a click, as it came, with whether Shift was down.
 #[derive(Clone, Debug)]
-enum Press { Key(Key), Mouse(MouseButton, bool) }
+enum Press { Key(Key, bool), Mouse(MouseButton, bool) }
+
+/// A second press of the same way within this long (seconds of play), held, is a run.
+const DOUBLE_TAP: f64 = 0.3;
+
+/// The way a key points (W, A, S, D or the arrows), as `w`, `a`, `s` or `d`.
+fn way(k: &Key) -> Option<char> {
+    [('w', "w", NamedKey::ArrowUp), ('a', "a", NamedKey::ArrowLeft), ('s', "s", NamedKey::ArrowDown), ('d', "d", NamedKey::ArrowRight)]
+        .into_iter().find(|(_, ch, n)| is(k, &[ch], Some(*n))).map(|w| w.0)
+}
+fn way_held(c: &Canvas, w: char) -> bool {
+    let (ch, n) = match w { 'w' => ("w", NamedKey::ArrowUp), 'a' => ("a", NamedKey::ArrowLeft), 's' => ("s", NamedKey::ArrowDown), _ => ("d", NamedKey::ArrowRight) };
+    c.is_key_held(&Key::Character(ch.into())) || c.is_key_held(&Key::Named(n))
+}
 
 /// A key as the title, the sanctum and their menus read it.
 fn menu_key(p: &Press) -> Option<shrine::Key> {
-    let Press::Key(k) = p else { return None };
+    let Press::Key(k, _) = p else { return None };
     use shrine::Key as M;
     [(M::Left, &["a"][..], NamedKey::ArrowLeft), (M::Right, &["d"], NamedKey::ArrowRight), (M::Up, &["w"], NamedKey::ArrowUp),
      (M::Down, &["s"], NamedKey::ArrowDown), (M::Use, &["e", " "], NamedKey::Enter), (M::Back, &["q"], NamedKey::Escape)]
@@ -453,6 +466,9 @@ pub struct Pilgrimage {
     /// Sprite frames lit by the road's light, and the shadows last painted with the frame they
     /// were painted for (`place` works from `&self`).
     relit: RefCell<Relighter>,
+    /// Foes' frames frosted over while a frost bolt's chill holds them, by the frame (kept beside
+    /// it, so its address is not reused while it is a key).
+    frosted: RefCell<std::collections::HashMap<usize, (Arc<RgbaImage>, Arc<RgbaImage>)>>,
     last_shadows: RefCell<(Vec<Shadow>, Vec<Cast>, Option<Arc<RgbaImage>>)>,
     /// Traces each sprite frame's outline from its pixels once, for the shadow it casts.
     tracer: RefCell<TerrainCollisionPlugin>,
@@ -465,6 +481,10 @@ pub struct Pilgrimage {
     /// The world map's picture while it is open.
     map_img: Option<Arc<RgbaImage>>,
     side_pending: SideInput,
+    /// The last way pressed without Shift and when (seconds played), and the way being run: a
+    /// double tap, run while its second press is held.
+    tap: Option<(char, f64)>,
+    running: Option<char>,
     fx: Fx,
     pub(crate) world: World,
     pub(crate) mode: Mode,
@@ -553,14 +573,16 @@ pub fn armed_sheet(name: &str) -> Option<Sheet> {
     for o in crate::gear::ITEMS.iter().filter_map(|i| i.off) {
         if let Some(sh) = crate::anim::Shield::load(&dir, o.art) { s.shields.insert(o.art.to_owned(), std::sync::Arc::new(sh)); }
     }
-    for r in crate::gear::ITEMS.iter().filter_map(|i| i.ranged) {
-        if let Some(g) = crate::anim::Held::load(&dir, r.art()) { s.helds.insert(r.art().to_owned(), std::sync::Arc::new(g)); }
+    // Bows, crossbows and catalysts, gripped in the fist.
+    let helds = crate::gear::ITEMS.iter().filter_map(|i| i.ranged.map(crate::gear::Ranged::art).or(i.catalyst.map(|c| c.art)));
+    for art in helds {
+        if let Some(g) = crate::anim::Held::load(&dir, art) { s.helds.insert(art.to_owned(), std::sync::Arc::new(g)); }
     }
     Some(s)
 }
 
 /// What `kit` has in the other hand to be drawn: the shield, else the bow or focus.
-fn off_art(kit: &crate::gear::Kit) -> Option<&'static str> { kit.off.map(|o| o.art).or(kit.ranged.map(crate::gear::Ranged::art)) }
+fn off_art(kit: &crate::gear::Kit) -> Option<&'static str> { kit.off.map(|o| o.art).or(kit.ranged.map(crate::gear::Ranged::art)).or(kit.catalyst.map(|c| c.art)) }
 
 /// The bare-handed clip `bare` as `kit` holds it: weapon and offhand (`<bare>@<art>+<off>`, see
 /// `Sheet::dress`), else the weapon alone (`<bare>@<art>`).
@@ -568,12 +590,13 @@ fn kitted<'a>(s: &'a Sheet, kit: &crate::gear::Kit, bare: &str) -> Option<&'a Cl
     off_art(kit).and_then(|o| s.clip(&format!("{bare}@{}+{o}", kit.arms.art))).or_else(|| s.clip(&format!("{bare}@{}", kit.arms.art)))
 }
 
-/// The `<prefix>` loose as `kit` looses it, and the frames where it lets go: a bow's draw with the
-/// bow in the fist (`<prefix>loose+<bow>`, see `Sheet::dress`), the release on 6 and 7; a focus's
-/// cast with the weapon held at guard (`<prefix><family>_cast`), the thrust on 5 and 6.
-fn loosing<'a>(s: &'a Sheet, kit: &crate::gear::Kit, prefix: &str) -> Option<(&'a Clip, (usize, usize))> {
-    match kit.ranged? {
-        crate::gear::Ranged::Catalyst => kitted(s, kit, &format!("{prefix}{}_cast", kit.arms.class.family())).map(|c| (c, (5, 7))),
+/// The `<prefix>` ranged attack (or, `cast`, the spell) as `kit` makes it, and the frames where it
+/// lets go: a bow's draw with the bow in the fist (`<prefix>loose+<bow>`, see `Sheet::dress`), the
+/// release on 6 and 7; a spell through the catalyst, and a hand crossbow aimed, the other arm
+/// thrust out with the weapon held at guard (`<prefix><family>_cast`), letting go on 5 and 6.
+fn loosing<'a>(s: &'a Sheet, kit: &crate::gear::Kit, prefix: &str, cast: bool) -> Option<(&'a Clip, (usize, usize))> {
+    match kit.shot(cast)? {
+        crate::gear::Ranged::Frost | crate::gear::Ranged::BloodCrossbow => kitted(s, kit, &format!("{prefix}{}_cast", kit.arms.class.family())).map(|c| (c, (5, 7))),
         r => s.clip(&format!("{prefix}loose+{}", r.art())).map(|c| (c, (6, 8))),
     }
 }
@@ -622,7 +645,7 @@ impl Pilgrimage {
             #[cfg(test)]
             staged: Vec::new(),
             fight, presses, pending: Input::default(), owed: 0.0, slow: (0, 1.0), dead_for: 0,
-            art: Art::new(), hero_sheet: armed_sheet("wayfarer_ne").or_else(|| load_sheet("wayfarer")), enemy_sheets: Archetype::ALL.iter().filter_map(|&k| Some((k, load_sheet(kind_art(k).0)?))).collect(), font, ticks: 0, frames: (0, 0), last_frame: None, last_speed: 0.0, last_marks: Vec::new(), last_sigils: Vec::new(), last_marks_frame: None, relit: RefCell::new(Relighter::new()), last_shadows: RefCell::new((Vec::new(), Vec::new(), None)), tracer: RefCell::new(TerrainCollisionPlugin::new()), boss_sheet: load_sheet("bell_warden"), boss_art: None, map_img: None, side_pending: SideInput::default(), fx: Fx::load(),
+            art: Art::new(), hero_sheet: armed_sheet("wayfarer_ne").or_else(|| load_sheet("wayfarer")), enemy_sheets: Archetype::ALL.iter().filter_map(|&k| Some((k, load_sheet(kind_art(k).0)?))).collect(), font, ticks: 0, frames: (0, 0), last_frame: None, last_speed: 0.0, last_marks: Vec::new(), last_sigils: Vec::new(), last_marks_frame: None, relit: RefCell::new(Relighter::new()), frosted: RefCell::new(std::collections::HashMap::new()), last_shadows: RefCell::new((Vec::new(), Vec::new(), None)), tracer: RefCell::new(TerrainCollisionPlugin::new()), boss_sheet: load_sheet("bell_warden"), boss_art: None, map_img: None, side_pending: SideInput::default(), tap: None, running: None, fx: Fx::load(),
             world, mode: Mode::Front(Front::Title), calling: None, fade: (1.0, 0.0), keeper_sheet: load_sheet("keeper"), smith_sheet: load_sheet("smith"), banner: (String::new(), 0), callout: (String::new(), [0; 3], 0), flourish: 0, props: kit_picture("shrine").zip(kit_picture("signpost")), chest: pixellab_picture("chest/shut.png").zip(pixellab_picture("chest/open.png")),
             slot: None, saves: save_dir(), slots: Vec::new(), played: 0.0, kept: None, keep_failed: false,
         }
@@ -636,34 +659,90 @@ impl Pilgrimage {
     /// play has gone by since it was last written); not before the world it was set out into is
     /// made, nor on the title.
     pub(crate) fn keep(&mut self) {
-        let (Some(slot), Some(calling)) = (self.slot, self.calling) else { return };
         if matches!(self.mode, Mode::Front(_) | Mode::Out(Next::Start | Next::Resume)) { return; }
+        self.write_kept(false);
+    }
+
+    /// Keep the pilgrimage as it is this moment, changed or not, on leaving it from the pause
+    /// menu (for the list, or out of the game): the autosave looks only every few seconds, and
+    /// what was done since, and the time played, would be lost. Whether it was written.
+    fn keep_leaving(&mut self) -> bool { self.write_kept(true) }
+
+    fn write_kept(&mut self, now: bool) -> bool {
+        let (Some(slot), Some(calling)) = (self.slot, self.calling) else { return false };
         let record = profile::record(calling, &self.fight.hero.stats, self.played as u64, &self.world);
-        if let Some((last, at)) = &self.kept {
-            if last["world"] == record["world"] && last["hero"] == record["hero"] && self.ticks < at + KEEP_IDLE { return; }
+        if let Some((last, at)) = self.kept.as_ref().filter(|_| !now) {
+            if last["world"] == record["world"] && last["hero"] == record["hero"] && self.ticks < at + KEEP_IDLE { return true; }
         }
         match profile::write(&self.saves, slot, &record) {
-            Ok(()) => (self.kept, self.keep_failed) = (Some((record, self.ticks)), false),
+            Ok(()) => { (self.kept, self.keep_failed) = (Some((record, self.ticks)), false); true }
             // Tried again at the next look.
             Err(e) => {
-                if !self.keep_failed { eprintln!("[hollow_road] could not keep pilgrimage {}: {e}", slot + 1); }
+                if !self.keep_failed || now { eprintln!("[hollow_road] could not keep pilgrimage {}: {e}", slot + 1); }
                 self.keep_failed = true;
+                false
             }
         }
     }
 
+    /// Double taps: a way pressed twice in quick succession (without Shift) is run while the
+    /// second press stays held.
+    fn taps(&mut self, c: &Canvas, presses: &[Press]) {
+        for press in presses {
+            let Press::Key(k, false) = press else { continue };
+            let Some(w) = way(k) else { continue };
+            if self.tap.is_some_and(|(t, at)| t == w && self.played - at <= DOUBLE_TAP) { self.running = Some(w); }
+            self.tap = Some((w, self.played));
+        }
+        if self.running.is_some_and(|w| !way_held(c, w)) { self.running = None; }
+    }
+
+    /// A chilled foe's frame: paled toward ice, its shading kept, its edge rimed. Made once a frame.
+    fn frosted(&self, img: Arc<RgbaImage>) -> Arc<RgbaImage> {
+        let mut made = self.frosted.borrow_mut();
+        if made.len() > 256 { made.clear(); }
+        made.entry(Arc::as_ptr(&img) as usize).or_insert_with(|| {
+            let mut out = (*img).clone();
+            let (w, h) = out.dimensions();
+            let solid = |x: i64, y: i64| x >= 0 && y >= 0 && x < w as i64 && y < h as i64 && img.get_pixel(x as u32, y as u32).0[3] > 40;
+            for (x, y, p) in out.enumerate_pixels_mut() {
+                let [r, g, b, a] = p.0;
+                if a == 0 { continue; }
+                let l = 0.3 * r as f32 + 0.59 * g as f32 + 0.11 * b as f32;
+                let (x, y) = (x as i64, y as i64);
+                // Rime where the figure meets the air.
+                let edge = !(solid(x - 1, y) && solid(x + 1, y) && solid(x, y - 1) && solid(x, y + 1));
+                let ice = if edge { [225.0, 245.0, 255.0] } else { [0.55 * l + 60.0, 0.75 * l + 70.0, 0.85 * l + 110.0] };
+                let k = if edge { 0.8 } else { 0.55 };
+                let mix = |c: u8, i: f32| (c as f32 * (1.0 - k) + i.min(255.0) * k) as u8;
+                p.0 = [mix(r, ice[0]), mix(g, ice[1]), mix(b, ice[2]), a];
+            }
+            (img.clone(), Arc::new(out))
+        }).1.clone()
+    }
+
     /// This tick's presses joined to any still waiting; held keys and buttons as they are now.
+    /// A and D step a lane across; with Shift, W, A, S and D roll that way; W twice, held, runs.
     fn input(&mut self, c: &Canvas, presses: &[Press]) -> Input {
-        let held = |ch: &str, n: NamedKey| c.is_key_held(&Key::Character(ch.into())) || c.is_key_held(&Key::Named(n));
+        self.taps(c, presses);
+        let run = self.running == Some('w');
         let p = &mut self.pending;
         for press in presses {
             match press {
-                Press::Key(k) => {
-                    if is(k, &["a"], Some(NamedKey::ArrowLeft)) { p.step = -1; }
-                    if is(k, &["d"], Some(NamedKey::ArrowRight)) { p.step = 1; }
+                Press::Key(k, shift) => {
+                    match (way(k), shift) {
+                        (Some('a'), false) => p.lane = -1,
+                        (Some('d'), false) => p.lane = 1,
+                        (Some('a'), true) => p.step = -1,
+                        (Some('d'), true) => p.step = 1,
+                        (Some('w'), true) => p.tumble = true,
+                        (Some('s'), true) => p.backstep = true,
+                        _ => {}
+                    }
                     if is(k, &[" "], Some(NamedKey::Space)) { p.backstep = true; }
                     if is(k, &["r"], None) { p.flask = true; }
                     if is(k, &["f"], None) { p.loose = true; }
+                    if is(k, &["c"], None) { p.cast = true; }
                 }
                 Press::Mouse(MouseButton::Left, false) => p.light = true,
                 Press::Mouse(MouseButton::Left, true) => p.heavy = true,
@@ -672,9 +751,9 @@ impl Pilgrimage {
             }
         }
         Input {
-            forward: held("w", NamedKey::ArrowUp),
-            back: held("s", NamedKey::ArrowDown),
-            run: shift_held(c),
+            forward: way_held(c, 'w'),
+            back: way_held(c, 's'),
+            run,
             guard: c.is_mouse_held(MouseButton::Right) && !shift_held(c),
             ..*p
         }
@@ -950,10 +1029,13 @@ impl Pilgrimage {
                 // way it travels: drawn going right, mirrored going left. The turn fills the travel.
                 Move::Step(d) => clip("roll_side").or_else(|| clip("roll_spun")).or_else(|| clip("roll"))
                     .map(|c| phased(c, (3, TRAVEL - 3, w + b + r - TRAVEL), a.t, s.roll_keys, d < 0)),
+                // A plain step across: a quick walk that way (mirrored going left).
+                Move::Lane(d) => clip("walk").map(|c| c.at(k(a.t, w + b + r), d < 0).clone()),
+                Move::Tumble => clip("roll").map(|c| phased(c, (3, TRAVEL - 3, w + b + r - TRAVEL), a.t, (2, 8), false)),
                 Move::Flask => clip("drink").map(|c| c.at(k(a.t, w + b + r), false).clone()),
                 // The draw and the release, or the cast: its own clip, held at full draw until it
                 // looses; without one, the other hand raised as for a parry.
-                Move::Loose => loosing(s, &h.stats.kit, "").map(|(c, keys)| phased(c, spec.frames, a.t, keys, false))
+                Move::Loose | Move::Cast => loosing(s, &h.stats.kit, "", a.mv == Move::Cast).map(|(c, keys)| phased(c, spec.frames, a.t, keys, false))
                     .or_else(|| clip("parry").map(|c| phased(c, spec.frames, a.t, (3, 6), false))),
             };
         }
@@ -1145,6 +1227,7 @@ impl Pilgrimage {
                 Some((s, frame)) => ((e.alive() && d > 0.6).then(|| sheet_at(s, x, d, metres)).flatten(), frame),
                 None => ((e.alive() && d > 0.6).then(|| at(x, d, metres, img)).flatten(), img.clone()),
             };
+            let img = if e.chill > 0 && e.alive() { self.frosted(img) } else { img };
             // Nearer draws over further; all of them under the hero, who stands nearest.
             let layer = (50.0 - d * 2.0).round().clamp(1.0, 50.0) as i32;
             if spot.is_some() { stands.push((x, d, metres, 0.3 * metres)); }
@@ -1185,13 +1268,13 @@ impl Pilgrimage {
                 let d = (b.s - walked) as f32;
                 let layer = (50.0 - d * 2.0).round().clamp(1.0, 59.0) as i32;
                 match b.ranged {
-                    crate::gear::Ranged::Catalyst => {
+                    crate::gear::Ranged::Frost => {
                         let (px, py) = pf.project_on(c, b.x, 1.2, d)?;
                         let size = 0.6 * pf.scale_on(c, d)?;
                         Some((((px - 0.5 * size, py - 0.5 * size), (size, size)), frost_picture(b.age), layer))
                     }
                     r => {
-                        let rgb = if r == crate::gear::Ranged::BloodBow { [220, 30, 40] } else { [236, 226, 196] };
+                        let rgb = if r.blood() > 0.0 { [220, 30, 40] } else { [236, 226, 196] };
                         let (head, tail) = (pf.project_on(c, b.x + SHOULDER, 1.35, d)?, pf.project_on(c, b.x + SHOULDER, 1.3, (d - 2.0).max(HERO_D))?);
                         let w = 0.36 * pf.scale_on(c, d)?;
                         let len = (tail.1 - head.1).abs().max(0.6 * w);
@@ -1356,6 +1439,7 @@ impl Pilgrimage {
             let s = sheet.filter(|_| k > 0.8)?;
             let fd = ARENA_D + f.s;
             let img = self.foe_frame(s, f, h.s, dir)?;
+            let img = if f.chill > 0 && f.alive() { self.frosted(img) } else { img };
             let r = sheet_at(s, fd, f.lift(), metres)?;
             stands.push((0.0, fd, metres, 0.45 * metres));
             Some((r, lit(r, img, 0.0, fd), layer))
@@ -1408,8 +1492,9 @@ impl Pilgrimage {
                 let (px, py) = pf.project_on(c, 0.0, b.y, d)?;
                 let m = pf.scale_on(c, d)?;
                 let (size, mut img) = match b.ranged {
-                    crate::gear::Ranged::Catalyst => ((0.55 * m, 0.55 * m), frost_picture(b.age)),
+                    crate::gear::Ranged::Frost => ((0.55 * m, 0.55 * m), frost_picture(b.age)),
                     crate::gear::Ranged::BloodBow => ((0.9 * m, 0.2 * m), arrow_picture([220, 30, 40])),
+                    crate::gear::Ranged::BloodCrossbow => ((0.6 * m, 0.22 * m), arrow_picture([200, 20, 30])),
                     crate::gear::Ranged::Bow => ((0.9 * m, 0.2 * m), arrow_picture([236, 226, 196])),
                 };
                 if b.dir * dir < 0.0 { img = Arc::new(image::imageops::flip_horizontal(&*img)); }
@@ -1446,8 +1531,8 @@ impl Pilgrimage {
             Some((Act::Parry, t)) => at("e_parry", t as f32 / total(Act::Parry.frames(&h.stats.kit))),
             Some((Act::Flask, _)) => at("e_guard", 0.4),
             // Its own draw or cast where there is one; else the other hand raised as for a parry.
-            Some((Act::Loose, t)) => loosing(s, &h.stats.kit, "e_").map(|(c, keys)| phased(c, Act::Loose.frames(&h.stats.kit), t, keys, mirror))
-                .or_else(|| at("e_parry", (t as f32 / total(Act::Loose.frames(&h.stats.kit))).min(0.45))),
+            Some((a @ (Act::Loose | Act::Cast), t)) => loosing(s, &h.stats.kit, "e_", a == Act::Cast).map(|(c, keys)| phased(c, a.frames(&h.stats.kit), t, keys, mirror))
+                .or_else(|| at("e_parry", (t as f32 / total(a.frames(&h.stats.kit))).min(0.45))),
             // Rising (sprung, knees coming up), tucked at the top, legs down for the landing.
             None if h.airborne() => at("e_jump", if h.y > 0.5 { 0.6 } else if h.rising() { 0.45 } else { 0.75 }),
             None if h.guarding => at("e_guard", 1.0),
@@ -1492,6 +1577,8 @@ impl Pilgrimage {
     /// This tick's presses for the side-on fight, joined to any waiting; held keys as they are.
     /// A and D are left and right on screen, whichever way the road runs across it.
     fn side_input(&mut self, c: &Canvas, presses: &[Press]) -> SideInput {
+        self.taps(c, presses);
+        let run = matches!(self.running, Some('a' | 'd'));
         let dir = c.get_plugin::<PathForgePlugin>().map_or(1.0, screen_dir);
         let held = |ch: &str, n: NamedKey| c.is_key_held(&Key::Character(ch.into())) || c.is_key_held(&Key::Named(n));
         let (l, r) = (held("a", NamedKey::ArrowLeft), held("d", NamedKey::ArrowRight));
@@ -1499,11 +1586,14 @@ impl Pilgrimage {
         let p = &mut self.side_pending;
         for press in presses {
             match press {
-                Press::Key(k) => {
+                Press::Key(k, shift) => {
+                    // Shift with A or D rolls that way; Space rolls the way held, or faced.
+                    if *shift && matches!(way(k), Some('a' | 'd')) { p.roll = true; }
                     if is(k, &[" "], Some(NamedKey::Space)) { p.roll = true; }
                     if is(k, &["w"], Some(NamedKey::ArrowUp)) { p.jump = true; }
                     if is(k, &["r"], None) { p.flask = true; }
                     if is(k, &["f"], None) { p.loose = true; }
+                    if is(k, &["c"], None) { p.cast = true; }
                 }
                 Press::Mouse(MouseButton::Left, false) => p.light = true,
                 Press::Mouse(MouseButton::Left, true) => p.heavy = true,
@@ -1511,7 +1601,7 @@ impl Pilgrimage {
                 Press::Mouse(..) => {}
             }
         }
-        SideInput { left, right, guard: c.is_mouse_held(MouseButton::Right) && !shift_held(c), ..*p }
+        SideInput { left, right, run, guard: c.is_mouse_held(MouseButton::Right) && !shift_held(c), ..*p }
     }
 
     fn swing(c: &mut Canvas, spec: &str) {
@@ -1573,11 +1663,18 @@ impl Pilgrimage {
             _ => format!(
                 "{}  |  {} {}  shards {}  |  level {}  |  flasks {}{}  |  {} {:.1} ms  road {} fps  {:.0} m{}",
                 w.here().title, world::CURRENCY, w.souls, w.shards, h.stats.level(), h.flasks,
-                match h.stats.kit.ranged {
-                    Some(crate::gear::Ranged::Bow) => format!("  arrows {}", h.arrows),
-                    Some(crate::gear::Ranged::BloodBow) => format!("  arrows {} health", crate::fight::BLOOD_COST),
-                    Some(crate::gear::Ranged::Catalyst) => format!("  frost {}/{}", h.charges.floor(), h.stats.max_charges()),
-                    None => String::new(),
+                {
+                    let hand = match h.stats.kit.ranged {
+                        Some(crate::gear::Ranged::Bow) => format!("  arrows {}", h.arrows),
+                        Some(r @ (crate::gear::Ranged::BloodBow | crate::gear::Ranged::BloodCrossbow)) => format!("  shots {} health", r.blood()),
+                        _ => String::new(),
+                    };
+                    let spell = match h.stats.kit.spell_cast() {
+                        Some(sp) if !h.stats.spell_ready() => format!("  {} needs focus {}", sp.name(), sp.needs()[2]),
+                        Some(_) => format!("  spell {}/{}", h.charges.floor(), h.stats.max_charges()),
+                        None => String::new(),
+                    };
+                    hand + &spell
                 },
                 pf.engine().to_uppercase(), pf.render_ms(), self.frames.1, walked,
                 if w.can_rest(&self.fight, walked) { "  |  E rest at the shrine" } else if w.can_meet_smith(&self.fight, walked) { "  |  E speak with the smith" }
@@ -1590,7 +1687,7 @@ impl Pilgrimage {
         let text = Text::new(vec![Span::new(line, 52.0 * s, Some(64.0 * s), font.clone(), Color(236, 228, 210, 255), 0.0)], Some(3600.0 * s), Align::Left, None);
         if let Some(o) = c.get_game_object_mut(HUD) { o.set_drawable(Box::new(text)); }
         let boss = matches!(self.mode, Mode::Side(_));
-        let help = if let Mode::Side(a) = &self.mode { if a.why == Why::Boss { BOSS_HELP } else { AMBUSH_HELP } } else { "W/S walk   A/D roll   Shift run   Space backstep   LMB strike   Shift+LMB heavy   RMB guard   Shift+RMB parry   R drink   F loose   E rest   T turn back   M map      warnings: gold parry  ·  orange roll or block  ·  purple roll" };
+        let help = if let Mode::Side(a) = &self.mode { if a.why == Why::Boss { BOSS_HELP } else { AMBUSH_HELP } } else { "W/S walk   W W (held) run   A/D change lane   Shift+W/A/S/D roll   LMB strike   Shift+LMB heavy   RMB guard   Shift+RMB parry   R drink   F ranged attack   C cast   E rest   T turn back   M map      warnings: gold parry  ·  orange roll or block  ·  purple roll" };
         let help = Text::new(vec![Span::new(help.into(), 40.0 * s, Some(50.0 * s), font.clone(), Color(236, 228, 210, 190), 0.0)], Some(3720.0 * s), Align::Left, None);
         if let Some(o) = c.get_game_object_mut(HELP) { o.visible = self.mode == Mode::Play || boss; o.set_drawable(Box::new(help)); }
         // The banner, fading out over its last second.
@@ -1813,9 +1910,9 @@ impl QuartzPlugin for Pilgrimage {
         if self.ticks % 60 == 0 { self.frames = (0, self.frames.0); }
         self.fade_step(c);
         let keys: Vec<shrine::Key> = presses.iter().filter_map(menu_key).collect();
-        let pressed_e = presses.iter().any(|p| matches!(p, Press::Key(k) if is(k, &["e"], None)));
-        let pressed_t = presses.iter().any(|p| matches!(p, Press::Key(k) if is(k, &["t"], None)));
-        let pressed_m = presses.iter().any(|p| matches!(p, Press::Key(k) if is(k, &["m"], None)));
+        let pressed_e = presses.iter().any(|p| matches!(p, Press::Key(k, _) if is(k, &["e"], None)));
+        let pressed_t = presses.iter().any(|p| matches!(p, Press::Key(k, _) if is(k, &["t"], None)));
+        let pressed_m = presses.iter().any(|p| matches!(p, Press::Key(k, _) if is(k, &["m"], None)));
         let mut notes = Vec::new();
 
         // What each mode does with this tick, and what it becomes.
@@ -1838,6 +1935,9 @@ impl QuartzPlugin for Pilgrimage {
                     }
                     Some(Begin::Resume) => Mode::Play,
                     Some(Begin::Profile) => {
+                        // Kept first, so the list shows it as it was just left.
+                        self.keep_leaving();
+                        self.slots = profile::summaries(&self.saves);
                         self.slot = None;
                         self.calling = None;
                         self.played = 0.0;
@@ -1845,6 +1945,8 @@ impl QuartzPlugin for Pilgrimage {
                         Mode::Front(Front::profiles(&self.slots))
                     }
                     Some(Begin::Quit) => {
+                        // Kept first: quitting must never lose what was done since the last look.
+                        self.keep_leaving();
                         eprintln!("[hollow_road] quitting to desktop");
                         #[cfg(not(target_arch = "wasm32"))]
                         std::process::exit(0);
@@ -2058,7 +2160,7 @@ impl QuartzPlugin for Pilgrimage {
             while self.owed >= 1.0 {
                 self.owed -= 1.0;
                 ran += 1;
-                let i = if first { bi } else { SideInput { left: bi.left, right: bi.right, guard: bi.guard, ..SideInput::default() } };
+                let i = if first { bi } else { SideInput { left: bi.left, right: bi.right, run: bi.run, guard: bi.guard, ..SideInput::default() } };
                 if first { self.side_pending = SideInput::default(); }
                 first = false;
                 let Mode::Side(a) = &mut self.mode else { break };

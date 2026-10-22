@@ -28,6 +28,10 @@ pub const LANE_TICKS: f32 = 9.0;
 /// A roll carries the hero a lane across in this many ticks: off at once and most of the way in
 /// the first half, settling at the end (a Souls roll's root motion is front-loaded).
 pub const TRAVEL: u32 = 18;
+/// Ticks a plain change of lane (A or D) takes across.
+pub const SIDESTEP: u32 = 10;
+/// A roll forward down the road, m/s while it travels (`TRAVEL` ticks): a little over a metre.
+pub const TUMBLE: f32 = 4.0;
 
 pub const HP: f32 = 100.0;
 pub const STAMINA: f32 = 100.0;
@@ -41,10 +45,15 @@ pub const FLASKS: u32 = 3;
 /// A full quiver, and the arrows taken back from each foe felled while a bow is held.
 pub const QUIVER: u32 = 12;
 pub(crate) const SALVAGE: u32 = 2;
-/// What a Bloodrunner's arrow costs in health.
+/// What a blood bow's arrow costs in health, and a blood crossbow's bolt.
 pub const BLOOD_COST: f32 = 5.0;
-/// Of a frost charge, what each melee strike landed fills: the catalyst is fed by fighting up close.
-pub(crate) const CHARGE_PER_HIT: f32 = 0.34;
+pub const BLOOD_BOLT_COST: f32 = 7.0;
+/// Of a frost charge, what each melee strike landed fills: the catalyst is fed by fighting up close
+/// (two blows a charge).
+pub(crate) const CHARGE_PER_HIT: f32 = 0.5;
+/// Ticks a frost bolt chills what it hits (four seconds): a third slower at everything, its
+/// windups longer and its steps shorter, and its stance held where the frost left it.
+pub const CHILL: u32 = 240;
 /// How far an arrow or a bolt flies before it falls, metres.
 pub(crate) const BOLT_RANGE: f32 = 18.0;
 const FLASK_HEAL: f32 = 40.0;
@@ -79,7 +88,7 @@ pub const STUMBLE: u32 = 70;
 const STUMBLE_HURT: f32 = 1.5;
 /// Running pace, m/s, and its stamina per tick.
 pub const RUN: f32 = 4.0;
-const RUN_COST: f32 = 12.0 / 60.0;
+pub(crate) const RUN_COST: f32 = 12.0 / 60.0;
 /// An enemy follows the hero's lane through this much of its wind-up, then commits.
 const COMMIT: f32 = 0.7;
 /// Ticks an enemy takes to shift one lane while it aims.
@@ -144,26 +153,35 @@ pub struct Input {
     /// Walk at a run (out of a fight's reach; it costs stamina).
     pub run: bool,
     pub guard: bool,
+    /// A plain step one lane across, free and with no i-frames: -1 left, 1 right, 0 none.
+    pub lane: i32,
     /// A roll one lane across: -1 left, 1 right, 0 none.
     pub step: i32,
+    /// A roll forward, staying in the lane.
+    pub tumble: bool,
     /// A backstep out of reach, staying in the lane.
     pub backstep: bool,
     pub light: bool,
     pub heavy: bool,
     pub parry: bool,
     pub flask: bool,
-    /// An arrow or a bolt from what the other hand holds.
+    /// A ranged attack: an arrow or a bolt from what the other hand holds.
     pub loose: bool,
+    /// A spell cast through the catalyst the other hand holds.
+    pub cast: bool,
 }
 
 impl Input {
     /// The press this tick, if any (the last of them wins).
     fn press(&self) -> Option<Move> {
         let mut m = None;
+        if self.lane != 0 { m = Some(Move::Lane(self.lane.signum())); }
         if self.step != 0 { m = Some(Move::Step(self.step.signum())); }
+        if self.tumble { m = Some(Move::Tumble); }
         if self.backstep { m = Some(Move::Backstep); }
         if self.flask { m = Some(Move::Flask); }
         if self.loose { m = Some(Move::Loose); }
+        if self.cast { m = Some(Move::Cast); }
         if self.parry { m = Some(Move::Parry); }
         if self.light { m = Some(Move::Light); }
         if self.heavy { m = Some(Move::Heavy); }
@@ -176,17 +194,24 @@ impl Input {
 pub enum Move {
     Light,
     Heavy,
-    /// A roll one lane across (-1, 1): every lane change is the dodge, invulnerable while it
-    /// travels, and perfect (the attacker stumbles) when it leaves a lane just before a blow.
+    /// A plain step one lane across (-1, 1): free, quick, and no dodge at all (a blow that still
+    /// covers the lane the hero is crossing into lands).
+    Lane(i32),
+    /// A roll one lane across (-1, 1): the dodge, invulnerable while it travels, and perfect (the
+    /// attacker stumbles) when it leaves a lane just before a blow.
     Step(i32),
+    /// A roll forward down the road, staying in the lane: the same dodge, toward what is ahead.
+    Tumble,
     /// A quick step back down the road, staying in the lane: invulnerable for most of it.
     Backstep,
     Parry,
     Flask,
     /// The strike on an enemy whose stance is broken (a light or heavy in reach becomes this).
     Riposte,
-    /// An arrow or a frost bolt from the bow or catalyst in the other hand (`gear::Ranged`).
+    /// A ranged attack: an arrow or a bolt from the bow or crossbow in the other hand (`gear::Ranged`).
     Loose,
+    /// A spell (`gear::Kit::spell_cast`) through the catalyst in the other hand.
+    Cast,
 }
 
 /// A move's timing and price.
@@ -244,19 +269,23 @@ impl Move {
             Move::Light => s((14, 4, 16), 12.0, None, 2.6, 10.0, 8.0),
             Move::Heavy => s((30, 6, 28), 28.0, None, 2.9, 26.0, 22.0),
             // Elden Ring's light roll: 13 of 30 fps i-frames and 8 of recovery; here 20 and 13 of 60.
-            Move::Step(_) => s((3, 18, 13), 12.0, Some((1, 21)), 0.0, 0.0, 0.0),
+            Move::Step(_) | Move::Tumble => s((3, 18, 13), 12.0, Some((1, 21)), 0.0, 0.0, 0.0),
+            Move::Lane(_) => s((0, SIDESTEP, 2), 0.0, None, 0.0, 0.0, 0.0),
             Move::Backstep => s((2, 16, 6), 14.0, Some((2, 18)), 0.0, 0.0, 0.0),
             Move::Parry => s((6, 10, 22), 0.0, None, 0.0, 0.0, 0.0),
             Move::Flask => s((36, 1, 17), 0.0, None, 0.0, 0.0, 0.0),
             Move::Riposte => s((18, 4, 28), 0.0, Some((0, 50)), 2.9, 60.0, 0.0),
             Move::Loose => Move::loose_spec(crate::gear::Ranged::Bow),
+            Move::Cast => Move::loose_spec(crate::gear::Ranged::Frost),
         }
     }
 
     /// An arrow's or a bolt's timing and price, kept well short of melee's: a long draw with no
     /// armour (any hit cuts it off, the shot not spent), stamina that stays unspent while it
     /// draws, and about 40% of a sword's light in damage a second with almost none of its stance
-    /// damage, so a foe is only opened from range with a frost bolt, which a charge pays for.
+    /// damage. A frost bolt is the spell a charge pays for: twice a light's damage, three times
+    /// its stance damage, and a chill (`CHILL`); a cast and the two blows that pay for it come to
+    /// a little more than melee alone, so the Frostweaver plays both.
     /// None of it is raised at the smith, nothing it lands drinks or opens a riposte, and
     /// a shield raised in front catches it.
     pub fn loose_spec(r: crate::gear::Ranged) -> Spec {
@@ -265,7 +294,9 @@ impl Move {
         match r {
             Ranged::Bow => s((36, 2, 20), 14.0, 7.0, 3.0),
             Ranged::BloodBow => s((34, 2, 20), 10.0, 8.0, 3.0),
-            Ranged::Catalyst => s((42, 3, 24), 8.0, 10.0, 16.0),
+            // Quick to aim, long to wind again: a heavy bolt, a few of a light's damage a second.
+            Ranged::BloodCrossbow => s((28, 2, 52), 8.0, 12.0, 6.0),
+            Ranged::Frost => s((34, 3, 20), 8.0, 20.0, 24.0),
         }
     }
     fn strikes(self) -> bool { matches!(self, Move::Light | Move::Heavy | Move::Riposte) }
@@ -528,11 +559,13 @@ pub struct Enemy {
     /// more deeper in the world (`scaled`).
     pub top: f32,
     pub power: f32,
+    /// Ticks left of a frost bolt's chill (`CHILL`).
+    pub chill: u32,
 }
 
 impl Enemy {
     pub fn new(kind: Archetype, s: f64, lane: i32) -> Enemy {
-        Enemy { kind, s, lane, hp: kind.hp(), stance: kind.stance(), stance_wait: 0, ai: Ai::Wait(30), hurt: 0, top: kind.hp(), power: 1.0 }
+        Enemy { kind, s, lane, hp: kind.hp(), stance: kind.stance(), stance_wait: 0, ai: Ai::Wait(30), hurt: 0, top: kind.hp(), power: 1.0, chill: 0 }
     }
     /// As strong as the region it is met in makes it: (health, attacks) times its kind's.
     pub fn scaled(mut self, (hp, power): (f32, f32)) -> Enemy {
@@ -740,27 +773,40 @@ impl Stats {
         0.06 * l.min(10.0) + 0.03 * (l - 10.0).clamp(0.0, 10.0) + 0.01 * (l - 20.0).max(0.0)
     }
     /// The attributes (by `gear::ATTRIBUTES` index) the weapon held needs more of.
-    pub fn lacking(&self) -> Vec<usize> { (0..3).filter(|&i| self.attributes()[i] < self.kit.arms.needs[i]).collect() }
+    pub fn lacking(&self) -> Vec<usize> { self.short_of(self.kit.arms.needs) }
+    /// The attributes (by `gear::ATTRIBUTES` index) under what `needs` asks.
+    pub fn short_of(&self, needs: [u32; 3]) -> Vec<usize> { (0..3).filter(|&i| self.attributes()[i] < needs[i]).collect() }
+    /// `base` raised by each attribute as it is graded in `scales` (a level of B adds `soft`),
+    /// and `WEAK` of that short of any of `needs`: how a weapon, a bow or a catalyst scales.
+    pub fn graded(&self, base: f32, needs: [u32; 3], scales: [crate::gear::Grade; 3]) -> f32 {
+        let at = self.attributes();
+        base * (1.0 + (0..3).map(|i| scales[i].share() * Self::soft(at[i])).sum::<f32>()) * if self.short_of(needs).is_empty() { 1.0 } else { WEAK }
+    }
+    /// Whether the spell C would cast can be: a catalyst held, a spell, and the levels it needs.
+    pub fn spell_ready(&self) -> bool { self.kit.spell_cast().is_some_and(|sp| self.short_of(sp.needs()).is_empty()) }
     /// Held without what it needs: it hits for `WEAK` of itself and its strikes cost more.
     pub fn weak(&self) -> bool { !self.lacking().is_empty() }
     /// The weapon's strike before the smith and the rest of the kit: its base, raised by each
     /// attribute it scales with.
     pub fn arms_damage(&self) -> f32 {
         let a = &self.kit.arms;
-        let at = self.attributes();
-        a.base * (1.0 + (0..3).map(|i| a.scales[i].share() * Self::soft(at[i])).sum::<f32>()) * if self.weak() { WEAK } else { 1.0 }
+        self.graded(a.base, a.needs, a.scales)
     }
     /// Souls the next level costs.
     pub fn level_cost(&self) -> u32 { 60 + 20 * self.level() }
     pub fn max_hp(&self) -> f32 { HP + 8.0 * self.vigor as f32 + self.kit.hp }
     pub fn max_stamina(&self) -> f32 { STAMINA + 6.0 * self.endurance as f32 + self.kit.stamina }
-    /// Frost charges at full: three, and one more for every four levels of focus.
-    pub fn max_charges(&self) -> f32 { 3.0 + (self.focus / 4) as f32 }
-    /// What an arrow or a bolt hits for, of its own: raised by dexterity (a bow) or focus (a
-    /// catalyst) as a B-grade weapon is, and by what is worn; never by the smith.
+    /// Spell charges at full: three, one more for every four levels of focus, and the catalyst's.
+    pub fn max_charges(&self) -> f32 { 3.0 + (self.focus / 4) as f32 + self.kit.catalyst.map_or(0.0, |c| c.charges) }
+    /// What an arrow, a bolt or a spell hits for against its own damage, as in the souls games:
+    /// a bow or a crossbow by its own grades and needs (a crossbow's are none: its bolt is its
+    /// weight), a spell by the catalyst it is cast through; all by what is worn, never by the smith.
     pub fn ranged_damage(&self, r: crate::gear::Ranged) -> f32 {
-        let at = match r { crate::gear::Ranged::Catalyst => self.focus, _ => self.dexterity };
-        (1.0 + crate::gear::Grade::B.share() * Self::soft(at)) * self.kit.damage
+        let sc = match r {
+            crate::gear::Ranged::Frost => self.kit.catalyst.map_or(crate::gear::UNSCALED, |c| c.scaling),
+            _ => self.kit.shooting,
+        };
+        self.graded(sc.base, sc.needs, sc.scales) * self.kit.damage
     }
     pub fn damage(&self) -> f32 { self.arms_damage() * (1.0 + 0.08 * self.weapon as f32) * self.kit.damage }
     /// What is left of a blow after the armour.
@@ -773,7 +819,7 @@ impl Stats {
     /// What a move's stamina costs, as worn: rolls dearer when burdened.
     pub fn cost(&self, m: Move, base: f32) -> f32 {
         match m {
-            Move::Step(_) | Move::Backstep => base * self.kit.roll * if self.burdened() { 1.4 } else { 1.0 },
+            Move::Step(_) | Move::Tumble | Move::Backstep => base * self.kit.roll * if self.burdened() { 1.4 } else { 1.0 },
             Move::Light | Move::Heavy => base * self.kit.strike * if self.weak() { WEAK_STRIKE } else { 1.0 },
             _ => base,
         }
@@ -818,16 +864,20 @@ impl Hero {
         Hero { stats, hp: stats.max_hp(), stamina: stats.max_stamina(), rested: REGEN_DELAY, flasks: FLASKS, lane: 0, x: 0.0, act: None, guarding: false, reeling: 0, reel: Reel::None, poise: stats.poise(), poise_wait: 0, buffer: None, dead: false, arrows: QUIVER, charges: stats.max_charges(), bulwark: Bulwark::default() }
     }
     fn free(&self) -> bool { self.act.is_none() && self.reeling == 0 && !self.dead }
-    /// Whether what the other hand holds has a shot to give: an arrow, the blood for one, a charge.
-    pub fn can_loose(&self) -> bool {
+    /// Whether there is a shot of `r` to give: an arrow, the blood for one, a charge.
+    pub fn can_shoot(&self, r: Option<crate::gear::Ranged>) -> bool {
         use crate::gear::Ranged;
-        match self.stats.kit.ranged {
+        match r {
             Some(Ranged::Bow) => self.arrows > 0,
-            Some(Ranged::BloodBow) => self.hp > BLOOD_COST + 1.0,
-            Some(Ranged::Catalyst) => self.charges >= 1.0,
+            Some(r @ (Ranged::BloodBow | Ranged::BloodCrossbow)) => self.hp > r.blood() + 1.0,
+            Some(Ranged::Frost) => self.charges >= 1.0,
             None => false,
         }
     }
+    /// Whether the hand's bow or crossbow has a shot to give (F).
+    pub fn can_loose(&self) -> bool { self.can_shoot(self.stats.kit.shot(false)) }
+    /// Whether a spell can be cast: a catalyst held, a spell to cast, a charge for it (C).
+    pub fn can_cast(&self) -> bool { self.stats.spell_ready() && self.can_shoot(self.stats.kit.shot(true)) }
     /// Start reeling `r`'s way, whatever was under way cut off.
     fn reel(&mut self, r: Reel) { self.reel = r; self.reeling = r.ticks(); self.act = None; }
     /// On the ground after a knockdown (past the first moment of the fall): blows pass over.
@@ -875,7 +925,14 @@ impl Fight {
         let h = &self.hero;
         if h.dead || h.reeling > 0 { return 0.0; }
         if let Some(a) = h.act {
-            return if a.mv == Move::Backstep && a.t < 18 { -3.6 } else { 0.0 };
+            match a.mv {
+                Move::Backstep => return if a.t < 18 { -3.6 } else { 0.0 },
+                // Forward while it travels, never into the enemy ahead.
+                Move::Tumble => return if a.t < TRAVEL && self.in_the_way(walked).is_none_or(|i| self.enemies[i].gap(walked) > 0.8) { TUMBLE } else { 0.0 },
+                // A sidestep keeps walking.
+                Move::Lane(_) => {}
+                _ => return 0.0,
+            }
         }
         let k = if input.guard { 0.5 } else { 1.0 };
         if input.back { return -BACK * k; }
@@ -950,25 +1007,24 @@ impl Fight {
             if let Some((m, _)) = h.buffer {
                 let m = self.riposte_for(m, walked).unwrap_or(m);
                 let kit = self.hero.stats.kit;
-                let spec = match (m, kit.ranged) { (Move::Loose, Some(r)) => Move::loose_spec(r), _ => m.spec_for(kit.arms.class, kit.off.map(|o| o.guard)) };
-                // Out of any fight a roll is only a change of lane (leaning at a fork): it is free.
-                let cost = if matches!(m, Move::Step(_)) && self.at_peace(walked) { 0.0 } else { self.hero.stats.cost(m, spec.stamina) };
+                let spec = match (m, kit.shot(m == Move::Cast)) { (Move::Loose | Move::Cast, Some(r)) => Move::loose_spec(r), _ => m.spec_for(kit.arms.class, kit.off.map(|o| o.guard)) };
+                let cost = self.hero.stats.cost(m, spec.stamina);
                 let h = &mut self.hero;
                 if cost > 0.0 && h.stamina <= 0.0 {
                     out.push(Event::Spent);
                     h.buffer = None;
                 } else if m == Move::Flask && h.flasks == 0 {
                     h.buffer = None;
-                } else if m == Move::Loose && !h.can_loose() {
+                } else if (m == Move::Loose && !h.can_loose()) || (m == Move::Cast && !h.can_cast()) {
                     h.buffer = None;
-                } else if matches!(m, Move::Step(dir) if !(-1..=1).contains(&(h.lane + dir))) {
+                } else if matches!(m, Move::Step(dir) | Move::Lane(dir) if !(-1..=1).contains(&(h.lane + dir))) {
                     // No rolling off the road's edge.
                     h.buffer = None;
                 } else {
                     h.buffer = None;
                     h.spend(cost);
                     let from = h.lane;
-                    if let Move::Step(dir) = m { h.lane += dir; }
+                    if let Move::Step(dir) | Move::Lane(dir) = m { h.lane += dir; }
                     h.act = Some(Act { mv: m, spec, t: 0, landed: false, from_lane: from, from_x: h.x });
                     h.guarding = false;
                     out.push(Event::Began(m));
@@ -977,7 +1033,7 @@ impl Fight {
         }
         // A run spends stamina while it lasts.
         let h = &mut self.hero;
-        if input.run && h.act.is_none() && h.stamina > 0.0 && self.speed(input, walked) > WALK {
+        if input.run && h.act.is_none_or(|a| matches!(a.mv, Move::Lane(_))) && h.stamina > 0.0 && self.speed(input, walked) > WALK {
             let h = &mut self.hero;
             h.stamina = (h.stamina - RUN_COST).max(0.0);
             h.rested = 0;
@@ -992,8 +1048,9 @@ impl Fight {
         // travel agree; otherwise an ease toward it.
         let target = h.lane as f32 * LANE_W;
         match h.act {
-            Some(a) if matches!(a.mv, Move::Step(_)) => {
-                let k = ((a.t + 1) as f32 / TRAVEL as f32).min(1.0).powf(0.75);
+            Some(a) if matches!(a.mv, Move::Step(_) | Move::Lane(_)) => {
+                let travel = if matches!(a.mv, Move::Lane(_)) { SIDESTEP } else { TRAVEL };
+                let k = ((a.t + 1) as f32 / travel as f32).min(1.0).powf(0.75);
                 h.x = a.from_x + (target - a.from_x) * k * k * (3.0 - 2.0 * k);
             }
             _ => {
@@ -1015,13 +1072,13 @@ impl Fight {
             out.push(Event::Healed);
         }
         // Loosed at the end of the draw, paid for then: a draw cut off spends nothing.
-        if a.mv == Move::Loose && a.t == spec.frames.0 {
-            if let Some(r) = h.stats.kit.ranged {
+        if matches!(a.mv, Move::Loose | Move::Cast) && a.t == spec.frames.0 {
+            if let Some(r) = h.stats.kit.shot(a.mv == Move::Cast) {
                 use crate::gear::Ranged;
                 match r {
                     Ranged::Bow => h.arrows = h.arrows.saturating_sub(1),
-                    Ranged::BloodBow => h.hp = (h.hp - BLOOD_COST).max(1.0),
-                    Ranged::Catalyst => h.charges = (h.charges - 1.0).max(0.0),
+                    Ranged::BloodBow | Ranged::BloodCrossbow => h.hp = (h.hp - r.blood()).max(1.0),
+                    Ranged::Frost => h.charges = (h.charges - 1.0).max(0.0),
                 }
                 let damage = spec.damage * h.stats.ranged_damage(r);
                 let bolt = Bolt { s: walked + HERO_D as f64 + 0.4, lane: h.lane, x: h.x, ranged: r, damage, stance: spec.stance, left: spec.reach, age: 0 };
@@ -1078,8 +1135,8 @@ impl Fight {
         // A weapon that drinks gives some of it back.
         let h = &mut self.hero;
         h.hp = (h.hp + dealt * kit.leech).min(h.stats.max_hp());
-        // A blow landed up close fills the catalyst.
-        if kit.ranged == Some(crate::gear::Ranged::Catalyst) { h.charges = (h.charges + CHARGE_PER_HIT).min(h.stats.max_charges()); }
+        // A blow landed up close fills the spell's charges.
+        if kit.spell_cast().is_some() { h.charges = (h.charges + CHARGE_PER_HIT).min(h.stats.max_charges()); }
         let e = &mut self.enemies[i];
         e.hurt = 12;
         out.push(Event::Hit { enemy: i, mv });
@@ -1106,8 +1163,12 @@ impl Fight {
     fn enemy_tick(&mut self, i: usize, walked: f64, out: &mut Vec<Event>) {
         let e = &mut self.enemies[i];
         if !e.alive() { return; }
-        // Stance comes back after a while unhit.
-        if e.stance_wait > 0 { e.stance_wait -= 1; } else { e.stance = (e.stance + 13.0 / 60.0).min(e.kind.stance()); }
+        // Chilled: every third tick lost, and no stance back while it lasts. Else stance comes
+        // back after a while unhit.
+        if e.chill > 0 {
+            e.chill -= 1;
+            if e.chill % 3 == 0 { return; }
+        } else if e.stance_wait > 0 { e.stance_wait -= 1; } else { e.stance = (e.stance + 13.0 / 60.0).min(e.kind.stance()); }
         let gap = e.gap(walked);
         let (pace, notice) = e.kind.pace();
         match e.ai {
@@ -1233,6 +1294,7 @@ impl Fight {
         let dealt = b.damage.min(e.hp.max(0.0));
         e.hp -= dealt;
         e.hurt = 12;
+        if b.ranged == crate::gear::Ranged::Frost { e.chill = CHILL; }
         out.push(Event::Hit { enemy: i, mv: Move::Loose });
         if e.hp <= 0.0 {
             e.ai = Ai::Dead;
@@ -1276,7 +1338,7 @@ impl Fight {
         if !covers(h.standing_lane()) || h.act.is_some_and(|x| x.invulnerable()) {
             // Slipped: perfect if a roll or backstep began a moment ago from a lane it covers,
             // and the attacker, swinging through where the hero was, stumbles.
-            if h.act.is_some_and(|x| matches!(x.mv, Move::Step(_) | Move::Backstep) && x.t <= PERFECT && covers(x.from_lane)) {
+            if h.act.is_some_and(|x| matches!(x.mv, Move::Step(_) | Move::Tumble | Move::Backstep) && x.t <= PERFECT && covers(x.from_lane)) {
                 out.push(Event::JustDodge { enemy: i });
                 self.enemies[i].ai = Ai::Stumbled(STUMBLE);
             }
@@ -1760,7 +1822,27 @@ mod tests {
     }
 
     #[test]
-    fn a_lane_change_is_a_roll_that_costs_stamina_travels_smoothly_and_stops_at_the_edge() {
+    fn a_lane_change_is_free_with_no_dodge_in_it_and_a_roll_across_costs_stamina() {
+        // A plain step across: nothing spent, nothing invulnerable, quick, and walking on.
+        let mut f = Fight::new(vec![dummy(30.0, 0)]);
+        f.hero.stamina = 0.0;
+        let walk = Input { forward: true, ..idle() };
+        f.tick(&Input { lane: 1, ..walk }, 0.0);
+        let a = f.hero.act.unwrap();
+        assert_eq!((f.hero.lane, f.hero.stamina, a.invulnerable()), (1, 0.0, false));
+        assert_eq!(f.speed(&walk, 0.0), WALK);
+        for _ in 1..SIDESTEP { f.tick(&walk, 0.0); }
+        assert_eq!(f.hero.x, LANE_W);
+        // A blow still covering where it went lands, and no dodge is counted.
+        let mut g = Fight::new(vec![husk(1.2, 1)]);
+        g.tick(&Input { lane: 1, ..idle() }, 0.0);
+        assert!(!run(&mut g, 400, |_, _| idle(), |_, _| false).iter().any(|e| matches!(e, Event::JustDodge { .. })));
+        // A roll forward is the dodge, paid for, and travels a little down the road.
+        let mut t = Fight::new(vec![dummy(30.0, 0)]);
+        t.tick(&Input { tumble: true, ..idle() }, 0.0);
+        assert!(t.hero.act.unwrap().invulnerable() && t.hero.stamina < STAMINA && t.hero.lane == 0);
+        assert_eq!(t.speed(&idle(), 0.0), TUMBLE);
+        // And the roll across.
         let mut f = Fight::new(vec![dummy(5.0, 0)]);
         f.tick(&Input { step: 1, ..idle() }, 0.0);
         assert_eq!((f.hero.lane, f.hero.stamina), (1, STAMINA - Move::Step(1).spec().stamina));
@@ -1772,11 +1854,13 @@ mod tests {
         let mid = steps[steps.len() / 2];
         assert!(steps[0] < mid && steps[steps.len() - 1] < mid && steps.iter().all(|s| *s >= 0.0), "{xs:?}");
         assert_eq!(f.hero.x, LANE_W);
-        // Out of any fight a lane change is free (leaning at a fork after a run).
+        // Spent out (after a run), there is no roll, but a lane change still is (leaning at a fork).
         let mut g = Fight::new(vec![dummy(40.0, 0)]);
         g.hero.stamina = 0.0;
-        g.tick(&Input { step: -1, ..idle() }, 0.0);
-        assert_eq!((g.hero.lane, g.hero.stamina), (-1, 0.0));
+        assert!(g.tick(&Input { step: -1, ..idle() }, 0.0).contains(&Event::Spent));
+        let st = g.hero.stamina;
+        g.tick(&Input { lane: -1, ..idle() }, 0.0);
+        assert!(g.hero.lane == -1 && g.hero.stamina >= st, "{} {st}", g.hero.stamina);
         // No roll off the road: the press is dropped and nothing is spent.
         for _ in 0..40 { f.tick(&idle(), 0.0); }
         let st = f.hero.stamina;
@@ -2053,11 +2137,17 @@ mod tests {
     fn holding(r: crate::gear::Ranged, enemies: Vec<Enemy>) -> Fight {
         let mut f = Fight::new(enemies);
         f.hero.stats.kit.off = None;
-        f.hero.stats.kit.ranged = Some(r);
+        // A spell's bolt through the Frostweaver's focus (its own frost bolt), at the Frostweaver's
+        // focus to cast it; else a bow.
+        match r {
+            crate::gear::Ranged::Frost => { f.hero.stats.kit.catalyst = crate::gear::ITEMS[crate::gear::find("Frostweaver's Focus")].catalyst; f.hero.stats.focus = 3; }
+            r => f.hero.stats.kit.ranged = Some(r),
+        }
         f.hero = Hero::with(f.hero.stats);
         f
     }
     fn press_loose() -> Input { Input { loose: true, ..idle() } }
+    fn press_cast() -> Input { Input { cast: true, ..idle() } }
 
     #[test]
     fn an_arrow_flies_down_the_heros_lane_strikes_the_first_foe_in_it_and_costs_one_from_the_quiver() {
@@ -2087,16 +2177,24 @@ mod tests {
         use crate::gear::{Class, Ranged};
         let rate = |s: Spec| s.damage / (s.frames.0 + s.frames.1 + s.frames.2) as f32;
         let light = Move::Light.spec_for(Class::Sword, None);
-        for r in [Ranged::Bow, Ranged::BloodBow, Ranged::Catalyst] {
+        for r in [Ranged::Bow, Ranged::BloodBow, Ranged::BloodCrossbow, Ranged::Frost] {
             let l = Move::loose_spec(r);
-            assert!(rate(l) < 0.5 * rate(light), "{r:?}: {} against {}", rate(l), rate(light));
+            if r != Ranged::Frost { assert!(rate(l) < 0.5 * rate(light), "{r:?}: {} against {}", rate(l), rate(light)); }
             assert!(l.frames.0 >= 2 * light.frames.0, "{r:?} draws long");
             assert_eq!(l.armour, 0);
         }
+        // A cast and the blows that fill its charge again: worth playing, not better than melee by much.
+        let (frost, blows) = (Move::loose_spec(Ranged::Frost), (1.0 / CHARGE_PER_HIT).ceil());
+        let (lt, ft) = ((light.frames.0 + light.frames.1 + light.frames.2) as f32, (frost.frames.0 + frost.frames.1 + frost.frames.2) as f32);
+        let cycle = (frost.damage + blows * light.damage) / (ft + blows * lt);
+        assert!(cycle > rate(light) && cycle < 1.2 * rate(light), "{cycle} against {}", rate(light));
+        assert!(frost.damage >= 2.0 * light.damage);
         assert!(Move::loose_spec(Ranged::Bow).stance < 0.5 * light.stance);
-        assert!(Move::loose_spec(Ranged::Catalyst).stance > light.stance, "frost cracks a stance");
+        assert!(Move::loose_spec(Ranged::Frost).stance > light.stance, "frost cracks a stance");
         // The smith's levels raise a blow, not a shot.
         let mut st = Stats::default();
+        st.kit.shooting = crate::gear::ITEMS[crate::gear::find("Hunter's Shortbow")].shooting.unwrap();
+        st.dexterity = 2;
         let before = st.ranged_damage(Ranged::Bow);
         st.weapon = 5;
         assert_eq!(st.ranged_damage(Ranged::Bow), before);
@@ -2107,12 +2205,12 @@ mod tests {
     #[test]
     fn frost_charges_run_out_and_blows_landed_up_close_fill_them() {
         use crate::gear::Ranged;
-        let mut f = holding(Ranged::Catalyst, Vec::new());
+        let mut f = holding(Ranged::Frost, Vec::new());
         assert_eq!(f.hero.charges, 3.0);
-        for _ in 0..3 { run(&mut f, 100, |_, t| if t == 0 { press_loose() } else { idle() }, |f, _| f.hero.act.is_none()); f.hero.stamina = f.hero.stats.max_stamina(); }
+        for _ in 0..3 { run(&mut f, 100, |_, t| if t == 0 { press_cast() } else { idle() }, |f, _| f.hero.act.is_none()); f.hero.stamina = f.hero.stats.max_stamina(); }
         assert!(f.hero.charges < 1.0 && !f.hero.can_loose());
         // Three blows landed on a husk give one back.
-        let mut g = holding(Ranged::Catalyst, vec![of(Archetype::Husk, 1.5, 0)]);
+        let mut g = holding(Ranged::Frost, vec![of(Archetype::Husk, 1.5, 0)]);
         g.hero.charges = 0.0;
         g.enemies[0].ai = Ai::Wait(10_000);
         g.enemies[0].hp = 1e6;
@@ -2120,7 +2218,101 @@ mod tests {
             run(&mut g, 80, |_, t| Input { light: t == 0, ..idle() }, |f, _| f.hero.act.is_none());
             g.hero.stamina = g.hero.stats.max_stamina();
         }
-        assert!(g.hero.can_loose(), "charges {}", g.hero.charges);
+        assert!(g.hero.can_cast(), "charges {}", g.hero.charges);
+    }
+
+    /// F is the hand's ranged attack and C a spell, which needs a catalyst held: a spell attuned
+    /// with a shield in hand casts nothing, a catalyst casts its own spell, and the blood
+    /// crossbow's bolt is paid for in health.
+    #[test]
+    fn a_spell_is_cast_only_through_a_catalyst_and_a_crossbow_bolt_costs_blood() {
+        use crate::gear::{find, Loadout, Ranged, Spell, ITEMS};
+        let cast = |f: &mut Fight, i: Input| run(f, 100, |_, t| if t == 0 { i } else { idle() }, |_, _| false);
+        let shot = |ev: &[Event], r: Ranged| ev.contains(&Event::Shot(r));
+        // The spell attuned, the buckler in hand: no catalyst, no cast.
+        let mut l = Loadout::starting();
+        let bolt = find("Frost Bolt");
+        l.gain(bolt);
+        assert!(l.wear(9, Some(bolt)));
+        let mut f = Fight::new(Vec::new());
+        f.hero.stats.kit = l.kit();
+        f.hero.stats.focus = 3;
+        f.hero = Hero::with(f.hero.stats);
+        assert_eq!(f.hero.stats.kit.spell, Some(Spell::FrostBolt));
+        assert!(!f.hero.can_cast() && !shot(&cast(&mut f, press_cast()), Ranged::Frost));
+        // The focus in its place: C casts, and F (nothing to loose) does nothing.
+        let focus = find("Frostweaver's Focus");
+        l.gain(focus);
+        assert!(l.wear(1, Some(focus)));
+        let mut f = Fight::new(Vec::new());
+        f.hero.stats.kit = l.kit();
+        f.hero.stats.focus = 3;
+        f.hero = Hero::with(f.hero.stats);
+        assert!(!shot(&cast(&mut f, press_loose()), Ranged::Frost) && shot(&cast(&mut f, press_cast()), Ranged::Frost));
+        // Short of the focus the spell takes, it cannot be cast at all.
+        f.hero.stats.focus = 2;
+        f.hero = Hero::with(f.hero.stats);
+        assert!(!f.hero.can_cast() && !shot(&cast(&mut f, press_cast()), Ranged::Frost));
+        // The focus alone casts its own frost bolt.
+        assert_eq!(ITEMS[focus].catalyst.and_then(|c| c.own), Some(Spell::FrostBolt));
+        // The blood crossbow: F, 7 health a bolt.
+        let mut c = holding(Ranged::BloodCrossbow, Vec::new());
+        let hp = c.hero.hp;
+        assert!(shot(&cast(&mut c, press_loose()), Ranged::BloodCrossbow));
+        assert_eq!(c.hero.hp, hp - BLOOD_BOLT_COST);
+    }
+
+    /// Bows, crossbows, catalysts and spells scale as in the souls games: a bow by its own
+    /// grades, weakly held short of its needs; a crossbow by nothing; a spell by the catalyst it
+    /// is cast through, the catalyst by its grades.
+    #[test]
+    fn ranged_weapons_and_spells_scale_by_their_own_grades_and_needs() {
+        use crate::gear::{find, Loadout, Ranged};
+        let holding = |piece: &str, [m, d, f]: [u32; 3]| {
+            let mut l = Loadout::starting();
+            let i = find(piece);
+            l.gain(i);
+            l.wear(1, Some(i));
+            Stats { might: m, dexterity: d, focus: f, kit: l.kit(), ..Stats::default() }
+        };
+        // The shortbow: dexterity B, might E; short of its 2 dexterity, weakly drawn.
+        let bow = |at| holding("Hunter's Shortbow", at).ranged_damage(Ranged::Bow);
+        assert!((bow([0, 2, 0]) - (1.0 + 2.0 * 0.06)).abs() < 1e-5, "{}", bow([0, 2, 0]));
+        assert!((bow([0, 1, 0]) - WEAK * (1.0 + 0.06)).abs() < 1e-5, "{}", bow([0, 1, 0]));
+        assert!(bow([0, 20, 0]) > bow([0, 10, 0]) && bow([10, 10, 0]) > bow([0, 10, 0]), "might raises it a little");
+        assert!(bow([10, 2, 0]) - bow([0, 2, 0]) < 0.5 * (bow([0, 12, 0]) - bow([0, 2, 0])), "ten of might, far less than ten of dexterity");
+        // The blood bow: dexterity B, focus D.
+        let blood = |at| holding("Bloodrunner's Bow", at).ranged_damage(Ranged::BloodBow);
+        assert!(blood([0, 3, 10]) > blood([0, 3, 0]) && blood([10, 3, 0]) == blood([0, 3, 0]));
+        // The crossbow: the same bolt at any levels, weak only short of what it takes to hold.
+        let xbow = |at| holding("Blood Crossbow", at).ranged_damage(Ranged::BloodCrossbow);
+        assert_eq!((xbow([4, 2, 0]), xbow([30, 30, 30])), (1.0, 1.0));
+        assert_eq!(xbow([0, 2, 0]), WEAK);
+        // A spell through the focus: focus B, so focus raises it; weak short of the focus's 2.
+        let frost = |at| holding("Frostweaver's Focus", at).ranged_damage(Ranged::Frost);
+        assert!((frost([0, 0, 3]) - (1.0 + 3.0 * 0.06)).abs() < 1e-5 && frost([0, 0, 20]) > frost([0, 0, 10]));
+        assert!((frost([0, 0, 1]) - WEAK * (1.0 + 0.06)).abs() < 1e-5);
+        assert_eq!(frost([20, 20, 3]), frost([0, 0, 3]), "only focus raises a focus's spells");
+        // The Frostweaver as they set out: their bolt as it was before spells scaled this way.
+        assert!((frost([0, 0, 3]) - (1.0 + crate::gear::Grade::B.share() * Stats::soft(3))).abs() < 1e-6);
+    }
+
+    #[test]
+    fn a_frost_bolt_chills_what_it_hits_slowing_it_and_holding_its_stance() {
+        use crate::gear::Ranged;
+        let mut f = holding(Ranged::Frost, vec![of(Archetype::Husk, 8.0, 0)]);
+        f.enemies[0].ai = Ai::Wait(10_000);
+        run(&mut f, 200, |_, t| if t == 0 { press_cast() } else { idle() }, |f, _| f.enemies[0].chill > 0);
+        let e = &f.enemies[0];
+        assert!(e.chill > CHILL - 5 && e.stance < e.kind.stance(), "chill {} stance {}", e.chill, e.stance);
+        // No stance back while chilled, and its wait runs a third slower.
+        let (stance, Ai::Wait(w)) = (e.stance, e.ai) else { panic!() };
+        run(&mut f, 150, |_, _| idle(), |_, _| false);
+        let Ai::Wait(w2) = f.enemies[0].ai else { panic!() };
+        assert_eq!(f.enemies[0].stance, stance);
+        assert!((95..=105).contains(&(w - w2)), "{} ticks of its wait in 150", w - w2);
+        // A husk's stance breaks to two bolts.
+        assert!(2.0 * Move::loose_spec(Ranged::Frost).stance >= Archetype::Husk.stance());
     }
 
     #[test]

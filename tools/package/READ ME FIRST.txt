@@ -17,15 +17,30 @@ Needs a Mac with Apple Silicon (M1 or later) and macOS 11 or newer. Nothing else
      Wayfarer     sword and buckler: rolls, parries, ripostes
      Warden       a tall bulwark: blocks fill a ward; a block at the last moment bursts it
      Bloodrunner  a bow whose arrows cost health
-     Frostweaver  a frost focus whose charges are filled by fighting up close
+     Frostweaver  a frost focus (a catalyst) whose spell charges are filled by fighting up close
 
 CONTROLS (keyboard and mouse)
-  On the road     W / S walk     A / D roll     Shift run     Space backstep
+  On the road     W / S walk     tap W twice and hold it to run
+                  A / D step a lane across (free, but no dodge in it)
+                  Shift + W / A / S / D roll that way (costs stamina, dodges blows)
                   Left click strike     Shift + left click heavy
                   Right click guard     Shift + right click parry
-                  R drink     F loose an arrow or bolt     E rest / talk / use
-                  T turn back     M map     Esc back out of a menu
-  Side-on fights  A / D move     Space + A / D roll     W jump (same attacks)
+                  R drink     F ranged attack (bow, crossbow)     C cast a spell
+                  E rest / talk / use
+                  T turn back (the way back meets every fork you passed)
+                  M map     Esc pause / back out of a menu
+  Side-on fights  A / D move     tap A or D twice and hold it to run
+                  Shift + A / D roll     W jump (same attacks)
+  Spells          cast with C through a catalyst held in the other hand (no shield then);
+                  a catalyst casts its own spell, or one found and attuned in the Spell
+                  place at a shrine. Two blows up close fill a charge.
+                  Frost Bolt chills what it hits for four seconds: a third slower, and its
+                  stance stays cracked
+  Blood weapons   blood bows and crossbows (F) are drawn from your own health
+  Scaling         weapons, bows, catalysts and spells need levels (! in the shrine's list
+                  marks one you lack) and grow with Might, Dexterity and Focus by their
+                  letter grades; short of a weapon's needs it hits weakly, short of a
+                  spell's it cannot be cast. Crossbows hit the same whatever your levels.
   Warning colours over an enemy:  gold = parry it,  orange = roll or block,  purple = roll
 
 SAVES

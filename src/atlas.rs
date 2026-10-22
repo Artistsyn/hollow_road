@@ -344,9 +344,46 @@ pub fn exits(id: &str, from: &str) -> Vec<&'static str> {
 /// Whether the place is laid out for walking it in from `from` (else everything is mirrored).
 pub fn forward(id: &str, from: &str) -> bool { place_of(id).is_none_or(|p| p.from.is_empty() || p.from == from) }
 
-/// The stop that walks `id` back toward `from` (turning round partway): in by another road; a
-/// dead end has none, and turning round there is the road back itself.
+/// A three-road place is a Y: its scene is the trunk, walked in from `Place::from`, and the
+/// junction where its two branches part is at the scene's end. `<place>@^` walks the trunk back
+/// down, from the junction to `from`'s end and on into `from`.
+pub const BACK: &str = "^";
+/// Whether `id` is such a Y.
+pub fn is_y(id: &str) -> bool { neighbours(id).len() == 3 }
+/// A place's trunk: the road it is laid out to be walked in by.
+pub fn trunk(id: &str) -> &'static str { place_of(id).map_or("", |p| p.from) }
+
+/// One way on at the end of a stop: the road it takes (from place, to place), the road walked
+/// first to get to it when the way on is a junction just ahead (the road into the Y), the stop it
+/// goes into, and the place it is offered as.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Lead { pub road: (&'static str, &'static str), pub through: Option<(&'static str, &'static str)>, pub stop: String, pub shown: &'static str }
+
+/// The ways on at the end of walking `id` in from `from` (or `BACK` down a Y's trunk), left first:
+/// one, two at a fork, or the road back out of a dead end. Walking a road that runs on into a Y
+/// up one of its branches, the junction comes at this road's end, where the branch meets the
+/// others: on up the other branch, or down the Y's trunk (`<y>@^`). A Y's own fork at its trunk's
+/// end leads on into its two branches as before; one of those that is itself a branch of the next
+/// Y is walked into as that Y in from its branch (its scene mirrored, its fork at the end).
+pub fn leads(id: &'static str, from: &str) -> Vec<Lead> {
+    let ways: Vec<&'static str> = if from == BACK { vec![trunk(id)] } else { exits(id, from) };
+    let plain = |to: &'static str| Lead { road: (id, to), through: None, stop: stop(to, id), shown: to };
+    match ways.as_slice() {
+        [] => neighbours(id).first().map(|&back| Lead { road: (id, back), through: None, stop: stop(back, id), shown: back }).into_iter().collect(),
+        [to] if is_y(to) && trunk(to) != id => exits(to, id).into_iter().map(|x| {
+            if x == trunk(to) { Lead { road: (to, x), through: Some((id, to)), stop: stop(to, BACK), shown: to } }
+            else { Lead { road: (to, x), through: Some((id, to)), stop: stop(x, to), shown: x } }
+        }).collect(),
+        [to] => vec![plain(to)],
+        many => many.iter().map(|&to| plain(to)).collect(),
+    }
+}
+
+/// The stop that walks `id` the other way (turning round partway, from the mirrored metres): a Y
+/// up its trunk toward the junction, or back down it; a road with two ends, in by the other end;
+/// a dead end, the road back out of it.
 pub fn turned(id: &str, from: &str) -> String {
+    if is_y(id) { return if from == trunk(id) { stop(id, BACK) } else { stop(id, trunk(id)) }; }
     match neighbours(id).into_iter().find(|n| *n != from) {
         Some(other) => stop(id, other),
         None => stop(from, id),
@@ -383,24 +420,32 @@ pub fn journey() -> serde_json::Value {
     };
     let mut stops = serde_json::Map::new();
     for p in PLACES.iter().filter(|p| !p.from.is_empty()) {
-        for from in neighbours(p.id) {
-            let ahead = exits(p.id, from);
-            let next = match ahead.as_slice() {
-                [] => json!({ "Go": { "to": stop(from, p.id), "transition": {} } }),
-                [to] => json!({ "Go": { "to": stop(to, p.id), "transition": via(p.id, to) } }),
+        let froms = neighbours(p.id).into_iter().chain(is_y(p.id).then_some(BACK));
+        for from in froms {
+            let ways = leads(p.id, from);
+            let next = match ways.as_slice() {
+                // Out of a dead end: back the way it came.
+                [l] if l.road.1 == from => json!({ "Go": { "to": l.stop, "transition": {} } }),
+                [l] => json!({ "Go": { "to": l.stop, "transition": via(l.road.0, l.road.1) } }),
                 // Left alone, a fork takes its ungated way (a locked door or a shut shortcut down
                 // one side is no way at all until it opens; the game leans into it then).
                 // Each branch first runs on as a lane of this place (its own ground and sky), then
                 // crosses into where it leads: a fork between two other worlds shows them both at
                 // the junction, and two unlike scenes meet there badly.
                 [left, right] => {
-                    let gated = |to: &str| edge(p.id, to).is_some_and(|e| e.gate != Gate::Open);
+                    let gated = |l: &Lead| [Some(l.road), l.through].into_iter().flatten().any(|(a, b)| edge(a, b).is_some_and(|e| e.gate != Gate::Open));
                     let default = if gated(left) && !gated(right) { "Right" } else { "Left" };
-                    for to in [left, right] {
-                        let t = match edge(p.id, to).map(|e| e.via) { Some(Via::Blend(_) | Via::Arch(_)) => via(p.id, to), _ => json!({ "blend_m": LANE_BLEND_M }) };
-                        stops.insert(lane(to, p.id), json!({ "scene": p.scene, "next": { "Go": { "to": stop(to, p.id), "transition": t } } }));
+                    let mut names = Vec::new();
+                    for l in [left, right] {
+                        // A Y's own fork runs each branch on as a lane of the Y; a junction just
+                        // ahead (the end of a road into a Y's branch) as a lane of this road.
+                        let name = if l.through.is_none() { lane(l.road.1, p.id) } else { format!("~{}|{}", l.stop, stop(p.id, from)) };
+                        let crossing = l.through.map_or(l.road, |t| (t.0, t.1));
+                        let t = match edge(crossing.0, crossing.1).map(|e| e.via) { Some(Via::Blend(_) | Via::Arch(_)) => via(crossing.0, crossing.1), _ => json!({ "blend_m": LANE_BLEND_M }) };
+                        stops.insert(name.clone(), json!({ "scene": p.scene, "next": { "Go": { "to": l.stop, "transition": t } } }));
+                        names.push(name);
                     }
-                    json!({ "Fork": { "left": lane(left, p.id), "right": lane(right, p.id), "fork": { "steer_m": crate::world::STEER_M, "approach_m": 40.0, "wedge_m": -1.0, "default_branch": default } } })
+                    json!({ "Fork": { "left": names[0], "right": names[1], "fork": { "steer_m": crate::world::STEER_M, "approach_m": 40.0, "wedge_m": -1.0, "default_branch": default } } })
                 }
                 _ => panic!("{} has more than three roads", p.id),
             };
@@ -504,9 +549,34 @@ mod tests {
         // Out of the Warrens toward Hollowmere, the marsh lies to the left (north) and the chapel
         // to the right.
         assert_eq!(exits("road", "warrens_lane"), vec!["vale_edge", "chapel_edge"]);
-        assert_eq!(turned("vale", "vale_edge"), "vale@gate");
         assert_eq!(turned("guild_hall", "warrens"), "warrens@guild_hall");
         assert!(forward("road", "warrens_lane") && !forward("road", "vale_edge"));
+    }
+
+    /// Turning round anywhere, the way back links up with every fork passed: a Y walked up its
+    /// trunk turns back down it (no fork), and coming back up one of its branches the junction is
+    /// at that branch's end, down the trunk or up the other branch.
+    #[test]
+    fn turning_back_meets_the_forks_it_passed() {
+        assert_eq!(turned("road", "warrens_lane"), "road@^");
+        assert_eq!(turned("road", BACK), "road@warrens_lane");
+        assert_eq!(turned("vale", "vale_edge"), "vale@^");
+        let stops = |id, from| leads(id, from).into_iter().map(|l| l.stop).collect::<Vec<_>>();
+        assert_eq!(stops("road", BACK), vec!["warrens_lane@road"]);
+        let mut back_up = stops("vale_edge", "vale");
+        back_up.sort();
+        assert_eq!(back_up, vec!["chapel_edge@road", "road@^"]);
+        // Every stop the journey has leads somewhere it has too, and every way on is a road.
+        let j = journey();
+        let all = j["stops"].as_object().unwrap();
+        for p in PLACES.iter().filter(|p| !p.from.is_empty()) {
+            for from in neighbours(p.id).into_iter().chain(is_y(p.id).then_some(BACK)) {
+                for l in leads(p.id, from) {
+                    assert!(all.contains_key(&l.stop), "{}@{from} leads to {} which is no stop", p.id, l.stop);
+                    assert!(edge(l.road.0, l.road.1).is_some() && l.through.is_none_or(|(a, b)| edge(a, b).is_some()), "{l:?}");
+                }
+            }
+        }
     }
 
     /// The journey file the game opens is compiled from the atlas (`ATLAS_WRITE=1` writes it).

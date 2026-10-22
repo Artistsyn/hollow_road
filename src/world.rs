@@ -631,15 +631,20 @@ impl World {
         }
     }
 
-    /// The places the roads ahead lead to, left first.
-    fn ahead(&self) -> Vec<&'static str> { self.from().map_or(Vec::new(), |f| atlas::exits(self.here().id, f)) }
+    /// The ways on at this stop's end, left first (`atlas::leads`: the same ways the journey was
+    /// compiled with, so what the hero is offered is what the walk does).
+    fn ahead(&self) -> Vec<atlas::Lead> { self.from().map_or(Vec::new(), |f| atlas::leads(self.here().id, f)) }
 
-    /// The place branch `b` of the fork ahead leads to.
-    fn branch(&self, b: Branch) -> Option<&'static str> { self.ahead().get(match b { Branch::Left => 0, Branch::Right => 1 }).copied() }
+    /// Branch `b` of the fork ahead.
+    fn branch(&self, b: Branch) -> Option<atlas::Lead> { self.ahead().into_iter().nth(match b { Branch::Left => 0, Branch::Right => 1 }) }
 
-    /// Why the road to `to` cannot be walked now, if it cannot.
-    fn barred_to(&self, to: &str) -> Option<Barred> { atlas::barred(self.here().id, to, &self.keys, &self.opened) }
-    fn branch_barred(&self, b: Branch) -> bool { self.branch(b).is_none_or(|to| self.barred_to(to).is_some()) }
+    /// Why a way on cannot be walked now, if it cannot, and the place whose road is barred: the
+    /// road into a junction just ahead, or the road on from it.
+    fn barred_to(&self, l: &atlas::Lead) -> Option<(&'static str, Barred)> {
+        l.through.into_iter().chain([l.road]).find_map(|(a, b)| atlas::barred(a, b, &self.keys, &self.opened).map(|why| (b, why)))
+    }
+    fn branch_barred(&self, b: Branch) -> bool { self.branch(b).is_none_or(|l| self.barred_to(&l).is_some()) }
+    fn shown(l: &atlas::Lead) -> &'static str { atlas::place_of(l.shown).map_or("", |p| p.title) }
 
     /// A barred way, as a note.
     fn barred_note(to: &'static str, why: Barred) -> Note {
@@ -647,13 +652,16 @@ impl World {
         Note::Barred(title, match why { Barred::Keys(k) => k.first().copied(), Barred::Shut => None })
     }
 
-    /// Walking from here to `to`: a shortcut that opens from this side opens.
-    fn pass(&mut self, to: &str) -> Option<Note> {
-        let here = self.here().id;
-        let e = atlas::edge(here, to).filter(|e| e.gate == atlas::Gate::Shortcut && e.a == here)?;
-        if self.opened.contains(&e.a) { return None; }
-        self.opened.push(e.a);
-        Some(Note::Opened(atlas::place_of(e.b).map_or(e.b, |p| p.title)))
+    /// Walking a way on: a shortcut it crosses that opens from this side opens.
+    fn pass(&mut self, l: &atlas::Lead) -> Vec<Note> {
+        let mut notes = Vec::new();
+        for (a, b) in l.through.into_iter().chain([l.road]) {
+            let Some(e) = atlas::edge(a, b).filter(|e| e.gate == atlas::Gate::Shortcut && e.a == a) else { continue };
+            if self.opened.contains(&e.a) { continue; }
+            self.opened.push(e.a);
+            notes.push(Note::Opened(atlas::place_of(e.b).map_or(e.b, |p| p.title)));
+        }
+        notes
     }
 
     pub fn felled(&mut self, kinds: impl IntoIterator<Item = Archetype>) -> Vec<Note> {
@@ -743,17 +751,16 @@ impl World {
         if let Some(left) = choose_within {
             if self.signpost.is_none() {
                 self.signpost = Some(walked + (left + STEER_M + SIGNPOST_PAST) as f64);
-                let title = |b| self.branch(b).and_then(atlas::place_of).map_or("", |p| p.title);
+                let title = |b| self.branch(b).map_or("", |l| Self::shown(&l));
                 notes.push(Note::Fork(title(Branch::Left), title(Branch::Right)));
             }
             if self.chose { return (None, notes); }
             let lean = match fight.hero.lane { l if l < 0 => Some(Branch::Left), l if l > 0 => Some(Branch::Right), _ => None };
             if lean != self.lean {
-                if let Some(b) = lean {
-                    let to = self.branch(b).unwrap_or("");
-                    match self.barred_to(to) {
-                        Some(why) => notes.push(Self::barred_note(to, why)),
-                        None => notes.push(Note::Lean(b, atlas::place_of(to).map_or("", |p| p.title))),
+                if let Some((b, l)) = lean.and_then(|b| Some((b, self.branch(b)?))) {
+                    match self.barred_to(&l) {
+                        Some((to, why)) => notes.push(Self::barred_note(to, why)),
+                        None => notes.push(Note::Lean(b, Self::shown(&l))),
                     }
                 }
             }
@@ -766,7 +773,7 @@ impl World {
                 self.chose_at = Some(walked);
                 // Onto the middle of the branch while the camera turns onto it.
                 fight.hero.lane = 0;
-                if let Some(n) = self.branch(b).and_then(|to| self.pass(to)) { notes.push(n); }
+                if let Some(l) = self.branch(b) { notes.extend(self.pass(&l)); }
                 return (Some(Go::Choose(b)), notes);
             }
             return (None, notes);
@@ -792,18 +799,18 @@ impl World {
         }
         match self.ahead().as_slice() {
             // One road on: walked, unless it is barred; then the hero is told and turns back.
-            [to] => {
-                if let Some(why) = self.barred_to(to) {
+            [l] => {
+                if let Some((to, why)) = self.barred_to(l) {
                     self.sent = true;
                     notes.push(Self::barred_note(to, why));
                     notes.push(Note::Turned);
-                    let back = atlas::stop(self.here().id, to);
+                    let back = atlas::turned(self.here().id, self.from().unwrap_or_default());
                     self.keep_hero = true;
                     self.warping = Some(back.clone());
                     self.warp_into = 0.0;
                     return (Some(Go::Warp(back)), notes);
                 }
-                if let Some(n) = self.pass(to) { notes.push(n); }
+                notes.extend(self.pass(l));
             }
             // Both ways ahead barred: the walk waits at the fork; the hero turns round.
             [a, b] if self.barred_to(a).is_some() && self.barred_to(b).is_some() => return (None, notes),
@@ -931,8 +938,8 @@ mod tests {
         // Turn round 20 m in: the walk goes back out the way it came, from where the hero stood.
         assert!(w.can_turn(&f, 20.0 - HERO_D as f64));
         let go = w.turn(&f, 20.0);
-        assert_eq!(go, Some(Go::WarpAt("road@vale_edge".into(), 44.0)));
-        let (_, notes) = w.tick(&mut f, 21.0, Some("road@vale_edge"), None);
+        assert_eq!(go, Some(Go::WarpAt("road@^".into(), 44.0)));
+        let (_, notes) = w.tick(&mut f, 21.0, Some("road@^"), None);
         assert!(notes.contains(&Note::Arrived("The Road to Hollowmere")));
         // The husk felled stays down; the rest stand, mirrored: the lancer 26 m in is 38 m in
         // walking back, in the other lane.
@@ -963,12 +970,15 @@ mod tests {
         w.tick(&mut f, 200.0, Some("chief_hold@ridge_camp"), None);
         fell(&mut f);
         assert_eq!(w.tick(&mut f, 250.0, Some("chief_hold@ridge_camp"), None).0, Some(Go::Next));
-        // Out of the sewers into the Warrens: the grate lifts from below, and stays open.
+        // Out of the sewers up into the Warrens: at the sewers' end their junction, and either way
+        // on lifts the grate from below; it stays open.
         assert!(!w.opened.contains(&"sewers"));
         w.tick(&mut f, 300.0, Some("sewers@lower_stairs"), None);
         fell(&mut f);
-        let (go, notes) = w.tick(&mut f, 361.0, Some("sewers@lower_stairs"), None);
-        assert_eq!(go, Some(Go::Next));
+        assert_eq!(w.tick(&mut f, 361.0, Some("sewers@lower_stairs"), None).0, Some(Go::Next));
+        f.hero.lane = -1;
+        let (go, notes) = w.tick(&mut f, 362.0, Some("sewers@lower_stairs"), Some(0.5));
+        assert_eq!(go, Some(Go::Choose(Branch::Left)));
         assert!(notes.contains(&Note::Opened("The Ashen Warrens")) && w.opened.contains(&"sewers"), "{notes:?}");
     }
 
@@ -981,7 +991,7 @@ mod tests {
         fell(&mut f);
         assert_eq!(w.tick(&mut f, 157.0, Some("vale@vale_edge"), None).0, Some(Go::Next));
         let ahead = w.ahead();
-        let mill = if ahead[0] == "drowned_mill" { Branch::Left } else { Branch::Right };
+        let mill = if ahead[0].shown == "drowned_mill" { Branch::Left } else { Branch::Right };
         f.hero.lane = if mill == Branch::Left { -1 } else { 1 };
         let (_, notes) = w.tick(&mut f, 158.0, Some("vale@vale_edge"), Some(8.0));
         assert!(notes.contains(&Note::Barred("The Drowned Mill", None)), "{notes:?}");

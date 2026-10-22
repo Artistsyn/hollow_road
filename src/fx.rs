@@ -195,7 +195,7 @@ impl Fx {
                 Event::Loosed { enemy } => on_enemy(enemy).map(|(x, at)| burst(x + 0.1, at, 1.4, 0.55, [255, 236, 200], ImpactSide::Dealt, 10)),
                 Event::Burst { enemy, at } => on_enemy(enemy).map(|(x, _)| burst(x, At::Road(at), 0.5, 2.6, [190, 110, 255], ImpactSide::Dealt, 34)),
                 // The hero's own: a flick off the string or the hand, and a shot caught on a shield.
-                Event::Shot(r) => Some(burst(hero_x + 0.25, At::Near(hd + fw * 0.6), 1.35, 0.6, if r == crate::gear::Ranged::Catalyst { [150, 210, 255] } else { [240, 230, 200] }, ImpactSide::Dealt, 10)),
+                Event::Shot(r) => Some(burst(hero_x + 0.25, At::Near(hd + fw * 0.6), 1.35, 0.6, if r == crate::gear::Ranged::Frost { [150, 210, 255] } else { [240, 230, 200] }, ImpactSide::Dealt, 10)),
                 Event::Glanced { enemy } => on_enemy(enemy).map(|(x, at)| burst(x - 0.2, at, 1.1, 0.8, [200, 222, 255], ImpactSide::Dealt, 12)),
                 Event::Parried { .. } => Some(burst(hero_x + 0.2, At::Near(hd + fw * 0.8), 1.25, 1.4, [255, 214, 110], ImpactSide::Dealt, 26)),
                 // A bulwark's last-moment block rings white on the shield; its ward bursting is a

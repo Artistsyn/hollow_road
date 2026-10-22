@@ -21,6 +21,8 @@ pub const HALF: f32 = 6.0;
 /// Ticks per second.
 const TPS: f32 = 60.0;
 const WALK: f32 = 2.6 / TPS;
+/// A run, against a walk; it costs the road's run stamina.
+const RUN_K: f32 = 1.8;
 /// A jump: up at this speed (m/tick), pulled down by this (m/tick²); about a metre high and
 /// 0.6 s in the air.
 const JUMP_V: f32 = 7.0 / TPS;
@@ -40,18 +42,22 @@ const SPACING: f32 = 0.35;
 /// What the player pressed this tick, and what is held.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct SideInput {
-    /// Held: walk left or right.
+    /// Held: walk left or right; at a run (a double tap of the way, held).
     pub left: bool,
     pub right: bool,
-    /// Pressed: a roll (Space with a direction held, or the way faced), a jump, and the rest.
+    pub run: bool,
+    /// Pressed: a roll (Shift with A or D; Space with a direction held, or the way faced), a jump,
+    /// and the rest.
     pub roll: bool,
     pub jump: bool,
     pub light: bool,
     pub heavy: bool,
     pub parry: bool,
     pub flask: bool,
-    /// An arrow or a bolt from what the other hand holds.
+    /// A ranged attack: an arrow or a bolt from what the other hand holds.
     pub loose: bool,
+    /// A spell through the catalyst the other hand holds.
+    pub cast: bool,
     /// Held.
     pub guard: bool,
 }
@@ -63,7 +69,7 @@ pub struct SideBolt { pub s: f32, pub dir: f32, pub y: f32, pub ranged: crate::g
 
 /// What the hero is doing.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Act { Light, Heavy, Roll(i8), Parry, Flask, Loose }
+pub enum Act { Light, Heavy, Roll(i8), Parry, Flask, Loose, Cast }
 
 impl Act {
     /// A strike as a weapon of `class` throws it here: the road's (`Move::spec_for`) with the
@@ -84,14 +90,16 @@ impl Act {
             Act::Light | Act::Heavy => self.strike_spec(kit.arms.class).frames,
             Act::Roll(_) => (0, ROLL_T, 0),
             Act::Parry | Act::Flask => self.as_move().spec_for(kit.arms.class, kit.off.map(|o| o.guard)).frames,
-            Act::Loose => Move::loose_spec(kit.ranged.unwrap_or(crate::gear::Ranged::Bow)).frames,
+            Act::Loose | Act::Cast => Move::loose_spec(self.shot(kit).unwrap_or(crate::gear::Ranged::Bow)).frames,
         }
     }
     fn total(self, kit: &Kit) -> u32 { let f = self.frames(kit); f.0 + f.1 + f.2 }
     /// As the road fight costs and names it.
     fn as_move(self) -> Move {
-        match self { Act::Light => Move::Light, Act::Heavy => Move::Heavy, Act::Roll(d) => Move::Step(d as i32), Act::Parry => Move::Parry, Act::Flask => Move::Flask, Act::Loose => Move::Loose }
+        match self { Act::Light => Move::Light, Act::Heavy => Move::Heavy, Act::Roll(d) => Move::Step(d as i32), Act::Parry => Move::Parry, Act::Flask => Move::Flask, Act::Loose => Move::Loose, Act::Cast => Move::Cast }
     }
+    /// What a ranged attack or a cast sends, as `kit` holds it.
+    pub fn shot(self, kit: &Kit) -> Option<crate::gear::Ranged> { match self { Act::Loose => kit.shot(false), Act::Cast => kit.shot(true), _ => None } }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -137,13 +145,14 @@ impl SideHero {
     }
     fn spend(&mut self, n: f32) { if n > 0.0 { self.stamina = (self.stamina - n).max(0.0); self.rested = 0; } }
     fn reel(&mut self, r: Reel) { self.reel = r; self.reeling = r.ticks(); self.act = None; }
-    /// Whether what the other hand holds has a shot to give (as `fight::Hero::can_loose`).
-    fn can_loose(&self) -> bool {
+    /// Whether a ranged attack or a cast has a shot to give (as `fight::Hero::can_shoot`).
+    fn can_shoot(&self, a: Act) -> bool {
         use crate::gear::Ranged;
-        match self.stats.kit.ranged {
+        if a == Act::Cast && !self.stats.spell_ready() { return false; }
+        match a.shot(&self.stats.kit) {
             Some(Ranged::Bow) => self.arrows > 0,
-            Some(Ranged::BloodBow) => self.hp > crate::fight::BLOOD_COST + 1.0,
-            Some(Ranged::Catalyst) => self.charges >= 1.0,
+            Some(r @ (Ranged::BloodBow | Ranged::BloodCrossbow)) => self.hp > r.blood() + 1.0,
+            Some(Ranged::Frost) => self.charges >= 1.0,
             None => false,
         }
     }
@@ -542,12 +551,14 @@ pub struct Foe {
     pub power: f32,
     /// Whether it has opened its second phase.
     pub woke: bool,
+    /// Ticks left of a frost bolt's chill (`fight::CHILL`).
+    pub chill: u32,
 }
 
 impl Foe {
     /// A foe of `breed` at `s`, facing `facing`, squaring up for `wait` ticks.
     pub fn new(breed: &'static Breed, s: f32, facing: f32, wait: u32) -> Foe {
-        Foe { breed, s, facing, hp: breed.hp, stance: breed.stance, stance_wait: 0, ai: Ai::Wait(wait), hurt: 0, count: 0, down: 0, top: breed.hp, power: breed.power, woke: false }
+        Foe { breed, s, facing, hp: breed.hp, stance: breed.stance, stance_wait: 0, ai: Ai::Wait(wait), hurt: 0, count: 0, down: 0, top: breed.hp, power: breed.power, woke: false, chill: 0 }
     }
     /// As strong as the region it is met in makes it: (health, blows) times its breed's.
     pub fn scaled(mut self, (hp, power): (f32, f32)) -> Foe {
@@ -721,13 +732,13 @@ impl SideFight {
         h.bulwark.tick(h.guarding, false);
         h.walking = false;
         // Presses wait a moment for the hero to be free, as on the road.
-        if input.roll || input.jump || input.light || input.heavy || input.parry || input.flask || input.loose { h.buffer = Some((*input, 0)); }
+        if input.roll || input.jump || input.light || input.heavy || input.parry || input.flask || input.loose || input.cast { h.buffer = Some((*input, 0)); }
         else if let Some((b, age)) = h.buffer { h.buffer = (age < crate::fight::BUFFER).then_some((b, age + 1)); }
         let p = h.buffer.map(|b| b.0).unwrap_or_default();
         let pdir = (p.right as i8) - (p.left as i8);
         // What was pressed, if the hero is free to do it (in the air: only a strike).
         let want = if p.roll { Some(Act::Roll(if pdir != 0 { pdir } else if dir != 0 { dir } else { h.facing as i8 })) }
-            else if p.flask { Some(Act::Flask) } else if p.parry { Some(Act::Parry) } else if p.loose { Some(Act::Loose) }
+            else if p.flask { Some(Act::Flask) } else if p.parry { Some(Act::Parry) } else if p.loose { Some(Act::Loose) } else if p.cast { Some(Act::Cast) }
             else if p.heavy { Some(Act::Heavy) } else if p.light { Some(Act::Light) } else { None };
         if h.free() {
             if p.jump && !h.airborne() && !h.guarding {
@@ -739,13 +750,13 @@ impl SideFight {
                 let cost = h.stats.cost(a.as_move(), match a {
                     Act::Light | Act::Heavy => a.strike_spec(class).stamina,
                     Act::Roll(_) => 12.0,
-                    Act::Loose => Move::loose_spec(h.stats.kit.ranged.unwrap_or(crate::gear::Ranged::Bow)).stamina,
+                    Act::Loose | Act::Cast => Move::loose_spec(a.shot(&h.stats.kit).unwrap_or(crate::gear::Ranged::Bow)).stamina,
                     _ => 0.0,
                 });
                 if cost > 0.0 && h.stamina <= 0.0 {
                     out.push(Event::Spent);
                 } else if a == Act::Flask && h.flasks == 0 {
-                } else if a == Act::Loose && !h.can_loose() {
+                } else if matches!(a, Act::Loose | Act::Cast) && !h.can_shoot(a) {
                 } else {
                     h.spend(cost);
                     if let Act::Roll(d) = a { h.facing = d as f32; }
@@ -754,9 +765,11 @@ impl SideFight {
                     out.push(Event::Began(a.as_move()));
                 }
             } else if dir != 0 && !h.guarding {
-                // Walking turns the hero the way they go.
+                // Walking turns the hero the way they go; a run is quicker, while stamina lasts.
+                let run = input.run && h.stamina > 0.0;
                 h.facing = dir as f32;
-                h.s += dir as f32 * WALK;
+                h.s += dir as f32 * WALK * if run { RUN_K } else { 1.0 };
+                if run { (h.stamina, h.rested) = ((h.stamina - crate::fight::RUN_COST).max(0.0), 0); }
                 h.walking = true;
             } else if let (0, false, Some(fs)) = (dir, h.airborne(), foe_s) {
                 // Standing, they face the nearest foe.
@@ -794,13 +807,13 @@ impl SideFight {
                     out.push(Event::Healed);
                 }
                 // Loosed at the end of the draw, from the chest, the way the hero faces.
-                Act::Loose if t == f.0 => {
-                    if let Some(r) = kit.ranged {
+                Act::Loose | Act::Cast if t == f.0 => {
+                    if let Some(r) = a.shot(&kit) {
                         use crate::gear::Ranged;
                         match r {
                             Ranged::Bow => h.arrows = h.arrows.saturating_sub(1),
-                            Ranged::BloodBow => h.hp = (h.hp - crate::fight::BLOOD_COST).max(1.0),
-                            Ranged::Catalyst => h.charges = (h.charges - 1.0).max(0.0),
+                            Ranged::BloodBow | Ranged::BloodCrossbow => h.hp = (h.hp - r.blood()).max(1.0),
+                            Ranged::Frost => h.charges = (h.charges - 1.0).max(0.0),
                         }
                         let spec = Move::loose_spec(r);
                         let bolt = SideBolt { s: h.s + h.facing * 0.4, dir: h.facing, y: h.y + 1.3, ranged: r, damage: spec.damage * h.stats.ranged_damage(r), stance: spec.stance, left: crate::fight::BOLT_RANGE, age: 0 };
@@ -884,7 +897,7 @@ impl SideFight {
         let h = &mut self.hero;
         h.hp = (h.hp + dealt * h.stats.kit.leech).min(h.stats.max_hp());
         // A blow landed up close fills the catalyst.
-        if h.stats.kit.ranged == Some(crate::gear::Ranged::Catalyst) { h.charges = (h.charges + crate::fight::CHARGE_PER_HIT).min(h.stats.max_charges()); }
+        if h.stats.kit.spell_cast().is_some() { h.charges = (h.charges + crate::fight::CHARGE_PER_HIT).min(h.stats.max_charges()); }
         let b = &mut self.foes[i];
         b.hurt = 10;
         b.stance_wait = 0;
@@ -939,6 +952,7 @@ impl SideFight {
         let open = matches!(f.ai, Ai::Open(_));
         f.hp -= b.damage.min(f.hp.max(0.0));
         f.hurt = 10;
+        if b.ranged == crate::gear::Ranged::Frost { f.chill = crate::fight::CHILL; }
         f.stance_wait = 0;
         out.push(Event::Hit { enemy: i, mv: Move::Loose });
         if f.hp <= 0.0 {
@@ -958,6 +972,12 @@ impl SideFight {
     }
 
     fn foe_tick(&mut self, i: usize, out: &mut Vec<Event>) {
+        // Chilled by frost: every third tick lost, and no stance back while it lasts.
+        let f = &mut self.foes[i];
+        if f.chill > 0 {
+            (f.chill, f.stance_wait) = (f.chill - 1, 0);
+            if f.chill % 3 == 0 { f.hurt = f.hurt.saturating_sub(1); return; }
+        }
         let hero_s = self.hero.s;
         // Another foe winding up or live holds this one back; and it will not walk through one
         // that stands between it and the hero.
@@ -1583,15 +1603,18 @@ mod tests {
     #[test]
     fn an_arrow_crosses_the_yard_into_the_foe_and_a_bolt_cracks_its_stance() {
         use crate::gear::Ranged;
-        for r in [Ranged::Bow, Ranged::Catalyst] {
+        for r in [Ranged::Bow, Ranged::Frost] {
             let mut f = fight();
-            f.hero.stats.kit.ranged = Some(r);
+            match r {
+                Ranged::Frost => { f.hero.stats.kit.catalyst = crate::gear::ITEMS[crate::gear::find("Frostweaver's Focus")].catalyst; f.hero.stats.focus = 3; }
+                r => f.hero.stats.kit.ranged = Some(r),
+            }
             f.foes[0].ai = Ai::Wait(10_000);
             f.hero.facing = if f.foes[0].s > f.hero.s { 1.0 } else { -1.0 };
             let (hp, stance) = (f.foes[0].hp, f.foes[0].stance);
             let mut hit = false;
             for t in 0..200 {
-                let e = f.tick(&SideInput { loose: t == 0, ..idle() });
+                let e = f.tick(&SideInput { loose: t == 0 && r != Ranged::Frost, cast: t == 0 && r == Ranged::Frost, ..idle() });
                 hit |= e.iter().any(|e| matches!(e, Event::Hit { enemy: 0, mv: Move::Loose }));
                 if hit { break; }
             }

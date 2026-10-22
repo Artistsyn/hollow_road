@@ -28,8 +28,8 @@ impl Calling {
         match self {
             Calling::Wayfarer => "Sword and buckler. Rolls, parries and ripostes: the road's fight as it stands.",
             Calling::Warden => "Sword and a tall bulwark, the steadiest on their feet: blocks fill a ward, and a block raised at the last moment lets it burst into the foe.",
-            Calling::Bloodrunner => "Sword and a bow, no shield: arrows drawn from their own blood (F). Wear a foe down from afar, finish it up close.",
-            Calling::Frostweaver => "Sword and a frost focus, no shield: bolts that crack a foe's stance (F), their charges filled by blows landed up close.",
+            Calling::Bloodrunner => "Sword and a bow, no shield: arrows drawn from their own blood (F, ranged attack). Wear a foe down from afar, finish it up close.",
+            Calling::Frostweaver => "Sword and a frost focus, a catalyst, no shield: frost bolts that crack a foe's stance and chill it (C, cast), their charges filled by blows landed up close.",
         }
     }
     /// Whether it can be played yet (one that cannot is listed so the road ahead is visible):
@@ -314,9 +314,10 @@ impl Sanctum {
                 .chain([("Back".to_string(), true)]).collect(),
             (View::Wear(p, _), _) => Self::wearable(w, *p).into_iter()
                 .map(|i| (match i {
-                    Some(i) => match ITEMS[i].arms {
-                        Some(a) => format!("{}   {}   {}", ITEMS[i].name, arms_line(&a, &st), ITEMS[i].text),
-                        None => format!("{}   {}", ITEMS[i].name, ITEMS[i].text),
+                    Some(i) => match (ITEMS[i].arms, held_line(&ITEMS[i], &st)) {
+                        (Some(a), _) => format!("{}   {}   {}", ITEMS[i].name, arms_line(&a, &st), ITEMS[i].text),
+                        (None, Some(line)) => format!("{}   {}   {}", ITEMS[i].name, line, ITEMS[i].text),
+                        (None, None) => format!("{}   {}", ITEMS[i].name, ITEMS[i].text),
                     },
                     None => "Nothing".into(),
                 }, true))
@@ -493,6 +494,28 @@ pub fn arms_line(a: &Arms, st: &Stats) -> String {
     let held = Stats { kit: crate::gear::Kit { arms: *a, ..st.kit }, ..*st };
     let kind = if a.class.two_handed() { format!("{}, both hands", a.class.name()) } else { a.class.name().to_string() };
     format!("{kind}  needs {}  scales {}  x{:.2}", if needs.is_empty() { "nothing".into() } else { needs.join(" ") }, grades.join(" "), held.damage())
+}
+
+/// A bow, a crossbow or a catalyst as the list shows it, as a weapon is: what it needs (a need
+/// lacked marked !), its grades, and what it would strike for in the hero's hands; a spell, what
+/// it takes to cast.
+pub fn held_line(item: &crate::gear::Item, st: &Stats) -> Option<String> {
+    const SHORT: [&str; 3] = ["Mt", "Dx", "Fc"];
+    let at = st.attributes();
+    let needs = |n: [u32; 3]| -> String {
+        let v: Vec<String> = (0..3).filter(|&i| n[i] > 0).map(|i| format!("{} {}{}", SHORT[i], n[i], if at[i] < n[i] { "!" } else { "" })).collect();
+        if v.is_empty() { "nothing".into() } else { v.join(" ") }
+    };
+    if let Some(sp) = item.spell { return Some(format!("spell  needs {}", needs(sp.needs()))); }
+    let (kind, sc) = match (item.shooting, item.catalyst) {
+        (Some(sc), _) => ("bow", sc),
+        (None, Some(c)) => ("catalyst", c.scaling),
+        _ => return None,
+    };
+    let kind = if item.ranged == Some(crate::gear::Ranged::BloodCrossbow) { "crossbow" } else { kind };
+    let grades: Vec<String> = (0..3).filter(|&i| sc.scales[i] != Grade::No).map(|i| format!("{} {}", SHORT[i], sc.scales[i].letter())).collect();
+    let k = st.graded(sc.base, sc.needs, sc.scales);
+    Some(format!("{kind}  needs {}  scales {}  x{k:.2}", needs(sc.needs), if grades.is_empty() { "-".into() } else { grades.join(" ") }))
 }
 
 /// Words with someone met on the road, a page at a time.
@@ -691,5 +714,25 @@ mod tests {
         assert!(!m.press(Key::Use) && !m.press(Key::Use));
         assert!(m.press(Key::Use));
         assert!(m.panel().text.starts_with("I'll find your fire"));
+    }
+}
+
+#[cfg(test)]
+mod held_line_tests {
+    use super::*;
+
+    /// The shrine shows a bow, a crossbow, a catalyst and a spell as it shows a weapon: needs
+    /// (lacked marked !), grades, and what it would strike for now.
+    #[test]
+    fn the_list_shows_what_ranged_pieces_and_spells_need_and_how_they_scale() {
+        let line = |name: &str, focus: u32| held_line(&ITEMS[crate::gear::find(name)], &Stats { focus, ..Stats::default() }).unwrap();
+        for (name, focus) in [("Hunter's Shortbow", 0), ("Bloodrunner's Bow", 0), ("Blood Crossbow", 0), ("Frostweaver's Focus", 3), ("Frost Bolt", 0), ("Frost Bolt", 3)] {
+            eprintln!("[held] {name} (focus {focus}): {}", line(name, focus));
+        }
+        assert_eq!(line("Hunter's Shortbow", 0), "bow  needs Dx 2!  scales Mt E Dx B  x0.60");
+        assert_eq!(line("Blood Crossbow", 0), "crossbow  needs Mt 4! Dx 2!  scales -  x0.60");
+        assert_eq!(line("Frost Bolt", 0), "spell  needs Fc 3!");
+        assert_eq!(line("Frost Bolt", 3), "spell  needs Fc 3");
+        assert!(line("Frostweaver's Focus", 3).starts_with("catalyst  needs Fc 2  scales Fc B  x1.18"));
     }
 }

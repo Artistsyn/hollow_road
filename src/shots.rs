@@ -95,6 +95,14 @@ impl Play {
 impl Play {
     fn fight(&self) -> &crate::fight::Fight { &self.canvas.get_plugin::<crate::game::Pilgrimage>().unwrap().fight }
     fn tap(&mut self, ch: &str) { self.key(ch, KeyboardState::Pressed); self.key(ch, KeyboardState::Released); }
+    /// Shift with a way: a roll that way.
+    fn roll(&mut self, ch: &str) {
+        self.key_as(Key::Named(NamedKey::Shift), KeyboardState::Pressed);
+        self.tap(ch);
+        self.key_as(Key::Named(NamedKey::Shift), KeyboardState::Released);
+    }
+    /// A way tapped twice and held: a run.
+    fn run_on(&mut self, ch: &str) { self.tap(ch); self.key(ch, KeyboardState::Pressed); }
     /// Tick until `pred` holds (at most `n` ticks); whether it did.
     fn until(&mut self, n: u32, pred: impl Fn(&crate::fight::Fight) -> bool) -> bool {
         for _ in 0..n { if pred(self.fight()) { return true; } self.ticks(1); }
@@ -143,7 +151,7 @@ fn shoot() {
     // Roll right just before it falls: a perfect dodge, in slow motion, and the husk stumbles.
     p.until(60, |f| f.enemies[0].attack().is_some_and(|a| a.2 > 0.86));
     eprintln!("[fight] rolling at {:?}", p.fight().enemies[0].ai);
-    p.tap("d");
+    p.roll("d");
     // The roll through, a frame every few ticks (slow motion once the chop misses).
     for (i, n) in [2, 3, 3, 3, 3, 4, 4].iter().enumerate() {
         p.ticks(*n);
@@ -338,8 +346,7 @@ fn flow() {
 #[ignore]
 fn perf() {
     let mut p = Play::started();
-    p.key_as(Key::Named(NamedKey::Shift), KeyboardState::Pressed);
-    p.key("w", KeyboardState::Pressed);
+    p.run_on("w");
     let t0 = std::time::Instant::now();
     let mut last = 0.0;
     let mut ms: Vec<f32> = Vec::new();
@@ -420,8 +427,7 @@ fn journey() {
     p.tap("e");
     assert!(p.until_playing(600), "never rose");
     // Run on, every place cleared, to the fork.
-    p.key_as(Key::Named(NamedKey::Shift), KeyboardState::Pressed);
-    p.key("w", KeyboardState::Pressed);
+    p.run_on("w");
     assert!(p.walk_until(4000, true, |s| s.choose_within.is_some()), "no fork: {}", p.status());
     p.ticks(30);
     p.shot("j03_fork");
@@ -447,20 +453,21 @@ fn journey() {
     p.key("w", KeyboardState::Released);
     p.ticks(20);
     p.tap("t");
-    // The gate has three roads: turned round, it is walked in by another, and the way back to the
-    // vale is one side of its fork.
+    // The gate has three roads: turned round, its trunk is walked back down, and at its end the
+    // junction it came up from: back down the vale, or on to the mill.
     let back = crate::atlas::turned("gate", "vale");
+    assert_eq!(back, "gate@^");
     assert!(p.walk_until(1200, false, |s| s.stop.as_deref() == Some(back.as_str())), "never turned round: {:?}", p.walk_state().stop);
-    p.key("w", KeyboardState::Pressed);
+    p.run_on("w");
     p.ticks(60);
     p.shot("j05a_turned");
-    let vale_left = crate::atlas::exits("gate", crate::atlas::came_from(&back).unwrap())[0] == "vale";
+    let vale_left = crate::atlas::leads("gate", crate::atlas::BACK)[0].shown == "vale";
     assert!(p.walk_until(4000, true, |s| s.choose_within.is_some()), "no fork walking back: {}", p.status());
     p.tap(if vale_left { "a" } else { "d" });
-    assert!(p.walk_until(6000, true, |s| s.stop.as_deref() == Some("vale@gate")), "never back in the vale: {}", p.status());
+    assert!(p.walk_until(6000, true, |s| s.stop.as_deref() == Some("vale@^")), "never back in the vale: {}", p.status());
     p.ticks(90);
     p.shot("j05b_vale_backwards");
-    assert!(p.walk_until(8000, true, |s| s.stop.as_deref() == Some("road@vale_edge")), "never back on the road: {}", p.status());
+    assert!(p.walk_until(8000, true, |s| s.stop.as_deref() == Some("vale_edge@vale")), "never back at the marsh edge: {}", p.status());
     let w = &p.game().world;
     eprintln!("[journey] souls {}, seen {:?}", w.souls, w.seen);
     assert!(p.walk_until(4000, true, |s| s.choose_within.is_some()), "no second fork: {}", p.status());
@@ -469,8 +476,9 @@ fn journey() {
     p.ticks(120);
     assert!(p.walk_state().choose_within.is_some(), "the junction chose for the player");
     p.shot("j05c_waiting_at_fork");
-    // Walking back, the chapel lies to the left.
-    p.tap("a");
+    // At the marsh edge's end, the road's junction: down it home, or on to the chapel.
+    let chapel_left = crate::atlas::leads("vale_edge", "vale")[0].shown == "chapel_edge";
+    p.tap(if chapel_left { "a" } else { "d" });
     assert!(p.walk_until(6000, true, |s| s.stop.as_deref() == Some("chapel@chapel_edge")), "never reached the chapel: {}", p.status());
     p.ticks(90);
     p.shot("j06_chapel");
@@ -865,17 +873,28 @@ fn ranged() {
         g.fight.missiles.clear();
     };
     let attacking = |name: &'static str, at: f32| move |f: &crate::fight::Fight| f.enemies[0].attack().is_some_and(|(a, ph, k)| a.art == name && ph == Phase::Windup && k >= at);
-    // The hero's own first: a bow's arrow, then a frost bolt, away up the lane at a husk.
-    for (r, name) in [(crate::gear::Ranged::Bow, "h01_arrow_away"), (crate::gear::Ranged::Catalyst, "h02_frost_away")] {
+    // The hero's own first, each as worn in the other hand: a bow's arrow (F), a frost bolt cast
+    // through the focus (C), a blood crossbow's bolt (F), away up the lane at a husk.
+    let holding = |piece: &str| { let mut l = crate::gear::Loadout::starting(); let i = crate::gear::find(piece); l.gain(i); l.wear(1, Some(i)); l.kit() };
+    // Levels enough to hold and cast all of them.
+    let levelled = |st: &mut crate::fight::Stats| (st.might, st.dexterity, st.focus) = (4, 3, 3);
+    for (piece, key, name) in [("Hunter's Shortbow", "f", "h01_arrow_away"), ("Frostweaver's Focus", "c", "h02_frost_away"), ("Blood Crossbow", "f", "h04_crossbow_away")] {
         road(&mut p, Archetype::Husk, 10.0, 0);
         p.game().fight.enemies[0].ai = crate::fight::Ai::Wait(10_000);
-        { let h = &mut p.game().fight.hero; h.stats.kit.off = None; h.stats.kit.ranged = Some(r); *h = crate::fight::Hero::with(h.stats); }
-        p.tap("f");
+        { let h = &mut p.game().fight.hero; h.stats.kit = holding(piece); levelled(&mut h.stats); *h = crate::fight::Hero::with(h.stats); }
+        let r = p.fight().hero.stats.kit.shot(key == "c").expect("nothing to shoot");
+        p.tap(key);
         p.until(30, |f| f.hero.act.is_some_and(|a| a.t >= 20));
         p.shot(&format!("{name}_draw"));
         assert!(p.until(120, |f| f.bolts.first().is_some_and(|b| b.age >= 10)), "nothing loosed");
         p.shot(name);
         p.until(120, |f| f.bolts.is_empty());
+        // Struck by frost, the husk is chilled: frosted over, a third slower.
+        if r == crate::gear::Ranged::Frost {
+            assert!(p.fight().enemies[0].chill > 0, "the frost bolt did not chill");
+            p.ticks(10);
+            p.shot("h03_frost_chilled");
+        }
     }
     { let kit = p.game().world.gear.kit(); let h = &mut p.game().fight.hero; h.stats.kit = kit; *h = crate::fight::Hero::with(h.stats); }
     road(&mut p, Archetype::Archer, 9.0, 0);
@@ -937,16 +956,17 @@ fn ranged() {
         if seen.len() == 4 { break; }
     }
     eprintln!("[ranged] yard shots {seen:?}");
-    // The hero's own, side-on: the bow at full draw, then the focus thrust out.
-    for (r, name) in [(crate::gear::Ranged::Bow, "y05_bow_drawn"), (crate::gear::Ranged::Catalyst, "y06_focus_cast")] {
+    // The hero's own, side-on: the bow at full draw, the focus thrust out, the crossbow aimed.
+    for (piece, key, name) in [("Hunter's Shortbow", "f", "y05_bow_drawn"), ("Frostweaver's Focus", "c", "y06_focus_cast"), ("Blood Crossbow", "f", "y07_crossbow_aimed")] {
         for f in arena(&mut p).side.foes.iter_mut().filter(|f| f.ai != crate::side::Ai::Dead) { f.ai = crate::side::Ai::Wait(10_000); }
-        { let h = &mut arena(&mut p).side.hero; h.stats.kit.off = None; h.stats.kit.ranged = Some(r); (h.arrows, h.charges) = (12, 3.0); h.hp = h.stats.max_hp(); }
+        { let h = &mut arena(&mut p).side.hero; h.stats.kit = holding(piece); levelled(&mut h.stats); (h.arrows, h.charges) = (12, 3.0); h.hp = h.stats.max_hp(); }
         // Up off the ground (the hexer's repel floors them) and free.
         p.until_mode(400, |m| matches!(m, Mode::Side(a) if a.side.hero.act.is_none() && a.side.hero.reel == crate::fight::Reel::None));
-        p.tap("f");
-        let at = if r == crate::gear::Ranged::Bow { 0.8 } else { 1.02 };
-        assert!(p.until_mode(200, |m| matches!(m, Mode::Side(a) if a.side.hero.act.is_some_and(|(act, t)| act == crate::side::Act::Loose
-            && t as f32 >= at * crate::side::Act::Loose.frames(&a.side.hero.stats.kit).0 as f32))), "{name}: never loosed");
+        p.tap(key);
+        let act = if key == "c" { crate::side::Act::Cast } else { crate::side::Act::Loose };
+        let at = if piece == "Hunter's Shortbow" { 0.8 } else { 1.02 };
+        assert!(p.until_mode(200, |m| matches!(m, Mode::Side(a) if a.side.hero.act.is_some_and(|(x, t)| x == act
+            && t as f32 >= at * act.frames(&a.side.hero.stats.kit).0 as f32))), "{name}: never loosed");
         p.shot(name);
         p.ticks(90);
     }
@@ -1082,4 +1102,31 @@ fn profiles() {
     let list = profile::summaries(&dir);
     assert!(list[0] == Slot::Empty && matches!(list[1], Slot::Kept(_)), "{list:?}");
     p.shot("p06_forgotten");
+}
+
+/// Leaving from the pause menu keeps the pilgrimage as it is that moment, without waiting for
+/// the autosave's next look: what was done just before is in the save, and the list shows it.
+#[test]
+#[ignore]
+fn pause_keeps() {
+    use crate::game::Mode;
+    use crate::profile;
+    let mut p = Play::started();
+    p.game().keep();
+    let dir = p.game().saves.clone();
+    // Done since the last look, then paused straight away.
+    { let g = p.game(); g.world.souls = 4321; g.fight.hero.stats.vigor = 7; }
+    p.tap("q");
+    p.ticks(2);
+    assert!(p.until_mode(10, |m| matches!(m, Mode::Front(crate::shrine::Front::Pause(_)))), "never paused");
+    p.shot("q01_paused");
+    // Change profile.
+    p.tap("s");
+    p.tap("e");
+    p.ticks(2);
+    let saved = profile::read(&dir, 0).expect("nothing kept");
+    assert_eq!((saved.world["souls"].as_u64(), saved.stats.vigor), (Some(4321), 7), "the save missed what was done before pausing");
+    let list = profile::summaries(&dir);
+    assert!(matches!(&list[0], profile::Slot::Kept(s) if s.level == saved.stats.level()), "{list:?}");
+    p.shot("q02_list_after_leaving");
 }
