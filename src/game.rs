@@ -1671,7 +1671,7 @@ impl Pilgrimage {
     /// The words and choices to show now, and how.
     fn panel(&self) -> Option<(Panel, Style, f32)> {
         match &self.mode {
-            Mode::Front(f) => Some((f.panel(&self.slots), Style::Title, 1.0)),
+            Mode::Front(f) => Some((f.panel(&self.slots), if matches!(f, Front::Pause(_)) { Style::Menu } else { Style::Title }, 1.0)),
             Mode::Sanctum(s) => Some((s.panel(&self.world, &self.fight), Style::Menu, 1.0)),
             Mode::Meet(m) => Some((m.panel(), Style::Menu, 1.0)),
             Mode::Map => Some((Panel { title: "The Shattered Realms".into(), text: crate::map::legend(&self.world), hint: "M or Esc close".into(), ..Panel::default() }, Style::Menu, 1.0)),
@@ -1836,6 +1836,21 @@ impl QuartzPlugin for Pilgrimage {
                         self.slots = profile::summaries(&self.saves);
                         Mode::Front(f)
                     }
+                    Some(Begin::Resume) => Mode::Play,
+                    Some(Begin::Profile) => {
+                        self.slot = None;
+                        self.calling = None;
+                        self.played = 0.0;
+                        self.kept = None;
+                        Mode::Front(Front::profiles(&self.slots))
+                    }
+                    Some(Begin::Quit) => {
+                        eprintln!("[hollow_road] quitting to desktop");
+                        #[cfg(not(target_arch = "wasm32"))]
+                        std::process::exit(0);
+                        #[cfg(target_arch = "wasm32")]
+                        { Mode::Front(Front::profiles(&self.slots)) }
+                    }
                     None => Mode::Front(f),
                 }
             }
@@ -1851,6 +1866,7 @@ impl QuartzPlugin for Pilgrimage {
             }
             Mode::Peek(t, side) if t >= PEEK_T => { self.fade.1 = 1.0; Mode::Out(Next::Detour(side)) }
             Mode::Peek(t, side) => Mode::Peek(t + 1, side),
+            Mode::Play if keys.contains(&shrine::Key::Back) => Mode::Front(Front::Pause(0)),
             Mode::Play if pressed_m => Mode::Map,
             Mode::Map if pressed_m || keys.contains(&shrine::Key::Back) => Mode::Play,
             Mode::Map => Mode::Map,

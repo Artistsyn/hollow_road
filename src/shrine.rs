@@ -67,6 +67,8 @@ pub enum Front {
     Title,
     /// The list, the slot chosen.
     Profiles(usize),
+    /// A paused game menu with the road still visible behind it.
+    Pause(usize),
     /// A kept pilgrimage: carry it on, forget it, or go back (the choice).
     Kept(usize, usize),
     /// Asked whether to forget it for good: keep it (0) or forget it (1).
@@ -84,10 +86,17 @@ pub enum Begin {
     Continue(usize),
     /// Empty this slot for good.
     Forget(usize),
+    /// Leave the pause menu and return to the road.
+    Resume,
+    /// Return to the profile select menu.
+    Profile,
+    /// Quit the game entirely.
+    Quit,
 }
 
 const KEPT: [&str; 3] = ["Carry on", "Forget this pilgrimage", "Back"];
 const FORGET: [&str; 2] = ["Keep it", "Forget it for good"];
+const PAUSE: [&str; 3] = ["Resume", "Change profile", "Quit game"];
 
 impl Front {
     /// The list, the newest pilgrimage chosen (else the first free slot).
@@ -109,6 +118,16 @@ impl Front {
                 _ => {}
             },
             (Front::Profiles(_), Key::Back) => *self = Front::Title,
+            (Front::Pause(i), Key::Up | Key::Left) => *self = Front::Pause(i.saturating_sub(1)),
+            (Front::Pause(i), Key::Down | Key::Right) => *self = Front::Pause((i + 1).min(PAUSE.len() - 1)),
+            (Front::Pause(i), Key::Use) => {
+                return match i {
+                    0 => Some(Begin::Resume),
+                    1 => Some(Begin::Profile),
+                    _ => Some(Begin::Quit),
+                };
+            }
+            (Front::Pause(_), Key::Back) => return Some(Begin::Resume),
             (Front::Kept(i, c), Key::Up | Key::Left) => *self = Front::Kept(i, c.saturating_sub(1)),
             (Front::Kept(i, c), Key::Down | Key::Right) => *self = Front::Kept(i, (c + 1).min(KEPT.len() - 1)),
             (Front::Kept(i, 0), Key::Use) => return Some(Begin::Continue(i)),
@@ -146,6 +165,13 @@ impl Front {
                 }).collect(),
                 choice: i,
                 hint: "W/S choose   E open   Esc back".into(),
+            },
+            Front::Pause(i) => Panel {
+                title: "Paused".into(),
+                text: "Take a breath, switch pilgrimages, or leave Hollowmere for now.".into(),
+                options: PAUSE.iter().map(|o| (o.to_string(), true)).collect(),
+                choice: i,
+                hint: "W/S choose   E confirm   Esc back".into(),
             },
             Front::Kept(i, c) => Panel {
                 title: format!("Pilgrimage {}", i + 1),
