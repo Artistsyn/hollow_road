@@ -1,0 +1,8 @@
+{
+ "NOSE": [0.59, 0.19, 7], "RIGHT EYE": [0.575, 0.175, 7], "LEFT EYE": [0.585, 0.17, 4],
+ "RIGHT EAR": [0.53, 0.19, 7], "LEFT EAR": [0.535, 0.185, 3], "NECK": [0.54, 0.29, 5],
+ "RIGHT SHOULDER": [0.52, 0.36, 6], "RIGHT ELBOW": [0.48, 0.50, 8], "RIGHT ARM": [0.55, 0.60, 8],
+ "LEFT SHOULDER": [0.57, 0.35, 3], "LEFT ELBOW": [0.60, 0.48, 2], "LEFT ARM": [0.61, 0.56, 2],
+ "RIGHT HIP": [0.52, 0.63, 5], "RIGHT KNEE": [0.47, 0.78, 6], "RIGHT LEG": [0.48, 0.90, 6],
+ "LEFT HIP": [0.56, 0.63, 4], "LEFT KNEE": [0.55, 0.77, 3], "LEFT LEG": [0.55, 0.87, 3]
+}

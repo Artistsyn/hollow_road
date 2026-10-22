@@ -7,10 +7,14 @@ use ramp::prism;
 
 mod anim;
 mod art;
+mod assets;
+mod atlas;
 mod fight;
 mod fx;
 mod gear;
+mod map;
 mod game;
+mod profile;
 mod shrine;
 mod side;
 mod world;

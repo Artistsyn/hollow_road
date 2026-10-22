@@ -1,0 +1,34 @@
+HOLLOW ROAD - test build
+========================
+
+Needs a Mac with Apple Silicon (M1 or later) and macOS 11 or newer. Nothing else to install.
+
+1. Unzip, and drag "Hollow Road.app" into Applications (or anywhere you like).
+
+2. The first time only: this build is not signed with an Apple developer certificate, so macOS
+   will say it cannot be opened. Either:
+     - double-click it, press Done, then open System Settings > Privacy & Security, scroll down
+       to the message about "Hollow Road" and press "Open Anyway" (then confirm); or
+     - in Terminal, run:   xattr -dr com.apple.quarantine "/Applications/Hollow Road.app"
+       and then double-click it as usual.
+   After that it opens normally.
+
+3. Pick a pilgrimage slot, then a calling:
+     Wayfarer     sword and buckler: rolls, parries, ripostes
+     Warden       a tall bulwark: blocks fill a ward; a block at the last moment bursts it
+     Bloodrunner  a bow whose arrows cost health
+     Frostweaver  a frost focus whose charges are filled by fighting up close
+
+CONTROLS (keyboard and mouse)
+  On the road     W / S walk     A / D roll     Shift run     Space backstep
+                  Left click strike     Shift + left click heavy
+                  Right click guard     Shift + right click parry
+                  R drink     F loose an arrow or bolt     E rest / talk / use
+                  T turn back     M map     Esc back out of a menu
+  Side-on fights  A / D move     Space + A / D roll     W jump (same attacks)
+  Warning colours over an enemy:  gold = parry it,  orange = roll or block,  purple = roll
+
+SAVES
+  Your progress is kept automatically, every few seconds, in up to five slots. Carrying a
+  pilgrimage on wakes you at the last shrine you rested at. Saves live in
+  ~/Library/Application Support/Hollow Road/profiles (delete that folder to start clean).

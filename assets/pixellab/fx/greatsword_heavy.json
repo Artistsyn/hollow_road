@@ -1,0 +1,261 @@
+{
+ "frames": [
+  {
+   "filename": "hollow-road-greatsword-heavy 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 240,
+    "h": 136
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 240,
+    "h": 136
+   },
+   "sourceSize": {
+    "w": 240,
+    "h": 136
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 50
+  },
+  {
+   "filename": "hollow-road-greatsword-heavy 1.png",
+   "frame": {
+    "x": 240,
+    "y": 0,
+    "w": 240,
+    "h": 136
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 240,
+    "h": 136
+   },
+   "sourceSize": {
+    "w": 240,
+    "h": 136
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 50
+  },
+  {
+   "filename": "hollow-road-greatsword-heavy 2.png",
+   "frame": {
+    "x": 480,
+    "y": 0,
+    "w": 240,
+    "h": 136
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 240,
+    "h": 136
+   },
+   "sourceSize": {
+    "w": 240,
+    "h": 136
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 50
+  },
+  {
+   "filename": "hollow-road-greatsword-heavy 3.png",
+   "frame": {
+    "x": 0,
+    "y": 136,
+    "w": 240,
+    "h": 136
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 240,
+    "h": 136
+   },
+   "sourceSize": {
+    "w": 240,
+    "h": 136
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 50
+  },
+  {
+   "filename": "hollow-road-greatsword-heavy 4.png",
+   "frame": {
+    "x": 240,
+    "y": 136,
+    "w": 240,
+    "h": 136
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 240,
+    "h": 136
+   },
+   "sourceSize": {
+    "w": 240,
+    "h": 136
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 50
+  },
+  {
+   "filename": "hollow-road-greatsword-heavy 5.png",
+   "frame": {
+    "x": 480,
+    "y": 136,
+    "w": 240,
+    "h": 136
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 240,
+    "h": 136
+   },
+   "sourceSize": {
+    "w": 240,
+    "h": 136
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 50
+  },
+  {
+   "filename": "hollow-road-greatsword-heavy 6.png",
+   "frame": {
+    "x": 0,
+    "y": 272,
+    "w": 240,
+    "h": 136
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 240,
+    "h": 136
+   },
+   "sourceSize": {
+    "w": 240,
+    "h": 136
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 50
+  },
+  {
+   "filename": "hollow-road-greatsword-heavy 7.png",
+   "frame": {
+    "x": 240,
+    "y": 272,
+    "w": 240,
+    "h": 136
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 240,
+    "h": 136
+   },
+   "sourceSize": {
+    "w": 240,
+    "h": 136
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 50
+  },
+  {
+   "filename": "hollow-road-greatsword-heavy 8.png",
+   "frame": {
+    "x": 480,
+    "y": 272,
+    "w": 240,
+    "h": 136
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 240,
+    "h": 136
+   },
+   "sourceSize": {
+    "w": 240,
+    "h": 136
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 50
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hollow-road-greatsword-heavy.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 720,
+   "h": 408
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 120,
+   "y": 68
+  },
+  "frameTags": [
+   {
+    "name": "hollow-road-greatsword-heavy",
+    "from": 0,
+    "to": 8,
+    "direction": "forward"
+   }
+  ]
+ }
+}

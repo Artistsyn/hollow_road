@@ -1,0 +1,209 @@
+{
+ "frames": [
+  {
+   "filename": "hollow-road-spear-light 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 64,
+    "h": 176
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 64,
+    "h": 176
+   },
+   "sourceSize": {
+    "w": 64,
+    "h": 176
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 50
+  },
+  {
+   "filename": "hollow-road-spear-light 1.png",
+   "frame": {
+    "x": 64,
+    "y": 0,
+    "w": 64,
+    "h": 176
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 64,
+    "h": 176
+   },
+   "sourceSize": {
+    "w": 64,
+    "h": 176
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 50
+  },
+  {
+   "filename": "hollow-road-spear-light 2.png",
+   "frame": {
+    "x": 128,
+    "y": 0,
+    "w": 64,
+    "h": 176
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 64,
+    "h": 176
+   },
+   "sourceSize": {
+    "w": 64,
+    "h": 176
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 50
+  },
+  {
+   "filename": "hollow-road-spear-light 3.png",
+   "frame": {
+    "x": 0,
+    "y": 176,
+    "w": 64,
+    "h": 176
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 64,
+    "h": 176
+   },
+   "sourceSize": {
+    "w": 64,
+    "h": 176
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 50
+  },
+  {
+   "filename": "hollow-road-spear-light 4.png",
+   "frame": {
+    "x": 64,
+    "y": 176,
+    "w": 64,
+    "h": 176
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 64,
+    "h": 176
+   },
+   "sourceSize": {
+    "w": 64,
+    "h": 176
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 50
+  },
+  {
+   "filename": "hollow-road-spear-light 5.png",
+   "frame": {
+    "x": 128,
+    "y": 176,
+    "w": 64,
+    "h": 176
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 64,
+    "h": 176
+   },
+   "sourceSize": {
+    "w": 64,
+    "h": 176
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 50
+  },
+  {
+   "filename": "hollow-road-spear-light 6.png",
+   "frame": {
+    "x": 0,
+    "y": 352,
+    "w": 64,
+    "h": 176
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 64,
+    "h": 176
+   },
+   "sourceSize": {
+    "w": 64,
+    "h": 176
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 50
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hollow-road-spear-light.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 192,
+   "h": 528
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 32,
+   "y": 88
+  },
+  "frameTags": [
+   {
+    "name": "hollow-road-spear-light",
+    "from": 0,
+    "to": 6,
+    "direction": "forward"
+   }
+  ]
+ }
+}

@@ -1,0 +1,4 @@
+pilgrim_buckler 15.5 16 0
+duelist_parma 16 16 3
+kite_shield 16 24 6
+warden_bulwark 16 30 6

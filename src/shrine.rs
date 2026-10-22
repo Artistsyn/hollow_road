@@ -12,6 +12,7 @@
 
 use crate::fight::{Fight, Stats, GEAR_MAX};
 use crate::gear::{Arms, Grade, ATTRIBUTES, ITEMS, SLOTS};
+use crate::profile::Slot;
 use crate::world::{Note, World};
 
 /// A calling: the direction a pilgrim starts in (design doc §8.4).
@@ -26,13 +27,22 @@ impl Calling {
     pub fn blurb(self) -> &'static str {
         match self {
             Calling::Wayfarer => "Sword and buckler. Rolls, parries and ripostes: the road's fight as it stands.",
-            Calling::Warden => "Armoured shield-bearer. Blocks charge a ward; a perfect block bursts it.",
-            Calling::Bloodrunner => "Hunter who spends their own blood on arrows: health as ammunition.",
-            Calling::Frostweaver => "Rune caster. Focus feeds frost chains that bind and shields that turn a blow.",
+            Calling::Warden => "Sword and a tall bulwark, the steadiest on their feet: blocks fill a ward, and a block raised at the last moment lets it burst into the foe.",
+            Calling::Bloodrunner => "Sword and a bow, no shield: arrows drawn from their own blood (F). Wear a foe down from afar, finish it up close.",
+            Calling::Frostweaver => "Sword and a frost focus, no shield: bolts that crack a foe's stance (F), their charges filled by blows landed up close.",
         }
     }
-    /// Whether it can be played yet (the others are listed so the road ahead is visible).
-    pub fn playable(self) -> bool { self == Calling::Wayfarer }
+    /// Whether it can be played yet (one that cannot is listed so the road ahead is visible):
+    /// all of them now.
+    pub fn playable(self) -> bool { true }
+    /// What it sets out holding in the other hand in place of the buckler.
+    pub fn offhand(self) -> Option<&'static str> {
+        match self { Calling::Warden => Some("Warden's Bulwark"), Calling::Bloodrunner => Some("Bloodrunner's Bow"), Calling::Frostweaver => Some("Frostweaver's Focus"), _ => None }
+    }
+    /// The levels it starts with past the Wayfarer's: might, dexterity, focus.
+    pub fn leaning(self) -> [u32; 3] {
+        match self { Calling::Warden => [3, 0, 0], Calling::Bloodrunner => [0, 3, 0], Calling::Frostweaver => [0, 0, 3], _ => [0, 0, 0] }
+    }
 }
 
 /// The keys these screens listen to, from whatever device.
@@ -50,25 +60,75 @@ pub struct Panel {
     pub hint: String,
 }
 
-/// The title, then the calling.
+/// The title, then the pilgrimages kept (`profile::Slot`), then a kept one's choices or, for a
+/// free slot, the calling to set out in. Slots are numbered from 0.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Front { Title, Callings(usize) }
+pub enum Front {
+    Title,
+    /// The list, the slot chosen.
+    Profiles(usize),
+    /// A kept pilgrimage: carry it on, forget it, or go back (the choice).
+    Kept(usize, usize),
+    /// Asked whether to forget it for good: keep it (0) or forget it (1).
+    Forget(usize, usize),
+    /// A free slot: the calling to set out in.
+    Callings(usize, usize),
+}
+
+/// What the title has decided.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Begin {
+    /// A new pilgrimage in this slot, in this calling.
+    New(usize, Calling),
+    /// Carry on the one kept in this slot.
+    Continue(usize),
+    /// Empty this slot for good.
+    Forget(usize),
+}
+
+const KEPT: [&str; 3] = ["Carry on", "Forget this pilgrimage", "Back"];
+const FORGET: [&str; 2] = ["Keep it", "Forget it for good"];
 
 impl Front {
-    /// A key; the calling once one is chosen.
-    pub fn press(&mut self, k: Key) -> Option<Calling> {
+    /// The list, the newest pilgrimage chosen (else the first free slot).
+    pub fn profiles(slots: &[Slot]) -> Front {
+        Front::Profiles(crate::profile::newest(slots).or_else(|| slots.iter().position(|s| *s == Slot::Empty)).unwrap_or(0))
+    }
+
+    /// A key, with the slots as they stand; what has been decided, once it is.
+    pub fn press(&mut self, k: Key, slots: &[Slot]) -> Option<Begin> {
+        let last = slots.len().saturating_sub(1);
         match (*self, k) {
-            (Front::Title, Key::Use) => *self = Front::Callings(0),
-            (Front::Callings(i), Key::Up | Key::Left) => *self = Front::Callings(i.saturating_sub(1)),
-            (Front::Callings(i), Key::Down | Key::Right) => *self = Front::Callings((i + 1).min(Calling::ALL.len() - 1)),
-            (Front::Callings(i), Key::Use) if Calling::ALL[i].playable() => return Some(Calling::ALL[i]),
-            (Front::Callings(_), Key::Back) => *self = Front::Title,
+            (Front::Title, Key::Use) => *self = Front::profiles(slots),
+            (Front::Profiles(i), Key::Up | Key::Left) => *self = Front::Profiles(i.saturating_sub(1)),
+            (Front::Profiles(i), Key::Down | Key::Right) => *self = Front::Profiles((i + 1).min(last)),
+            (Front::Profiles(i), Key::Use) => match slots.get(i) {
+                Some(Slot::Kept(_)) => *self = Front::Kept(i, 0),
+                Some(Slot::Empty) => *self = Front::Callings(i, 0),
+                // A file this game cannot read is never written over.
+                _ => {}
+            },
+            (Front::Profiles(_), Key::Back) => *self = Front::Title,
+            (Front::Kept(i, c), Key::Up | Key::Left) => *self = Front::Kept(i, c.saturating_sub(1)),
+            (Front::Kept(i, c), Key::Down | Key::Right) => *self = Front::Kept(i, (c + 1).min(KEPT.len() - 1)),
+            (Front::Kept(i, 0), Key::Use) => return Some(Begin::Continue(i)),
+            (Front::Kept(i, 1), Key::Use) => *self = Front::Forget(i, 0),
+            (Front::Kept(i, _), Key::Use | Key::Back) => *self = Front::Profiles(i),
+            (Front::Forget(i, c), Key::Up | Key::Left) => *self = Front::Forget(i, c.saturating_sub(1)),
+            (Front::Forget(i, c), Key::Down | Key::Right) => *self = Front::Forget(i, (c + 1).min(FORGET.len() - 1)),
+            (Front::Forget(i, 1), Key::Use) => { *self = Front::Profiles(i); return Some(Begin::Forget(i)); }
+            (Front::Forget(i, _), Key::Use | Key::Back) => *self = Front::Kept(i, 1),
+            (Front::Callings(s, i), Key::Up | Key::Left) => *self = Front::Callings(s, i.saturating_sub(1)),
+            (Front::Callings(s, i), Key::Down | Key::Right) => *self = Front::Callings(s, (i + 1).min(Calling::ALL.len() - 1)),
+            (Front::Callings(s, i), Key::Use) if Calling::ALL[i].playable() => return Some(Begin::New(s, Calling::ALL[i])),
+            (Front::Callings(s, _), Key::Back) => *self = Front::Profiles(s),
             _ => {}
         }
         None
     }
 
-    pub fn panel(&self) -> Panel {
+    pub fn panel(&self, slots: &[Slot]) -> Panel {
+        let kept = |i: usize| match slots.get(i) { Some(Slot::Kept(k)) => k.line(), _ => String::new() };
         match *self {
             Front::Title => Panel {
                 title: "HOLLOW ROAD".into(),
@@ -76,7 +136,32 @@ impl Front {
                 hint: "E or Enter to begin".into(),
                 ..Panel::default()
             },
-            Front::Callings(i) => Panel {
+            Front::Profiles(i) => Panel {
+                title: "Pilgrimages".into(),
+                text: "Each is kept apart: carry one on, or begin another in a free place to walk the road another way.".into(),
+                options: slots.iter().enumerate().map(|(n, s)| match s {
+                    Slot::Kept(k) => (format!("{}.  {}", n + 1, k.line()), true),
+                    Slot::Empty => (format!("{}.  free: begin a new pilgrimage", n + 1), true),
+                    Slot::Unreadable => (format!("{}.  kept by another version of the game", n + 1), false),
+                }).collect(),
+                choice: i,
+                hint: "W/S choose   E open   Esc back".into(),
+            },
+            Front::Kept(i, c) => Panel {
+                title: format!("Pilgrimage {}", i + 1),
+                text: kept(i),
+                options: KEPT.iter().map(|o| (o.to_string(), true)).collect(),
+                choice: c,
+                hint: "W/S choose   E confirm   Esc back".into(),
+            },
+            Front::Forget(i, c) => Panel {
+                title: format!("Forget pilgrimage {}?", i + 1),
+                text: format!("{}.  It cannot be brought back.", kept(i)),
+                options: FORGET.iter().map(|o| (o.to_string(), true)).collect(),
+                choice: c,
+                hint: "W/S choose   E confirm   Esc back".into(),
+            },
+            Front::Callings(_, i) => Panel {
                 title: "Choose a calling".into(),
                 text: Calling::ALL[i].blurb().into(),
                 options: Calling::ALL.iter().map(|c| (if c.playable() { c.name().to_owned() } else { format!("{}  (not yet)", c.name()) }, c.playable())).collect(),
@@ -118,6 +203,10 @@ enum View {
     /// The places to wear things, and the pieces that could go in place `p`.
     Gear(usize),
     Wear(usize, usize),
+    /// The shrines rested at, to rise at instead.
+    Travel(usize),
+    /// What the smith can forge from the bosses' remnants.
+    Craft(usize),
 }
 
 /// The hero at rest.
@@ -130,7 +219,7 @@ pub struct Sanctum {
 
 const KEEPER_FIRST: [&str; 3] = [
     "You are awake. Good. The road takes most who walk it long before they find a fire like this one.",
-    "I keep the shrines on the way to Hollowmere. Bring me the souls of the fallen and I can make you more than you are.",
+    "I keep the shrines on the way to Hollowmere. Bring me the echoes of the fallen and I can make you more than you are.",
     "Rest when you must. The dead you put down rise again while you sit. That is the fire's price.",
 ];
 const KEEPER_TALK: [&str; 3] = [
@@ -162,8 +251,17 @@ impl Sanctum {
         let st = f.hero.stats;
         match (&self.view, self.station()) {
             (View::Choices(_), Station::Keeper) => vec![("Grow stronger".into(), true), ("Talk".into(), true), ("Step away".into(), true)],
-            (View::Choices(_), Station::Shrine) => vec![("Rise and walk on".into(), true), ("Equipment".into(), true), ("Stay a while".into(), true)],
-            (View::Choices(_), Station::Smith) => vec![("Forge".into(), true), ("Talk".into(), true), ("Step away".into(), true)],
+            (View::Choices(_), Station::Shrine) => vec![("Rise and walk on".into(), true), ("Equipment".into(), true), ("Travel".into(), w.travel_list().len() > 1), ("Stay a while".into(), true)],
+            (View::Travel(_), _) => {
+                let here = crate::atlas::node(&w.checkpoint);
+                w.travel_list().into_iter()
+                    .map(|(title, stop)| (if crate::atlas::node(&stop) == here { format!("{title}   (here)") } else { title.to_string() }, true))
+                    .chain([("Back".to_string(), true)]).collect()
+            }
+            (View::Choices(_), Station::Smith) => vec![("Forge".into(), true), ("Craft from a remnant".into(), !w.craftable().is_empty()), ("Talk".into(), true), ("Step away".into(), true)],
+            (View::Craft(_), _) => w.craftable().into_iter()
+                .map(|(r, can)| (format!("{}   from the {}   {} {}, {} shards   {}", r.item, r.remnant, r.echoes, crate::world::CURRENCY, r.shards, ITEMS[crate::gear::find(r.item)].text), can))
+                .chain([("Back".to_string(), true)]).collect(),
             (View::Levels(_), _) => {
                 let can = w.souls >= st.level_cost();
                 // Each line says what one more level would change, as the hero is now equipped.
@@ -180,7 +278,7 @@ impl Sanctum {
             }
             (View::Forge(_), _) => {
                 let line = |what: &str, lvl: u32| match World::forge_cost(lvl) {
-                    Some((souls, shards)) => (format!("{what} +{lvl} to +{}   {souls} souls, {shards} shards", lvl + 1), w.souls >= souls && w.shards >= shards),
+                    Some((souls, shards)) => (format!("{what} +{lvl} to +{}   {souls} {}, {shards} shards", lvl + 1, crate::world::CURRENCY), w.souls >= souls && w.shards >= shards),
                     None => (format!("{what} +{GEAR_MAX}   as good as it gets"), false),
                 };
                 vec![line("Weapon", st.weapon), line("Armour", st.armour), ("Back".into(), true)]
@@ -218,11 +316,22 @@ impl Sanctum {
             }
             (View::Words { pages, page }, Key::Use | Key::Right) if page + 1 < pages.len() => self.view = View::Words { pages, page: page + 1 },
             (View::Words { .. }, Key::Use | Key::Right | Key::Back) => self.view = View::Choices(0),
-            (View::Choices(i) | View::Levels(i) | View::Forge(i) | View::Gear(i) | View::Wear(_, i), Key::Up) => self.set_choice(i.saturating_sub(1)),
-            (View::Choices(i) | View::Levels(i) | View::Forge(i) | View::Gear(i) | View::Wear(_, i), Key::Down) => self.set_choice((i + 1).min(n.saturating_sub(1))),
+            (View::Choices(i) | View::Levels(i) | View::Forge(i) | View::Gear(i) | View::Wear(_, i) | View::Travel(i) | View::Craft(i), Key::Up) => self.set_choice(i.saturating_sub(1)),
+            (View::Choices(i) | View::Levels(i) | View::Forge(i) | View::Gear(i) | View::Wear(_, i) | View::Travel(i) | View::Craft(i), Key::Down) => self.set_choice((i + 1).min(n.saturating_sub(1))),
             (View::Choices(_), Key::Back) => self.view = View::Walk,
             (View::Levels(_) | View::Forge(_), Key::Back) => self.view = View::Choices(0),
             (View::Gear(_), Key::Back) => self.view = View::Choices(1),
+            (View::Travel(_), Key::Back) => self.view = View::Choices(2),
+            (View::Craft(_), Key::Back) => self.view = View::Choices(1),
+            (View::Craft(i), Key::Use) => match w.craftable().get(i).map(|(r, _)| *r) {
+                Some(r) => { let out = w.craft(r); Self::refit(w, f); if w.craftable().is_empty() { self.view = View::Choices(1); } return out.map(Outcome::Note); }
+                None => self.view = View::Choices(1),
+            },
+            // Rise at the shrine chosen.
+            (View::Travel(i), Key::Use) => match w.travel_list().get(i) {
+                Some((_, stop)) => { let stop = stop.clone(); w.travel(&stop); self.view = View::Walk; return Some(Outcome::Rise); }
+                None => self.view = View::Choices(2),
+            },
             (View::Wear(p, _), Key::Back) => self.view = View::Gear(p),
             (View::Gear(i), Key::Use) if i < SLOTS.len() => self.view = View::Wear(i, 0),
             (View::Gear(_), Key::Use) => self.view = View::Choices(1),
@@ -246,7 +355,7 @@ impl Sanctum {
     fn set_choice(&mut self, i: usize) {
         self.view = match self.view {
             View::Choices(_) => View::Choices(i), View::Levels(_) => View::Levels(i), View::Forge(_) => View::Forge(i),
-            View::Gear(_) => View::Gear(i), View::Wear(p, _) => View::Wear(p, i), ref v => v.clone(),
+            View::Gear(_) => View::Gear(i), View::Wear(p, _) => View::Wear(p, i), View::Travel(_) => View::Travel(i), View::Craft(_) => View::Craft(i), ref v => v.clone(),
         };
     }
 
@@ -278,8 +387,12 @@ impl Sanctum {
             }
             (Station::Shrine, 0) => { self.view = View::Walk; return Some(Outcome::Rise); }
             (Station::Shrine, 1) => self.view = View::Gear(0),
+            (Station::Shrine, 2) if w.travel_list().len() > 1 => self.view = View::Travel(0),
+            (Station::Shrine, 2) => {}
             (Station::Smith, 0) => self.view = View::Forge(0),
-            (Station::Smith, 1) => { let k = w.talks[1]; w.talks[1] += 1; self.view = words(&SMITH_TALK, k); }
+            (Station::Smith, 1) if !w.craftable().is_empty() => self.view = View::Craft(0),
+            (Station::Smith, 1) => {}
+            (Station::Smith, 2) => { let k = w.talks[1]; w.talks[1] += 1; self.view = words(&SMITH_TALK, k); }
             _ => self.view = View::Walk,
         }
         None
@@ -302,15 +415,27 @@ impl Sanctum {
             View::Choices(i) => { p.choice = *i; p.hint = "W/S choose   E take   Esc back".into(); }
             View::Levels(i) => {
                 p.title = "Grow stronger".into();
-                p.text = format!("Souls {}.   Level {}: the next costs {}.", w.souls, f.hero.stats.level(), f.hero.stats.level_cost());
+                p.text = format!("{} {}.   Level {}: the next costs {}.", crate::world::CURRENCY_TITLE, w.souls, f.hero.stats.level(), f.hero.stats.level_cost());
                 p.choice = *i;
                 p.hint = "W/S choose   E buy   Esc back".into();
             }
             View::Forge(i) => {
                 p.title = "The forge".into();
-                p.text = format!("Souls {}.   Shards {}.", w.souls, w.shards);
+                p.text = format!("{} {}.   Shards {}.", crate::world::CURRENCY_TITLE, w.souls, w.shards);
                 p.choice = *i;
                 p.hint = "W/S choose   E forge   Esc back".into();
+            }
+            View::Craft(i) => {
+                p.title = "Forge from a remnant".into();
+                p.text = format!("{} {}.   Shards {}.   \"Bring me what's left of a thing that should not have lived, and I'll make you a weapon worth the name.\"", crate::world::CURRENCY_TITLE, w.souls, w.shards);
+                p.choice = *i;
+                p.hint = "W/S choose   E forge   Esc back".into();
+            }
+            View::Travel(i) => {
+                p.title = "Travel".into();
+                p.text = "The fire remembers every shrine you have rested at. Rise at another.".into();
+                p.choice = *i;
+                p.hint = "W/S choose   E rise there   Esc back".into();
             }
             View::Gear(i) | View::Wear(_, i) => {
                 let st = &f.hero.stats;
@@ -332,7 +457,7 @@ impl Sanctum {
 
 impl Default for Sanctum { fn default() -> Self { Sanctum::new() } }
 
-/// A weapon as the list shows it: what it needs (a need the hero lacks marked with !), its grade
+/// A weapon as the list shows it: its kind, what it needs (a need the hero lacks marked with !), its grade
 /// in each attribute, and what it would strike for in the hero's hands.
 pub fn arms_line(a: &Arms, st: &Stats) -> String {
     const SHORT: [&str; 3] = ["Mt", "Dx", "Fc"];
@@ -340,7 +465,8 @@ pub fn arms_line(a: &Arms, st: &Stats) -> String {
     let needs: Vec<String> = (0..3).filter(|&i| a.needs[i] > 0).map(|i| format!("{} {}{}", SHORT[i], a.needs[i], if at[i] < a.needs[i] { "!" } else { "" })).collect();
     let grades: Vec<String> = (0..3).filter(|&i| a.scales[i] != Grade::No).map(|i| format!("{} {}", SHORT[i], a.scales[i].letter())).collect();
     let held = Stats { kit: crate::gear::Kit { arms: *a, ..st.kit }, ..*st };
-    format!("needs {}  scales {}  x{:.2}", if needs.is_empty() { "nothing".into() } else { needs.join(" ") }, grades.join(" "), held.damage())
+    let kind = if a.class.two_handed() { format!("{}, both hands", a.class.name()) } else { a.class.name().to_string() };
+    format!("{kind}  needs {}  scales {}  x{:.2}", if needs.is_empty() { "nothing".into() } else { needs.join(" ") }, grades.join(" "), held.damage())
 }
 
 /// Words with someone met on the road, a page at a time.
@@ -367,15 +493,51 @@ mod tests {
     fn setup() -> (Sanctum, World, Fight) { (Sanctum::new(), World::new(0.0), Fight::new(Vec::new())) }
 
     #[test]
-    fn only_a_playable_calling_can_be_chosen() {
+    fn every_calling_can_be_chosen_and_sets_out_with_its_own() {
+        let free = vec![Slot::Empty; crate::profile::SLOTS];
+        for (k, c) in Calling::ALL.into_iter().enumerate() {
+            let mut f = Front::Title;
+            assert_eq!(f.press(Key::Use, &free), None);
+            assert_eq!(f, Front::Profiles(0));
+            assert_eq!(f.press(Key::Use, &free), None);
+            assert_eq!(f, Front::Callings(0, 0));
+            for _ in 0..k { f.press(Key::Down, &free); }
+            assert!(Front::Callings(0, k).panel(&free).options[k].1, "{} is listed as playable", c.name());
+            assert_eq!(f.press(Key::Use, &free), Some(Begin::New(0, c)));
+            // What it holds in the other hand is a real piece.
+            if let Some(name) = c.offhand() { let _ = crate::gear::find(name); }
+        }
+        assert_eq!(Calling::Warden.offhand(), Some("Warden's Bulwark"));
+    }
+
+    #[test]
+    fn the_title_offers_the_newest_pilgrimage_and_forgetting_one_asks_twice() {
+        use crate::profile::Summary;
+        let kept = |saved: u64| Slot::Kept(Summary { calling: Calling::Warden, level: 3, place: "The Road to Hollowmere", played: 60, pilgrimages: 0, saved });
+        let slots = vec![kept(10), Slot::Empty, kept(30), Slot::Unreadable, Slot::Empty];
         let mut f = Front::Title;
-        assert_eq!(f.press(Key::Use), None);
-        assert_eq!(f, Front::Callings(0));
-        f.press(Key::Down);
-        assert_eq!(f.press(Key::Use), None, "the Warden is not yet");
-        f.press(Key::Up);
-        assert_eq!(f.press(Key::Use), Some(Calling::Wayfarer));
-        assert_eq!(Front::Callings(1).panel().options[1].1, false);
+        f.press(Key::Use, &slots);
+        assert_eq!(f, Front::Profiles(2), "the newest first");
+        assert_eq!({ let mut g = f; g.press(Key::Use, &slots) }, None, "opening it decides nothing yet");
+        f.press(Key::Use, &slots);
+        assert_eq!(f, Front::Kept(2, 0));
+        assert_eq!({ let mut g = f; g.press(Key::Use, &slots) }, Some(Begin::Continue(2)));
+        // Forget: asked again, and "keep it" first, so a double press forgets nothing.
+        f.press(Key::Down, &slots);
+        f.press(Key::Use, &slots);
+        assert_eq!(f, Front::Forget(2, 0));
+        assert_eq!({ let mut g = f; g.press(Key::Use, &slots) }, None);
+        f.press(Key::Down, &slots);
+        assert_eq!(f.press(Key::Use, &slots), Some(Begin::Forget(2)));
+        assert_eq!(f, Front::Profiles(2));
+        // A free slot begins a new one; an unreadable one cannot be opened at all.
+        let mut g = Front::Profiles(1);
+        g.press(Key::Use, &slots);
+        assert_eq!(g, Front::Callings(1, 0));
+        let mut u = Front::Profiles(3);
+        u.press(Key::Use, &slots);
+        assert_eq!(u, Front::Profiles(3));
+        assert!(!Front::Profiles(3).panel(&slots).options[3].1);
     }
 
     #[test]
@@ -454,12 +616,47 @@ mod tests {
     fn only_the_shrine_lets_the_hero_rise() {
         let (mut s, mut w, mut f) = setup();
         s.press(Key::Use, &mut w, &mut f);
-        s.press(Key::Down, &mut w, &mut f);
-        s.press(Key::Down, &mut w, &mut f);
+        for _ in 0..3 { s.press(Key::Down, &mut w, &mut f); }
         assert_eq!(s.press(Key::Use, &mut w, &mut f), None, "stay a while");
         assert!(!s.talking());
         s.press(Key::Use, &mut w, &mut f);
         assert_eq!(s.press(Key::Use, &mut w, &mut f), Some(Outcome::Rise));
+    }
+
+    #[test]
+    fn the_fire_lets_the_hero_rise_at_any_shrine_rested_at() {
+        let (mut s, mut w, mut f) = setup();
+        w.rested = vec![crate::world::START.into()];
+        s.press(Key::Use, &mut w, &mut f);
+        for _ in 0..2 { s.press(Key::Down, &mut w, &mut f); }
+        assert_eq!(s.press(Key::Use, &mut w, &mut f), None, "one shrine: nowhere to travel");
+        w.rested.push("ridge_camp@pine_road".into());
+        s.press(Key::Use, &mut w, &mut f);
+        assert_eq!(s.panel(&w, &f).options.len(), 3);
+        s.press(Key::Down, &mut w, &mut f);
+        assert_eq!(s.press(Key::Use, &mut w, &mut f), Some(Outcome::Rise));
+        assert_eq!(w.checkpoint, "ridge_camp@pine_road");
+        assert_eq!(w.leave_rest(), crate::world::Go::Warp("ridge_camp@pine_road".into()));
+    }
+
+    #[test]
+    fn the_smith_forges_a_bosss_remnant_into_its_weapon_for_a_large_price() {
+        let (mut s, mut w, mut f) = setup();
+        w.met_smith = true;
+        s.lane = 1;
+        s.press(Key::Use, &mut w, &mut f);
+        s.press(Key::Down, &mut w, &mut f);
+        assert_eq!(s.press(Key::Use, &mut w, &mut f), None, "nothing to forge from yet");
+        w.remnants.push("Bell Warden's Clapper");
+        (w.souls, w.shards) = (2000, 10);
+        s.press(Key::Use, &mut w, &mut f);
+        let opts = s.panel(&w, &f).options;
+        assert!(opts[0].0.starts_with("Bell-Hammer") && !opts[0].1, "too dear yet: {opts:?}");
+        assert_eq!(s.press(Key::Use, &mut w, &mut f), None);
+        w.souls = 2600;
+        assert_eq!(s.press(Key::Use, &mut w, &mut f), Some(Outcome::Note(Note::Crafted("Bell-Hammer"))));
+        assert!(w.gear.owns(crate::gear::find("Bell-Hammer")) && w.remnants.is_empty());
+        assert_eq!((w.souls, w.shards), (100, 4));
     }
 
     #[test]
