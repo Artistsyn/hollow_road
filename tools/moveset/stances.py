@@ -58,6 +58,12 @@ LEFT = {
     "guard": (0.16, -0.12, 0.10),
     "mouth": (0.10, 0.08, 0.10),
     "out": (-0.05, -0.12, -0.22),
+    # The buckler's parry: pulled in to the chest, then punched straight out ahead and up past the
+    # left of the head to meet the blow face on, held there, and coming back.
+    "tuck": (0.10, -0.10, 0.08),
+    "punch": (0.27, 0.03, -0.06),
+    "punched": (0.26, 0.05, -0.07),
+    "back": (0.17, -0.07, 0.0),
 }
 
 # A clip: frames per view, keyframes [(t, pose)], whether the walk's gait runs, whether it is held
@@ -69,6 +75,16 @@ def k(t, arm, left="hang", **body):
 
 CLIPS = {
     "walk": dict(frames={"north-east": 8, "east": 8}, gait=True, keys=[k(0, "carry", lean=3), k(1, "carry", lean=3)]),
+    # Running away up the road (straight behind only): leaning into it, a flight between steps.
+    "run": dict(frames={"north": 8}, gait=True, run=True, keys=[k(0, "carry", lean=14), k(1, "carry", lean=14)]),
+    # The one-handed parry straight behind (bodies.py poses the others): the free fist punched out
+    # ahead with the buckler, the chest turned into it, the weapon kept low for the riposte. The
+    # game's live frames are 3-5; a fumble shows 0.62 and the flourish runs 0.45-0.95.
+    "parry": dict(frames={"north": 7}, families=["one"], keys=[
+        k(0, "carry"), k(0.17, "carry", "tuck", lean=2, twist=-6),
+        k(0.33, "carry", "punch", lean=5, step=0.02, twist=-16), k(0.5, "carry", "punched", lean=6, step=0.03, drop=0.01, twist=-18),
+        k(0.67, "carry", "punched", lean=6, step=0.03, drop=0.01, twist=-18), k(0.83, "carry", "punched", lean=5, step=0.03, drop=0.008, twist=-16),
+        k(1, "carry", "back", lean=3, step=0.02, twist=-8)]),
     # Up from the carry into the guard, held on the last frame.
     "guard": dict(frames={"north-east": 5, "east": 5}, keys=[
         k(0, "carry"), k(1, "guard", "guard", lean=4, step=0.03, drop=0.01, twist=-10)]),
@@ -104,9 +120,96 @@ CLIPS = {
         k(0, "carry"), k(0.3, "carry", "mouth", lean=-2), k(0.6, "carry", "mouth", lean=-8, twist=5), k(1, "carry", lean=0)]),
 }
 
+# The road's straight-behind view has every clip the north-east one has, frame for frame.
+for _c in CLIPS.values():
+    if "north-east" in _c["frames"]: _c["frames"]["north"] = _c["frames"]["north-east"]
+
+# Straight behind, the walk and the run are posed in 3D (`gait3d`) rather than nudged on screen:
+# per leg a stance (the foot planted, sliding back under the body as it goes on, the heel rising
+# off it at the end) and a swing (the foot lifted, the shin folding back, carried forward to land
+# on the heel); the hips ride over the planted foot, highest over it walking and lowest running
+# (the flight comes between steps), and sway toward it; the shoulders turn against the hips and
+# the arms swing against the legs. Lengths are the reference body's, in image heights: thigh,
+# shin, the hips' half breadth, the hip's height over the ankle standing.
+LEG3 = dict(thigh=0.165, shin=0.155, hw=0.08, stand=0.309)
+GAIT3 = {
+    # duty: the part of a stride a foot is planted. front/back: how far ahead of the hips it lands
+    # and how far behind them it leaves. track: how far out from the middle the feet fall.
+    # clear: the swing ankle's highest. heel: the ankle's rise as the heel peels off. hip: the
+    # hips' mean height. bob: their rise over the planted foot (negative: a dip). sway: out over
+    # it. twist: the shoulders' turn (degrees). arm/free: the weapon arm's and the free arm's swing.
+    "walk": dict(duty=0.62, front=0.12, back=0.13, track=0.045, clear=0.04, heel=0.022, hip=0.300,
+                 bob=0.011, sway=0.016, twist=6.0, arm=7.0, free=22.0),
+    "run": dict(duty=0.38, front=0.08, back=0.18, track=0.03, clear=0.13, heel=0.03, hip=0.284,
+                bob=-0.018, sway=0.008, twist=12.0, arm=14.0, free=34.0),
+}
+# Running the free arm is bent at the elbow, the fist carried by the ribs.
+LEFT_RUN = (0.10, -0.15, -0.03)
+
+
+def rot_r(v, deg):
+    """A 3D (F, U, R) offset turned about the body's right axis: + swings a hanging arm forward."""
+    a = math.radians(deg); f, u, r = v
+    return (f * math.cos(a) - u * math.sin(a), u * math.cos(a) + f * math.sin(a), r)
+
+
+def foot3d(g, q):
+    """A foot at its own phase q (0 = landing on the heel): (forward, up) of the ankle, from under
+    its hip at the ground."""
+    d = g["duty"]
+    if q < d:
+        k = q / d
+        heel = 0.0 if k < 0.7 else g["heel"] * ((k - 0.7) / 0.3) ** 2
+        return g["front"] - (g["front"] + g["back"]) * k, heel
+    k = (q - d) / (1 - d)
+    return -g["back"] + (g["front"] + g["back"]) * (1 - math.cos(math.pi * k)) / 2, g["clear"] * math.sin(math.pi * k ** 0.7)
+
+
+def knee3d(hip, ankle, pole):
+    """The knee between hip and ankle (3D), bent toward pole."""
+    L1, L2 = LEG3["thigh"], LEG3["shin"]
+    v = mv.sub(ankle, hip); d = max(min(mv.norm(v), L1 + L2 - 1e-4), abs(L1 - L2) + 1e-4)
+    axis = mv.unit(v)
+    x = (L1 * L1 - L2 * L2 + d * d) / (2 * d); h = math.sqrt(max(0.0, L1 * L1 - x * x))
+    side = mv.unit(mv.sub(pole, mv.mul(axis, mv.dot(pole, axis))))
+    return mv.add(hip, mv.add(mv.mul(axis, x), mv.mul(side, h)))
+
+
+def gait3d(j, dep, track, g, t):
+    """Straight behind: the legs and the hips' ride at phase t of the stride (the right heel lands
+    at 0), the upper body moved with the hips. `j` is the posed figure, changed in place."""
+    s = mv.VIEWS["north"]["s"]; c = math.sqrt(1 - s * s)
+    # The ground under the hips where the reference drawing stands (base_north.json's ankles).
+    scr = lambda v: (0.5 + v[2], 0.8775 - v[1] * c - v[0] * s)
+    d = g["duty"]
+    ride = lambda ph: math.cos(2 * math.pi * (2 * ph - d))   # 1 with a foot under the hips
+    hip_u = g["hip"] + g["bob"] * ride(t)
+    sway = g["sway"] * math.cos(2 * math.pi * (t - d / 2))
+    stood = LEG3["stand"]
+    for side, sign, ph in (("RIGHT", 1.0, t), ("LEFT", -1.0, (t + 0.5) % 1.0)):
+        planted = ph < d
+        # The swing side's hip drops a little while the other leg holds the weight.
+        hip = (0.0, hip_u - (0.0 if planted else 0.006), sign * LEG3["hw"] + sway)
+        fwd, up = foot3d(g, ph)
+        ankle = (fwd, up, sign * g["track"] + sway * 0.25)
+        knee = knee3d(hip, ankle, (1.0, 0.0, sign * 0.25))
+        for part, v in (("HIP", hip), ("KNEE", knee), ("LEG", ankle)):
+            j[f"{side} {part}"][0], j[f"{side} {part}"][1] = scr(v)
+        # A leg back behind the body is nearer the camera than one carried forward.
+        dep[f"{side} KNEE"] = mv.dn((knee[0], 0.0, 0.0)); dep[f"{side} LEG"] = mv.dn((ankle[0], 0.0, 0.0))
+    # Everything above the hips rides with them: up and down, and out over the planted foot.
+    dx, dy = sway * 0.8, -(hip_u - stood) * c
+    for key in j:
+        if not key.endswith(("HIP", "KNEE", "LEG")): j[key][0] += dx; j[key][1] += dy
+    for key in ("grip", "elbow"):
+        track[key][0] = round(track[key][0] + dx, 4); track[key][1] = round(track[key][1] + dy, 4)
+
 # The walk on screen, per view: a foot's reach forward from the stance's middle, how high the
 # passing foot lifts, the free hand's swing back, the body's rise at each passing.
 GAIT = {"north-east": dict(step=(0.03, -0.04), lift=0.025, swing=(-0.02, 0.025), bob=0.008),
+        # Walking away: the leading foot climbs the screen as it goes further off, the passing
+        # heel lifts toward the camera, the free hand swings forward (up) and back (down).
+        "north": dict(step=(0.0, -0.035), lift=0.03, swing=(0.0, -0.03), bob=0.008),
         "east": dict(step=(0.055, 0.0), lift=0.025, swing=(-0.03, 0.0), bob=0.008)}
 
 
@@ -135,6 +238,7 @@ def frames(clip, n, family):
             (t0, a), (t1, b) = keys[j], keys[j + 1]
             f = blend(a, b, mv.ease((t - t0) / (t1 - t0)))
         f["gait"] = t if clip.get("gait") else None
+        f["run"] = bool(clip.get("run"))
         out.append(f)
     return out
 
@@ -145,16 +249,35 @@ def place_left(j, view, target, left_sh_3d, sh2d):
     lsh = tuple(j["LEFT SHOULDER"][:2])
     j["LEFT ELBOW"][:2] = list(mv.add(lsh, mv.proj(view, e)))
     j["LEFT ARM"][:2] = list(mv.add(lsh, mv.proj(view, w)))
+    if view == "north":
+        # Straight behind, a fist out in front is hidden by the back; one drawn over it reads as a
+        # hand on the cloak.
+        for part, v in (("LEFT ELBOW", e), ("LEFT ARM", w)): j[part][2] = mv.zn(v)
+        return {"LEFT ELBOW": mv.dn(mv.add(e, (0.0, 0.0, -0.5 * mv.CHEST))), "LEFT ARM": mv.dn(mv.add(w, (0.0, 0.0, -0.5 * mv.CHEST)))}
+    return {}
 
 
 def pose(base, view, f, family, shared):
-    p = dict(upper=f["arm"][0], fore=f["arm"][1], blade=f["arm"][2], lean=f["lean"], step=f["step"], drop=f["drop"], twist=f["twist"])
+    arm, twist, left = f["arm"], f["twist"], f["left"]
+    g3 = GAIT3["run" if f.get("run") else "walk"] if view == "north" and f["gait"] is not None else None
+    if g3:
+        # The arms swing against the legs (the right arm back as the right heel lands at 0), the
+        # shoulders turning with them.
+        w = math.cos(2 * math.pi * f["gait"])
+        sw = g3["arm"] * (0.4 if family == "two" else 1.0)
+        arm = tuple(rot_r(v, -sw * w) for v in arm)
+        twist = twist - g3["twist"] * w * (0.5 if family == "two" else 1.0)
+        left = rot_r(LEFT_RUN if f.get("run") else left, g3["free"] * w)
+    p = dict(upper=arm[0], fore=arm[1], blade=arm[2], lean=f["lean"], step=f["step"], drop=f["drop"], twist=twist)
     off = None if shared else OFF[family]
     joints, track = mv.pose(base, view, p, off)
+    dep = {d["label"]: d["depth"] for d in joints if "depth" in d}
     j = {d["label"]: [d["x"], d["y"], d["z_index"]] for d in joints}
     if off is None:
-        place_left(j, view, f["left"], None, None)
-    if f["gait"] is not None:
+        dep.update(place_left(j, view, left, None, None))
+    if g3:
+        gait3d(j, dep, track, g3, f["gait"])
+    elif f["gait"] is not None:
         g = GAIT[view]
         ph = 2 * math.pi * f["gait"]
         rise = g["bob"] * math.cos(2 * ph)
@@ -162,7 +285,8 @@ def pose(base, view, f, family, shared):
             fwd, lift = math.sin(a), max(0.0, math.cos(a))
             hip, knee, ankle = j[f"{side} HIP"], j[f"{side} KNEE"], j[f"{side} LEG"]
             ax, ay = ankle[0] + g["step"][0] * fwd, ankle[1] + g["step"][1] * fwd - g["lift"] * lift
-            knee[0] = (hip[0] + ax) / 2 + 0.012 * lift * (1 if g["step"][0] >= 0 else -1)
+            out = (1 if side == "RIGHT" else -1) if g["step"][0] == 0 else 1 if g["step"][0] > 0 else -1
+            knee[0] = (hip[0] + ax) / 2 + 0.012 * lift * out
             knee[1] = (hip[1] + ay) / 2 - 0.008 * lift
             ankle[0], ankle[1] = ax, ay
             # The free hand swings against its own side's foot.
@@ -178,6 +302,8 @@ def pose(base, view, f, family, shared):
         track["grip"][1] = round(track["grip"][1] - f["lift"], 4)
         track["elbow"][1] = round(track["elbow"][1] - f["lift"], 4)
     joints = [{"label": key, "x": round(v[0], 4), "y": round(v[1], 4), "z_index": v[2]} for key, v in j.items()]
+    if dep:
+        for d in joints: d["depth"] = dep.get(d["label"], 128)
     return joints, track
 
 
@@ -193,7 +319,7 @@ def main():
             clip = CLIPS[name]
             n = clip["frames"].get(view)
             if n is None: continue
-            for family in (["one"] if clip.get("shared") else ["one", "two"]):
+            for family in (["one"] if clip.get("shared") else clip.get("families", ["one", "two"])):
                 skel, track = zip(*(pose(base, view, f, family, clip.get("shared")) for f in frames(clip, n, family)))
                 stem = f"{family}_{name}_{view}"
                 json.dump(list(skel), open(os.path.join(out, stem + ".json"), "w"))

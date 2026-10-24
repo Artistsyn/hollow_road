@@ -336,16 +336,16 @@
     },
     "clouds": {
       "enabled": true,
-      "kind": "Stratus",
-      "cover": 0.4,
+      "kind": "Rain",
+      "cover": 0.6,
       "count": 10,
       "drift": 1.0,
       "scale": 1.0,
-      "opacity": 0.35,
+      "opacity": 0.55,
       "tint": [
-        252,
-        222,
-        204
+        200,
+        176,
+        168
       ],
       "variation": 0.55,
       "shade": 0.55,
@@ -832,21 +832,21 @@
       "offset": 0.0
     },
     "precipitation": {
-      "enabled": false,
+      "enabled": true,
       "kind": "Rain",
-      "intensity": 0.5,
-      "size": 1.0,
+      "intensity": 0.45,
+      "size": 1.2,
       "tint": [
         255,
         255,
         255
       ],
-      "wetness": 0.8,
-      "puddles": 0.3,
-      "splashes": 0.6,
+      "wetness": 0.0,
+      "puddles": 0.0,
+      "splashes": 0.5,
       "cover": 0.8,
       "track": 0.6,
-      "haze": 0.5,
+      "haze": 0.3,
       "seed": 0
     },
     "drips": {
@@ -1013,7 +1013,7 @@
       ],
       "objects_only": true
     },
-    "paint": 2.0,
+    "paint": 0.0,
     "grade": "",
     "grade_strength": 1.0,
     "paper": 0.0,

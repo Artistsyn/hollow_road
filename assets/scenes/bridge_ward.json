@@ -595,7 +595,7 @@
       "spacing": 7.0,
       "offset": 0.0,
       "lateral": 0.3,
-      "size": 1.0,
+      "size": 1.4,
       "light": true,
       "intensity": 1.4,
       "radius": 8.0,
@@ -876,7 +876,7 @@
       ],
       "objects_only": true
     },
-    "paint": 2.0,
+    "paint": 0.0,
     "grade": "",
     "grade_strength": 1.0,
     "paper": 0.0,

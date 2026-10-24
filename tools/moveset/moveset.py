@@ -46,6 +46,9 @@ PHASES = {
     ("loose", "east"): (6, 2, 3), ("loose", "north-east"): (6, 2, 3),
     ("cast", "east"): (5, 2, 3), ("cast", "north-east"): (5, 2, 3),
 }
+# The road's straight-behind view times its blows as the north-east one did.
+for (_m, _v), _p in list(PHASES.items()):
+    if _v == "north-east": PHASES[(_m, "north")] = _p
 
 # Arm bones and the fist, in image heights (from the reference frames: the arms hanging, the
 # longer of the two views' drawings); the chest's width between the shoulders.
@@ -170,12 +173,18 @@ TYPES = {
 # Each view's camera. east: from the body's right, a little above. north-east: Pixellab's
 # north-east facing seen by its camera, which looks north and down: the body faces up-right on
 # screen and its right side is the nearer. `twist0` is how far the reference drawing's chest is
-# already turned. FACING is where "forward" is on screen for the legs and the lean.
+# already turned. FACING is where "forward" is on screen for the legs and the lean. north: the
+# road's camera, straight behind and above: forward is up the screen, foreshortened, the body's
+# right is screen right, and a lean tips the chest away from the camera rather than across it.
 VIEWS = {
     "east": dict(s=0.12, twist0=-10.0),
     "north-east": dict(s=0.24, twist0=5.0),
+    # Tilted as the road's camera looks down at the hero (eye 3.2 m up, 3.5 m back: about 40
+    # degrees), so a blade driven forward into the ground foreshortens to a stub ahead of the
+    # hands instead of hanging down the screen past the feet.
+    "north": dict(s=0.6, twist0=0.0),
 }
-FACING = {"east": (1.0, 0.0), "north-east": (0.92, -0.22)}
+FACING = {"east": (1.0, 0.0), "north-east": (0.92, -0.22), "north": (0.0, -0.6)}
 K = math.sqrt(0.5)
 
 
@@ -185,6 +194,8 @@ def proj(view, v):
     s = VIEWS[view]["s"]; c = math.sqrt(1 - s * s)
     if view == "east":
         return (f, -u * c + r * s)
+    if view == "north":
+        return (r, -u * c - f * s)
     return (K * (f + r), -u * c + K * s * (r - f))
 
 
@@ -194,7 +205,26 @@ def depth(view, v):
     s = VIEWS[view]["s"]; c = math.sqrt(1 - s * s)
     if view == "east":
         return r * c + u * s
+    if view == "north":
+        return -f * c + u * s
     return K * c * (r - f) + u * s
+
+
+def dn(v):
+    """Straight behind: Pixellab's `depth` (0..255, 128 the body's middle, higher nearer the
+    camera) of a joint at 3D offset `v` from the body's middle, by how far in front of the body
+    (hidden from behind) or behind it it is, not its height. A draw order alone does not keep a
+    fist held before the chest off the drawn back; this does."""
+    d = depth("north", (v[0], 0.0, v[2]))
+    return int(max(30, min(225, 128 + 420 * d)))
+
+
+def zn(v):
+    """Straight behind: the draw order of a joint at 3D offset `v` from its shoulder, by how far
+    in front of the body (hidden) or behind it (over) it is; its height does not count, since the
+    torso goes down with it (the torso is drawn at 5 and 6)."""
+    d = depth("north", (v[0], 0.0, v[2]))
+    return 8 if d > 0.03 else 3 if d < -0.03 else 5
 
 
 # How much of an authored lean the body takes (a hinge at the hips over-tips it).
@@ -311,13 +341,21 @@ def pose(base, view, p, off):
         ank[0] += fx * step * k; ank[1] += fy * step * k
         hip = j[f"{side} HIP"]
         hip[0] += shift[0]; hip[1] += shift[1]
-        kn, an = leg2d(hip, ank, *leg[side], bend=-1 if fx >= 0 else 1)
+        # Seen from behind, a bending knee goes out to its own side.
+        bend = (-1 if side == "RIGHT" else 1) if view == "north" else -1 if fx >= 0 else 1
+        kn, an = leg2d(hip, ank, *leg[side], bend=bend)
         j[f"{side} KNEE"][:2], j[f"{side} LEG"][:2] = list(kn), list(an)
     # The upper body rides on the hips and leans about them (toward the facing).
     upper = ["NOSE", "RIGHT EYE", "LEFT EYE", "RIGHT EAR", "LEFT EAR", "NECK", "RIGHT SHOULDER", "LEFT SHOULDER"]
     for k in upper:
         q = (j[k][0] + shift[0], j[k][1] + shift[1])
-        j[k][0], j[k][1] = rot2(q, (hips[0] + shift[0], hips[1] + shift[1]), lean * (1 if fx >= 0 else -1))
+        if view == "north":
+            # Tipped away from the camera: the height above the hips shortens and climbs the
+            # screen by the camera's tilt; tipped back toward it, it drops.
+            s = VIEWS[view]["s"]; h = hips[1] + shift[1] - q[1]; a = math.radians(lean)
+            j[k][0], j[k][1] = q[0], hips[1] + shift[1] - h * math.cos(a) - s * h * math.sin(a)
+        else:
+            j[k][0], j[k][1] = rot2(q, (hips[0] + shift[0], hips[1] + shift[1]), lean * (1 if fx >= 0 else -1))
     # The chest turns into the blow: each shoulder moves by the turn from the drawing's own.
     t0 = VIEWS[view]["twist0"]
     (r0, l0), (r1, l1) = chest(t0), chest(t0 + p["twist"])
@@ -358,10 +396,21 @@ def pose(base, view, p, off):
         miss = sub(sub(at(left_sh), lsh), (0.0, 0.0))
         j["LEFT ELBOW"][:2] = list(add(add(lsh, proj(view, e2)), mul(miss, 0.5)))
         j["LEFT ARM"][:2] = list(add(add(lsh, proj(view, w2)), miss))
+        if view == "north":
+            j["LEFT ELBOW"][2], j["LEFT ARM"][2] = zn(e2), zn(w2)
     gx, gy = at(grip)
     bx, by = proj(view, blade)
     over = near(add(grip, mul(blade, 0.1))) >= -0.02
     joints = [{"label": k, "x": round(v[0], 4), "y": round(v[1], 4), "z_index": v[2]} for k, v in j.items()]
+    if view == "north":
+        # Depth for the arms from the pose (from the body's middle), the rest at the body's.
+        mid = mul(add(r1, l1), 0.5)
+        dep = {"RIGHT ELBOW": dn(sub(add(r1, e), mid)), "RIGHT ARM": dn(sub(add(r1, w), mid))}
+        if "lupper" in p:
+            dep["LEFT ELBOW"], dep["LEFT ARM"] = dn(sub(add(l1, e2), mid)), dn(sub(add(l1, w2), mid))
+        elif off is not None:
+            dep["LEFT ELBOW"], dep["LEFT ARM"] = dn(sub(add(l1, e2), mid)), dn(sub(add(l1, w2), mid))
+        for d in joints: d["depth"] = dep.get(d["label"], 128)
     ex, ey = at(e)
     return joints, {"grip": [round(gx, 4), round(gy, 4)], "angle": round(math.degrees(math.atan2(by, bx)), 1), "elbow": [round(ex, 4), round(ey, 4)],
                     "over": over, "reach": round(max(0.35, math.hypot(bx, by)), 2), "wrist": round(bend)}

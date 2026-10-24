@@ -318,14 +318,14 @@
   "sky": {
     "enabled": true,
     "top": [
-      38,
-      28,
-      88
+      18,
+      12,
+      46
     ],
     "horizon": [
-      240,
-      186,
-      128
+      176,
+      118,
+      112
     ],
     "sun": {
       "enabled": true,
@@ -340,7 +340,7 @@
         160
       ],
       "emits_light": true,
-      "intensity": 1.0
+      "intensity": 0.65
     },
     "moon": {
       "body": {
@@ -389,19 +389,19 @@
     },
     "clouds": {
       "enabled": true,
-      "kind": "Cumulus",
-      "cover": 0.45,
+      "kind": "Towering",
+      "cover": 0.6,
       "count": 10,
       "drift": 1.0,
       "scale": 1.0,
-      "opacity": 0.5,
+      "opacity": 0.75,
       "tint": [
-        226,
-        230,
-        238
+        120,
+        96,
+        150
       ],
       "variation": 0.55,
-      "shade": 0.55,
+      "shade": 0.7,
       "shadows": 0.0,
       "patches": 0.0,
       "seed": 0
@@ -655,25 +655,25 @@
     }
   },
   "light": {
-    "ambient": 0.45,
+    "ambient": 0.42,
     "ambient_color": [
       220,
       200,
       255
     ],
     "void_color": [
-      190,
-      196,
-      190
+      128,
+      92,
+      112
     ],
     "fog": {
       "enabled": true,
       "color": [
-        214,
-        170,
-        150
+        128,
+        92,
+        112
       ],
-      "distance": 75.0,
+      "distance": 60.0,
       "match_sky": false
     },
     "bands": 0
@@ -804,16 +804,16 @@
   "particles": [],
   "weather": {
     "lightning": {
-      "enabled": false,
+      "enabled": true,
       "strikes": 2,
-      "intensity": 1.5,
+      "intensity": 0.8,
       "color": [
-        205,
-        215,
+        214,
+        200,
         255
       ],
       "bolts": true,
-      "seed": 0
+      "seed": 3
     },
     "fog_banks": {
       "enabled": false,
@@ -851,9 +851,9 @@
       "seed": 0
     },
     "wind": {
-      "enabled": false,
+      "enabled": true,
       "speed": 3.0,
-      "gusts": 0.4,
+      "gusts": 0.6,
       "sway": 0.5,
       "flutter": 0.6,
       "seed": 0
@@ -1006,7 +1006,7 @@
       "selective": 0.0,
       "dark": 0.5
     },
-    "paint": 2.0,
+    "paint": 0.0,
     "grade": "",
     "grade_strength": 1.0,
     "paper": 0.0,

@@ -162,8 +162,9 @@ impl Fx {
     fn bare() -> Fx { Fx { strikes: Vec::new(), turned: RefCell::new(HashMap::new()), bursts: Vec::new() } }
 
     /// Start the bursts for what the fight just did.
-    pub fn on_events(&mut self, events: &[Event], fight: &Fight) {
-        let on_enemy = |i: usize| fight.enemies.get(i).map(|e| (e.lane as f32 * LANE_W, e.s - 0.25));
+    pub fn on_events(&mut self, events: &[Event], fight: &Fight, walked: f64) {
+        // Nothing on one got past: it is behind the camera's view of the hero, not drawn.
+        let on_enemy = |i: usize| fight.enemies.get(i).filter(|e| e.gap(walked) > -0.6).map(|e| (e.lane as f32 * LANE_W, e.s - 0.25));
         self.on_events_at(events, (fight.hero.x + SHOULDER, HERO_D), 1.0, on_enemy);
     }
 
@@ -361,7 +362,7 @@ mod tests {
     fn a_hit_bursts_on_its_enemy_and_ages_on_fight_ticks_only() {
         let fight = Fight::new(vec![Enemy::new(Archetype::Husk, 10.0, 1)]);
         let mut fx = Fx::bare();
-        fx.on_events(&[Event::Hit { enemy: 0, mv: Move::Light }, Event::Whiffed(Move::Light)], &fight);
+        fx.on_events(&[Event::Hit { enemy: 0, mv: Move::Light }, Event::Whiffed(Move::Light)], &fight, 0.0);
         assert_eq!(fx.playing(), 1, "a whiff makes no burst");
         let b = fx.bursts[0];
         assert_eq!((b.x, b.at, b.side), (LANE_W, At::Road(9.75), ImpactSide::Dealt));
@@ -376,11 +377,11 @@ mod tests {
     fn being_struck_cracks_inward_at_the_hero_and_the_oldest_burst_gives_way() {
         let fight = Fight::new(Vec::new());
         let mut fx = Fx::bare();
-        fx.on_events(&[Event::Struck { damage: 10.0, heavy: false }], &fight);
+        fx.on_events(&[Event::Struck { damage: 10.0, heavy: false }], &fight, 0.0);
         assert_eq!((fx.bursts[0].side, fx.bursts[0].at), (ImpactSide::Taken, At::Near(HERO_D - 0.05)));
         // Aged below a fresh block's life (16), so it is the first to give way.
         fx.tick(10);
-        for _ in 0..BURSTS { fx.on_events(&[Event::Blocked { chip: 1.0 }], &fight); }
+        for _ in 0..BURSTS { fx.on_events(&[Event::Blocked { chip: 1.0 }], &fight, 0.0); }
         assert_eq!(fx.playing(), BURSTS);
         assert!(fx.bursts.iter().all(|b| b.side == ImpactSide::Dealt), "the aged strike was replaced");
     }

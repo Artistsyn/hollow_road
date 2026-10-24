@@ -6,6 +6,8 @@ use quartz::*;
 use ramp::prism;
 
 mod anim;
+mod audio;
+mod cutscene;
 mod art;
 mod assets;
 mod atlas;
@@ -15,8 +17,10 @@ mod gear;
 mod map;
 mod game;
 mod profile;
+mod prologue;
 mod shrine;
 mod side;
+mod touch;
 mod world;
 #[cfg(test)]
 mod shots;

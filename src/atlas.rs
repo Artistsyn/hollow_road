@@ -132,11 +132,25 @@ pub struct Place {
     pub loot: Option<&'static str>,
     /// Ambushes waiting along it (`Ambush`).
     pub ambushes: &'static [Ambush],
+    /// What must be beaten before its road goes on, walked the way it is laid out (walked back,
+    /// the way is never held). Most places let the hero run by.
+    pub hold: Hold,
+}
+
+/// What holds a place's way on.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Hold {
+    /// Nothing: an enemy left standing can be run past.
+    Free,
+    /// These of its `foes` (by index) must be down: a keeper of the way.
+    Keepers(&'static [usize]),
+    /// Every one of its foes must be down: a gauntlet.
+    Clear,
 }
 
 const fn place(id: &'static str, title: &'static str, region: usize, map: (f32, f32), from: &'static str, scene: &'static str,
                length: f32, foes: &'static [(Archetype, f32, i32)]) -> Place {
-    Place { id, title, region, map, from, scene, foes, length, shrine: None, smith: None, boss: None, explore: None, cache: None, relic: None, loot: None, ambushes: &[] }
+    Place { id, title, region, map, from, scene, foes, length, shrine: None, smith: None, boss: None, explore: None, cache: None, relic: None, loot: None, ambushes: &[], hold: Hold::Free }
 }
 
 /// How the road between two places is walked across: straight on, a blend over some metres, or
@@ -169,7 +183,8 @@ pub const PLACES: &[Place] = &[
     Place { boss: Some((22.0, &DEBT_COLLECTOR)), ..place("guild_hall", "The Guild Hall", 0, (3.0, 55.0), "warrens", "guild_hall.json", 30.0, &[(Husk, 12.0, -1)]) },
     place("warrens_lane", "Stilt Lane", 0, (14.0, 40.0), "road", "warrens_lane.json", 36.0, &[(Wretch, 14.0, 1), (Husk, 26.0, -1)]),
     // ── Wretched Vale and Hollowmere ────────────────────────────────────────────────────────
-    Place { shrine: Some(1.5), smith: Some(59.0), ..place("road", "The Road to Hollowmere", 1, (20.0, 34.0), "warrens_lane", "road_to_hollowmere.json", 64.0,
+    // Its shieldbearer keeps the fork.
+    Place { shrine: Some(1.5), smith: Some(59.0), hold: Hold::Keepers(&[3]), ..place("road", "The Road to Hollowmere", 1, (20.0, 34.0), "warrens_lane", "road_to_hollowmere.json", 64.0,
         &[(Husk, 12.0, 0), (Lancer, 26.0, 1), (Wretch, 38.0, -1), (Shieldbearer, 52.0, 0)]) },
     // Each branch begins under the road's own sky, its ground and trees turning toward where it
     // leads; the change of light comes after, through a crossing (a blend into the marsh, a ruined
@@ -213,10 +228,12 @@ pub const PLACES: &[Place] = &[
     // A lantern-seller's last lamp, left on the stall: the Hollowed Shrine needs its light.
     Place { shrine: Some(3.0), cache: Some(30.0), relic: Some(Key::Lantern), ..place("stone_market", "The Lantern Market", 3, (68.0, 35.0), "lower_stairs", "stone_market.json", 36.0, &[(Husk, 20.0, 1)]) },
     // Under the city to the Warrens: a grate that lifts only from below.
-    place("sewers", "The Old Sewers", 3, (50.0, 40.0), "lower_stairs", "sewers.json", 60.0, &[(Wretch, 14.0, 0), (Husk, 26.0, -1), (Wretch, 40.0, 1), (Husk, 48.0, 0)]),
+    // The last husk keeps the passage out.
+    Place { hold: Hold::Keepers(&[3]), ..place("sewers", "The Old Sewers", 3, (50.0, 40.0), "lower_stairs", "sewers.json", 60.0, &[(Wretch, 14.0, 0), (Husk, 26.0, -1), (Wretch, 40.0, 1), (Husk, 48.0, 0)]) },
     Place { boss: Some((36.0, &ORDER_AGENT)), ..place("bridge_ward", "The Bridge Ward", 3, (66.0, 43.0), "stone_market", "bridge_ward.json", 44.0,
         &[(Lancer, 12.0, -1), (Shieldbearer, 20.0, 1)]) },
-    place("stone_upper", "The Upper City", 3, (74.0, 27.0), "stone_market", "stone_upper.json", 44.0, &[(Shieldbearer, 14.0, 0), (Lancer, 24.0, 1), (Hexer, 36.0, -1)]),
+    // The shieldbearer at its gate keeps it.
+    Place { hold: Hold::Keepers(&[0]), ..place("stone_upper", "The Upper City", 3, (74.0, 27.0), "stone_market", "stone_upper.json", 44.0, &[(Shieldbearer, 14.0, 0), (Lancer, 24.0, 1), (Hexer, 36.0, -1)]) },
     Place { boss: Some((38.0, &HOLLOW_MAGISTRATE)), ..place("magistrate", "The Magistrate's Court", 3, (80.0, 32.0), "stone_upper", "magistrate.json", 44.0,
         &[(Shieldbearer, 12.0, -1), (Shieldbearer, 14.0, 1), (Lancer, 24.0, 0)]) },
     // ── The Hollowed Shrine: sunk under the city, dark without the lantern ──────────────────
@@ -229,7 +246,7 @@ pub const PLACES: &[Place] = &[
         &[(Husk, 12.0, 0), (Wretch, 20.0, 1)]) },
     // ── Varnholt: the violet town past the ward ─────────────────────────────────────────────
     // Husks shamble in front while a hexer works from behind them; more wait in the yard.
-    Place { ambushes: &[Ambush { at: 30.0, foes: &[(Husk, -3.2), (Husk, 3.0), (Hexer, 4.6)], chest: false }],
+    Place { ambushes: &[Ambush { at: 30.0, foes: &[(Husk, -3.2), (Husk, 3.0), (Hexer, 4.6)], chest: false }], hold: Hold::Clear,
         ..place("violet_road", "The Violet Road", 5, (86.0, 37.0), "magistrate", "violet_road.json", 50.0, &[(Husk, 12.0, 0), (Husk, 14.0, 1), (Hexer, 22.0, 0), (Wretch, 28.0, -1), (Husk, 38.0, 0)]) },
     Place { shrine: Some(3.0), ..place("varnholt", "Varnholt", 5, (90.0, 45.0), "violet_road", "varnholt.json", 40.0, &[(Husk, 20.0, -1), (Husk, 24.0, 1)]) },
     // The pens back onto the Bridge Ward: a gate chained on the town side.
@@ -394,6 +411,12 @@ pub fn turned(id: &str, from: &str) -> String {
 /// opened from its far side. None when it is open.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Barred { Keys(Vec<Key>), Shut }
+
+/// Whether the road from `from` to `to` has a gate on it, open or not: one a key opens (true),
+/// or a shortcut's door (false). None for an open road.
+pub fn gated(from: &str, to: &str) -> Option<bool> {
+    match edge(from, to)?.gate { Gate::Open => None, Gate::Keys(_) => Some(true), Gate::Shortcut => Some(false) }
+}
 
 pub fn barred(from: &str, to: &str, keys: &[Key], opened: &[&str]) -> Option<Barred> {
     let e = edge(from, to)?;

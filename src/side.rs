@@ -38,6 +38,9 @@ const HERO_HALF: f32 = 0.3;
 const OPEN_DAMAGE: f32 = 2.5;
 /// The gap foes keep between their bodies, metres.
 const SPACING: f32 = 0.35;
+/// Hits a boss or mini-boss takes squared up before it answers them (`Breed::reply`): it does
+/// not stand and take a beating, so its openings are its blows' ends, its staggers and parries.
+const TEMPER: u32 = 3;
 
 /// What the player pressed this tick, and what is held.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -254,6 +257,12 @@ pub struct Breed {
     pub power: f32,
     /// The blow it opens its second phase with, at once, the moment it enrages.
     pub wake: Option<usize>,
+    /// What it answers with when it is hit `TEMPER` times while squared up (None: whatever it
+    /// would throw next, at once). Only a breed that enrages answers.
+    pub reply: Option<usize>,
+    /// Its blow for a hero who hides behind a guard within reach (thrown half the time it reads
+    /// one).
+    pub grab: Option<usize>,
     /// Its own art (`assets/pixellab/<folder>`, clips by role: idle, walk, toll, sweep, knell,
     /// charge, leap, throw, grab, stagger, death) and how tall it is drawn, metres. None: drawn
     /// as its road kind, a head taller.
@@ -270,20 +279,25 @@ const SHOT_FROM: f32 = 0.9;
 use Kind::{GuardBreak, Physical, Unblockable};
 
 /// The Bell Warden's blows.
-pub const BLOWS: [Blow; 6] = [
-    // The bell-hammer brought down overhead: parry it. Enraged, the sweep may come straight after.
-    blow("toll", (48, 6, 42), (0.3, 3.3), (0.0, 3.6), 34.0, Physical, true, 40.0, Motion::Strike).then(1, 12, 0),
-    // Swung low across the ground: jump it (or block, paying for it).
-    blow("sweep", (40, 8, 38), (-0.7, 3.7), (0.0, 0.75), 24.0, GuardBreak, false, 45.0, Motion::Strike),
+pub const BLOWS: [Blow; 7] = [
+    // The bell-hammer brought down overhead: parry it. Often the sweep comes straight after: a
+    // parry, then a jump.
+    blow("toll", (40, 6, 42), (0.3, 3.3), (0.0, 3.6), 34.0, Physical, true, 40.0, Motion::Strike).then(1, 12, 4),
+    // Swung low across the ground: jump it (or block, paying for it). Sometimes the hammer is rung
+    // on the stones as it comes round: jump again.
+    blow("sweep", (34, 8, 38), (-0.7, 3.7), (0.0, 0.75), 24.0, GuardBreak, false, 45.0, Motion::Strike).then(2, 20, 3),
     // The hammer rung on the stones: a ring rolls out both ways, low. Jump it or roll through it.
     blow("knell", (62, 66, 40), (0.0, 0.0), (0.0, 0.55), 28.0, Unblockable, false, 0.0, Motion::Ring),
-    // A charge across the yard, shoulder first: roll through it.
-    blow("charge", (34, 42, 38), (-0.95, 0.95), (0.0, 2.6), 30.0, GuardBreak, false, 50.0, Motion::Charge(8.5 / TPS)),
+    // A charge across the yard, shoulder first: roll through it. Half the time it turns at the end
+    // and brings the hammer down on whoever rolled behind it.
+    blow("charge", (30, 42, 38), (-0.95, 0.95), (0.0, 2.6), 30.0, GuardBreak, false, 50.0, Motion::Charge(8.5 / TPS)).then(0, 14, 5),
     // Second phase: the hammer held high far longer than the toll, then down. It tells early: a
     // parry at the tell is a parry too soon.
     blow("late toll", (84, 6, 44), (0.3, 3.3), (0.0, 3.6), 38.0, Physical, true, 44.0, Motion::Strike).art("toll").tell(0.4),
     // Its waking: the bell rung twice, both ways.
     blow("double knell", (40, 66, 20), (0.0, 0.0), (0.0, 0.55), 26.0, Unblockable, false, 0.0, Motion::Ring).art("knell").then(2, 30, 10),
+    // Its answer to a beating: the haft driven out short and quick. Roll it.
+    blow("haft", (16, 5, 28), (0.2, 2.4), (0.0, 3.0), 22.0, GuardBreak, false, 34.0, Motion::Strike).art("toll"),
 ];
 
 /// The boss at the gate.
@@ -294,7 +308,7 @@ pub static WARDEN: Breed = Breed {
         (true, 0..=4, _) => 0, (true, 5..=8, _) => 1, (true, _, _) => 2,
         (false, 0..=5, _) => 3, (false, _, _) => 2,
     },
-    near: 3.4, walk: 1.3, keep: 3.0, rest: 46, open: 150, enrages: true, power: 1.0, wake: Some(5), sprite: Some(("bell_warden", 3.4)),
+    near: 3.4, walk: 1.3, keep: 3.0, rest: 36, open: 110, enrages: true, power: 1.0, wake: Some(5), reply: Some(6), grab: None, sprite: Some(("bell_warden", 3.4)),
 };
 
 /// A region boss on the Warden's frame and art (until each has its own): its own blows, how it
@@ -305,7 +319,7 @@ const fn boss(name: &'static str, hp: f32, stance: f32, rest: u32, power: f32, b
 }
 const WARDEN_LIKE: Breed = Breed {
     name: "", kind: None, hp: 520.0, stance: 110.0, half: 0.95, height: 3.2, blows: &BLOWS,
-    pick: |_, _, _| 0, near: 3.4, walk: 1.3, keep: 3.0, rest: 46, open: 150, enrages: true, power: 1.0, wake: None, sprite: None,
+    pick: |_, _, _| 0, near: 3.4, walk: 1.3, keep: 3.0, rest: 46, open: 150, enrages: true, power: 1.0, wake: None, reply: None, grab: None, sprite: None,
 };
 
 /// The Hollowmere Screamer: a drowned thing of the marsh. Its scream rolls out at chest height, so
@@ -326,17 +340,20 @@ pub static SCREAMER: Breed = boss("The Hollowmere Screamer", 640.0, 120.0, 44, 1
 /// The Bandit Chief: an axe and a temper. Two chops then a long-held overhead (parry the last, not
 /// the first two); a hatchet thrown at range (block it, or roll); a grab for a hero who hides
 /// behind a shield; a shoulder charge.
-const CHIEF_BLOWS: [Blow; 6] = [
+const CHIEF_BLOWS: [Blow; 7] = [
     blow("chop", (28, 5, 16), (0.3, 3.0), (0.0, 2.8), 22.0, Physical, true, 30.0, Motion::Strike).art("toll").then(1, 6, 8),
     blow("chop again", (20, 5, 18), (0.3, 3.0), (0.0, 2.8), 22.0, Physical, true, 30.0, Motion::Strike).art("toll").then(2, 0, 6),
     blow("headsman's drop", (70, 6, 46), (0.3, 3.2), (0.0, 3.4), 40.0, Physical, true, 46.0, Motion::Strike).art("toll").tell(0.35),
-    blow("hatchet", (32, 80, 30), (0.0, 0.0), (0.6, 1.9), 18.0, Physical, false, 24.0, Motion::Shot(9.0 / TPS)).art("throw"),
+    // The hatchet thrown, and as often as not the rush behind it: roll the one, then the other.
+    blow("hatchet", (32, 80, 30), (0.0, 0.0), (0.6, 1.9), 18.0, Physical, false, 24.0, Motion::Shot(9.0 / TPS)).art("throw").then(5, 0, 5),
     blow("throttle", (34, 6, 44), (0.2, 1.7), (0.0, 2.2), 36.0, Unblockable, false, 0.0, Motion::Strike).art("grab").stuck(30),
     blow("bull rush", (30, 40, 40), (-0.95, 0.95), (0.0, 2.6), 30.0, GuardBreak, false, 50.0, Motion::Charge(9.0 / TPS)).art("charge"),
+    // Its answer to a beating: the axe's butt in the face, quick.
+    blow("butt", (15, 4, 26), (0.2, 2.2), (0.0, 2.8), 20.0, GuardBreak, false, 30.0, Motion::Strike).art("toll"),
 ];
-pub static CHIEF: Breed = boss("The Bandit Chief", 760.0, 130.0, 42, 1.3, &CHIEF_BLOWS,
+pub static CHIEF: Breed = Breed { grab: Some(4), reply: Some(6), open: 120, ..boss("The Bandit Chief", 760.0, 130.0, 36, 1.3, &CHIEF_BLOWS,
     |near, r, wild| match (near, r, wild) { (true, 0..=4, _) => 0, (true, 5..=6, _) => 4, (true, 7, _) => 2, (true, _, true) => 2, (true, _, _) => 0, (false, 0..=5, _) => 3, (false, _, _) => 5 },
-    3.2, Some(5), ("bandit_chief", 3.3));
+    3.2, Some(5), ("bandit_chief", 3.3)) };
 
 /// The Hollow Magistrate: judgement handed down. The gavel held high (it tells early: parry late);
 /// an edict that bursts all round it (no shield holds it: back off or roll out); chains thrown low
@@ -363,9 +380,9 @@ const WRAITH_BLOWS: [Blow; 6] = [
     blow("drain", (36, 8, 46), (0.2, 2.0), (0.0, 2.6), 40.0, Unblockable, false, 0.0, Motion::Strike).art("grab").stuck(40),
     blow("reaping leap", (56, 8, 30), (-1.8, 1.8), (0.0, 3.0), 34.0, GuardBreak, false, 50.0, Motion::Leap).art("leap").tell(0.5).stuck(60),
 ];
-pub static WRAITH: Breed = boss("The Wraith Lord", 980.0, 140.0, 38, 1.6, &WRAITH_BLOWS,
+pub static WRAITH: Breed = Breed { grab: Some(4), ..boss("The Wraith Lord", 980.0, 140.0, 38, 1.6, &WRAITH_BLOWS,
     |near, r, wild| match (near, r, wild) { (true, 0..=4, _) => 0, (true, 5..=7, _) => 4, (true, _, _) => 5, (false, 0..=5, _) => 1, (false, _, true) => 5, (false, _, _) => 1 },
-    3.0, Some(1), ("wraith_lord", 3.8));
+    3.0, Some(1), ("wraith_lord", 3.8)) };
 
 /// The Angel Priest: a mace swung in threes (the last a guard-breaker), a lance of light thrown
 /// high (roll or block), radiance rung out round it, and a smite from above.
@@ -383,16 +400,21 @@ pub static PRIEST: Breed = boss("The Angel Priest", 1100.0, 150.0, 36, 1.8, &PRI
 
 /// The Statue Archangel: stone, slow and enormous. Each swing held long (patience, then parry);
 /// a stomp that rings out; a leap that cracks the yard; a march that runs you down.
-const STATUE_BLOWS: [Blow; 5] = [
+const STATUE_BLOWS: [Blow; 6] = [
     blow("stone blade", (80, 8, 50), (0.3, 3.8), (0.0, 3.8), 44.0, Physical, true, 50.0, Motion::Strike).art("toll").tell(0.45).then(1, 10, 4),
-    blow("stone sweep", (50, 10, 50), (-0.9, 4.0), (0.0, 0.8), 34.0, GuardBreak, false, 56.0, Motion::Strike).art("sweep"),
+    // Swept low, and sometimes the stomp's ring after it, rolling out as the hero lands.
+    blow("stone sweep", (50, 10, 50), (-0.9, 4.0), (0.0, 0.8), 34.0, GuardBreak, false, 56.0, Motion::Strike).art("sweep").then(2, 16, 5),
     blow("stomp", (54, 70, 40), (0.0, 0.0), (0.0, 0.55), 30.0, Unblockable, false, 0.0, Motion::Ring).art("knell"),
-    blow("falling statue", (70, 10, 40), (-2.0, 2.0), (0.0, 3.4), 46.0, GuardBreak, false, 60.0, Motion::Leap).art("leap").tell(0.5).stuck(90),
-    blow("march", (40, 50, 50), (-1.1, 1.1), (0.0, 3.0), 36.0, GuardBreak, false, 56.0, Motion::Charge(6.5 / TPS)).art("charge"),
+    // Down from on high, and the yard rings with it: roll the landing, then jump the ring.
+    blow("falling statue", (70, 10, 40), (-2.0, 2.0), (0.0, 3.4), 46.0, GuardBreak, false, 60.0, Motion::Leap).art("leap").tell(0.5).stuck(90).then(2, 24, 6),
+    // A march that ends, half the time, in the stone blade.
+    blow("march", (40, 50, 50), (-1.1, 1.1), (0.0, 3.0), 36.0, GuardBreak, false, 56.0, Motion::Charge(6.5 / TPS)).art("charge").then(0, 30, 5),
+    // Its answer to a beating: a tremor about its feet, quick and low. Jump it.
+    blow("tremor", (18, 8, 30), (-2.4, 2.4), (0.0, 0.6), 26.0, Unblockable, false, 0.0, Motion::Strike).art("knell"),
 ];
-pub static STATUE: Breed = boss("The Statue Archangel", 1250.0, 170.0, 36, 2.0, &STATUE_BLOWS,
+pub static STATUE: Breed = Breed { reply: Some(5), open: 110, ..boss("The Statue Archangel", 1250.0, 170.0, 32, 2.0, &STATUE_BLOWS,
     |near, r, wild| match (near, r, wild) { (true, 0..=4, _) => 0, (true, 5..=7, _) => 1, (true, _, _) => 2, (false, 0..=4, _) => 3, (false, _, true) => 3, (false, _, _) => 4 },
-    3.8, Some(2), ("statue_archangel", 4.4));
+    3.8, Some(2), ("statue_archangel", 4.4)) };
 
 /// The Archangel: everything that came before, quicker. A sword string whose third cut is held
 /// (parry it); spears of light thrown in pairs; its wings beat out all round it (unblockable);
@@ -407,9 +429,9 @@ const ARCHANGEL_BLOWS: [Blow; 8] = [
     blow("dive", (54, 8, 30), (-2.0, 2.0), (0.0, 3.4), 44.0, GuardBreak, false, 56.0, Motion::Leap).art("leap").tell(0.5).stuck(60),
     blow("grip", (30, 6, 46), (0.2, 2.0), (0.0, 2.8), 46.0, Unblockable, false, 0.0, Motion::Strike).art("grab").stuck(30),
 ];
-pub static ARCHANGEL: Breed = boss("The Archangel", 1500.0, 190.0, 32, 2.3, &ARCHANGEL_BLOWS,
+pub static ARCHANGEL: Breed = Breed { grab: Some(7), ..boss("The Archangel", 1500.0, 190.0, 32, 2.3, &ARCHANGEL_BLOWS,
     |near, r, wild| match (near, r, wild) { (true, 0..=4, _) => 0, (true, 5..=6, _) => 7, (true, 7, _) => 5, (true, _, true) => 5, (true, _, _) => 0, (false, 0..=4, _) => 3, (false, _, _) => 6 },
-    3.4, Some(5), ("the_archangel", 4.0));
+    3.4, Some(5), ("the_archangel", 4.0)) };
 
 /// A mini-boss: a named road enemy, stronger, enraging, with blows and art of its own.
 const fn elite(base: &Breed, name: &'static str, hp: f32, power: f32, blows: &'static [Blow], pick: fn(bool, u32, bool) -> usize, sprite: (&'static str, f32)) -> Breed {
@@ -418,10 +440,32 @@ const fn elite(base: &Breed, name: &'static str, hp: f32, power: f32, blows: &'s
 /// The husks' chop and sweep, as their elites keep them (indices 0 and 1 of theirs).
 const HUSK_CHOP: Blow = blow("chop", (34, 5, 30), (0.2, 1.6), (0.0, 2.2), 16.0, Physical, true, 22.0, Motion::Strike);
 const HUSK_SWEEP: Blow = blow("sweep", (30, 6, 28), (-0.3, 1.8), (0.0, 0.7), 14.0, GuardBreak, false, 26.0, Motion::Strike);
-/// The Debt Collector: chop, sweep, and a hand on the collar for whoever turtles.
-pub static COLLECTOR: Breed = elite(&HUSK_BASE, "The Debt Collector", 220.0, 1.4,
-    &[HUSK_CHOP.art("toll").then(1, 8, 4), HUSK_SWEEP, blow("collar", (30, 6, 40), (0.1, 1.4), (0.0, 2.2), 24.0, Unblockable, false, 0.0, Motion::Strike).art("grab").stuck(30)],
-    |near, r, _| match (near, r) { (true, 0..=4) => 0, (true, 5..=7) => 2, (true, _) => 1, (false, _) => 0 }, ("debt_collector", 2.5));
+/// The Debt Collector, the warrens' first lesson: parry the cudgel when it falls, but not too
+/// soon (it sometimes holds it up); jump the sweep that follows a chop; a shield held up close
+/// gets you taken by the collar, a flask drunk in reach is answered by a lunge across the yard,
+/// and a beating taken squared up by a rap of the cudgel. Past half its health, it calls the
+/// debt in: chop and sweep at once, quicker.
+const COLLECTOR_BLOWS: [Blow; 7] = [
+    HUSK_CHOP.art("toll").then(1, 8, 4),
+    blow("sweep", (28, 6, 30), (-0.3, 2.0), (0.0, 0.75), 18.0, GuardBreak, false, 30.0, Motion::Strike),
+    blow("collar", (26, 6, 40), (0.1, 1.5), (0.0, 2.2), 26.0, Unblockable, false, 0.0, Motion::Strike).art("grab").stuck(36),
+    // The cudgel held up, and held: the delay. A parry at the tell is a parry too soon.
+    blow("late chop", (54, 5, 32), (0.2, 1.8), (0.0, 2.4), 22.0, Physical, true, 26.0, Motion::Strike).art("toll").tell(0.38).then(1, 6, 3),
+    // From across the yard, a hand reaching for the collar: roll through it, and it stumbles on.
+    blow("dun's lunge", (30, 24, 30), (-0.6, 0.6), (0.0, 2.2), 22.0, GuardBreak, false, 34.0, Motion::Charge(8.5 / TPS)).art("grab").stuck(40),
+    // Its answer to a beating: a quick rap, out of nowhere. Roll it, or do not stand mashing.
+    blow("rap", (13, 4, 24), (0.1, 1.8), (0.0, 2.4), 14.0, GuardBreak, false, 22.0, Motion::Strike).art("toll"),
+    // Its waking: the debt called in, a chop and the sweep straight after.
+    blow("foreclosure", (22, 5, 14), (0.2, 1.8), (0.0, 2.4), 20.0, Physical, true, 26.0, Motion::Strike).art("toll").then(1, 5, 10),
+];
+pub static COLLECTOR: Breed = Breed {
+    rest: 40, walk: 1.5, near: 2.0, open: 96, reply: Some(5), grab: Some(2), wake: Some(6),
+    ..elite(&HUSK_BASE, "The Debt Collector", 400.0, 1.4, &COLLECTOR_BLOWS,
+        |near, r, wild| match (near, r, wild) {
+            (true, 0..=3, _) => 0, (true, 4..=5, _) => 3, (true, 6..=7, _) => 1, (true, 8, _) => 2, (true, _, true) => 6, (true, _, _) => 0,
+            (false, 0..=6, _) => 4, (false, _, _) => 3,
+        }, ("debt_collector", 2.5))
+};
 /// The Pack Alpha: rakes in threes and a leap from afar.
 pub static ALPHA: Breed = elite(&WRETCH_BASE, "The Pack Alpha", 240.0, 1.8,
     &[blow("rake", (18, 6, 14), (0.1, 1.4), (0.0, 1.8), 10.0, Physical, false, 16.0, Motion::Strike).art("sweep").then(2, 4, 8),
@@ -440,12 +484,22 @@ pub static AGENT: Breed = elite(&LANCER_BASE, "The Order Agent", 300.0, 2.0,
 pub static SENTINEL: Breed = elite(&HUSK_BASE, "The Rune Sentinel", 380.0, 2.4,
     &[HUSK_CHOP.art("toll").tell(0.45), HUSK_SWEEP, blow("rune", (50, 66, 36), (0.0, 0.0), (0.0, 0.55), 18.0, Unblockable, false, 0.0, Motion::Ring).art("knell")],
     |near, r, _| match (near, r) { (true, 0..=5) => 0, (true, 6..=7) => 1, (true, _) => 2, (false, _) => 2 }, ("rune_sentinel", 2.9));
-/// The Butcher: a cleaver held up too long, and a hook for the turtle.
-pub static BUTCHER: Breed = elite(&HUSK_BASE, "The Butcher", 420.0, 2.7,
-    &[HUSK_CHOP.art("toll").then(2, 0, 5), HUSK_SWEEP,
+/// The Butcher: a cleaver held up too long, a hook for the turtle and thrown on its chain at
+/// whoever keeps away, and past half its health the chop and the held cleave together.
+pub static BUTCHER: Breed = Breed { grab: Some(3), reply: Some(5), wake: Some(6), rest: 40, walk: 1.4, near: 2.2, ..elite(&HUSK_BASE, "The Butcher", 420.0, 2.7,
+    &[HUSK_CHOP.art("toll").then(2, 0, 5), HUSK_SWEEP.then(0, 6, 4),
       blow("cleave", (60, 6, 40), (0.2, 1.9), (0.0, 2.4), 24.0, Physical, true, 30.0, Motion::Strike).art("toll").tell(0.38),
-      blow("meathook", (30, 6, 40), (0.1, 1.6), (0.0, 2.2), 26.0, Unblockable, false, 0.0, Motion::Strike).art("grab").stuck(30)],
-    |near, r, _| match (near, r) { (true, 0..=3) => 0, (true, 4..=6) => 2, (true, 7..=8) => 3, (true, _) => 1, (false, _) => 0 }, ("the_butcher", 2.9));
+      blow("meathook", (30, 6, 40), (0.1, 1.6), (0.0, 2.2), 26.0, Unblockable, false, 0.0, Motion::Strike).art("grab").stuck(30),
+      // The hook thrown on its chain at chest height: roll under it, or block it.
+      blow("hook and chain", (34, 70, 30), (0.0, 0.0), (0.7, 1.9), 18.0, Physical, false, 26.0, Motion::Shot(9.0 / TPS)).art("grab"),
+      // Its answer to a beating: the cleaver's flat, quick.
+      blow("flat of the cleaver", (14, 4, 24), (0.1, 1.9), (0.0, 2.4), 16.0, GuardBreak, false, 24.0, Motion::Strike).art("toll"),
+      // Its waking: the chop, and the held cleave straight after (parry the second late).
+      blow("butchery", (22, 5, 10), (0.2, 1.9), (0.0, 2.4), 20.0, Physical, true, 26.0, Motion::Strike).art("toll").then(2, 0, 10)],
+    |near, r, wild| match (near, r, wild) {
+        (true, 0..=3, _) => 0, (true, 4..=5, _) => 2, (true, 6..=7, _) => 1, (true, 8, _) => 3, (true, _, true) => 6, (true, _, _) => 0,
+        (false, 0..=6, _) => 4, (false, _, _) => 0,
+    }, ("the_butcher", 2.9)) };
 /// The Void Stalker: leaps, and bolts of the void from afar.
 pub static STALKER: Breed = elite(&WRETCH_BASE, "The Void Stalker", 420.0, 3.0,
     &[blow("rake", (18, 6, 18), (0.1, 1.3), (0.0, 1.6), 10.0, Physical, false, 16.0, Motion::Strike).art("sweep").then(2, 6, 5),
@@ -469,7 +523,7 @@ const HUSK_BASE: Breed = Breed {
         // The cleaver held up, and held, and down: the husk's delay. Parry it late.
         blow("late chop", (58, 5, 32), (0.2, 1.6), (0.0, 2.2), 18.0, Physical, true, 24.0, Motion::Strike).art("chop").tell(0.38),
     ],
-    pick: |_, r, _| match r { 0..=4 => 0, 5..=7 => 1, _ => 2 }, near: 1.8, walk: 0.9, keep: 1.3, rest: 70, open: 110, enrages: false, power: 1.0, wake: None, sprite: None,
+    pick: |_, r, _| match r { 0..=4 => 0, 5..=7 => 1, _ => 2 }, near: 1.8, walk: 0.9, keep: 1.3, rest: 70, open: 110, enrages: false, power: 1.0, wake: None, reply: None, grab: None, sprite: None,
 };
 pub static LANCER: Breed = LANCER_BASE;
 const LANCER_BASE: Breed = Breed {
@@ -480,7 +534,7 @@ const LANCER_BASE: Breed = Breed {
         blow("lunge", (32, 22, 30), (-0.4, 0.4), (0.0, 1.9), 18.0, GuardBreak, false, 30.0, Motion::Charge(7.5 / TPS)),
         blow("thrust again", (16, 4, 28), (0.3, 2.6), (0.6, 1.8), 15.0, Physical, true, 20.0, Motion::Strike).art("thrust"),
     ],
-    pick: |near, r, _| if near && r < 7 { 0 } else { 1 }, near: 2.6, walk: 1.1, keep: 2.2, rest: 64, open: 100, enrages: false, power: 1.0, wake: None, sprite: None,
+    pick: |near, r, _| if near && r < 7 { 0 } else { 1 }, near: 2.6, walk: 1.1, keep: 2.2, rest: 64, open: 100, enrages: false, power: 1.0, wake: None, reply: None, grab: None, sprite: None,
 };
 pub static WRETCH: Breed = WRETCH_BASE;
 const WRETCH_BASE: Breed = Breed {
@@ -491,7 +545,7 @@ const WRETCH_BASE: Breed = Breed {
         // From afar, up and onto you: step aside late and it sprawls.
         blow("leap", (36, 6, 22), (-0.8, 0.8), (0.0, 1.6), 14.0, GuardBreak, false, 24.0, Motion::Leap).art("pounce").tell(0.5).stuck(40),
     ],
-    pick: |near, r, _| match (near, r) { (true, 0..=5) => 0, (true, _) => 1, (false, 0..=5) => 1, (false, _) => 2 }, near: 1.4, walk: 1.8, keep: 1.0, rest: 48, open: 90, enrages: false, power: 1.0, wake: None, sprite: None,
+    pick: |near, r, _| match (near, r) { (true, 0..=5) => 0, (true, _) => 1, (false, 0..=5) => 1, (false, _) => 2 }, near: 1.4, walk: 1.8, keep: 1.0, rest: 48, open: 90, enrages: false, power: 1.0, wake: None, reply: None, grab: None, sprite: None,
 };
 
 /// Hangs back down the yard and shoots: an arrow at the chest (duck under it with a roll, or
@@ -503,7 +557,7 @@ pub static ARCHER: Breed = Breed {
         blow("low arrow", (40, 80, 24), (0.0, 0.0), (0.0, 0.6), 12.0, Physical, false, 14.0, Motion::Shot(12.0 / TPS)).art("loose").tell(0.6),
         blow("kick", (20, 5, 26), (0.2, 1.2), (0.0, 1.4), 10.0, Physical, true, 14.0, Motion::Strike),
     ],
-    pick: |near, r, _| match (near, r) { (true, 0..=5) => 2, (_, 0..=5) => 0, _ => 1 }, near: 1.6, walk: 1.0, keep: 6.0, rest: 60, open: 90, enrages: false, power: 1.0, wake: None, sprite: None,
+    pick: |near, r, _| match (near, r) { (true, 0..=5) => 2, (_, 0..=5) => 0, _ => 1 }, near: 1.6, walk: 1.0, keep: 6.0, rest: 60, open: 90, enrages: false, power: 1.0, wake: None, reply: None, grab: None, sprite: None,
 };
 /// Hangs back and casts: a slow hex (a shield pays for it), a rune that opens under the hero
 /// (move off the mark), and a ring thrown out round itself for whoever closes (jump it).
@@ -514,7 +568,7 @@ pub static HEXER: Breed = Breed {
         blow("rune", (70, 10, 40), (-0.9, 0.9), (0.0, 2.0), 22.0, Unblockable, false, 0.0, Motion::Rune).tell(0.6),
         blow("repel", (28, 40, 36), (0.0, 0.0), (0.0, 0.55), 14.0, GuardBreak, false, 24.0, Motion::Ring),
     ],
-    pick: |near, r, _| match (near, r) { (true, 0..=6) => 2, (_, 0..=5) => 0, _ => 1 }, near: 1.8, walk: 0.8, keep: 5.5, rest: 80, open: 100, enrages: false, power: 1.0, wake: None, sprite: None,
+    pick: |near, r, _| match (near, r) { (true, 0..=6) => 2, (_, 0..=5) => 0, _ => 1 }, near: 1.8, walk: 0.8, keep: 5.5, rest: 80, open: 100, enrages: false, power: 1.0, wake: None, reply: None, grab: None, sprite: None,
 };
 
 /// What a foe is doing.
@@ -553,12 +607,14 @@ pub struct Foe {
     pub woke: bool,
     /// Ticks left of a frost bolt's chill (`fight::CHILL`).
     pub chill: u32,
+    /// Hits taken while squared up since its last blow (`TEMPER` of them and it answers).
+    pressed: u32,
 }
 
 impl Foe {
     /// A foe of `breed` at `s`, facing `facing`, squaring up for `wait` ticks.
     pub fn new(breed: &'static Breed, s: f32, facing: f32, wait: u32) -> Foe {
-        Foe { breed, s, facing, hp: breed.hp, stance: breed.stance, stance_wait: 0, ai: Ai::Wait(wait), hurt: 0, count: 0, down: 0, top: breed.hp, power: breed.power, woke: false, chill: 0 }
+        Foe { breed, s, facing, hp: breed.hp, stance: breed.stance, stance_wait: 0, ai: Ai::Wait(wait), hurt: 0, count: 0, down: 0, top: breed.hp, power: breed.power, woke: false, chill: 0, pressed: 0 }
     }
     /// As strong as the region it is met in makes it: (health, blows) times its breed's.
     pub fn scaled(mut self, (hp, power): (f32, f32)) -> Foe {
@@ -901,6 +957,7 @@ impl SideFight {
         let b = &mut self.foes[i];
         b.hurt = 10;
         b.stance_wait = 0;
+        if matches!(b.ai, Ai::Wait(_)) { b.pressed += 1; }
         out.push(Event::Hit { enemy: i, mv: a.as_move() });
         if b.hp <= 0.0 {
             b.hp = 0.0;
@@ -954,6 +1011,7 @@ impl SideFight {
         f.hurt = 10;
         if b.ranged == crate::gear::Ranged::Frost { f.chill = crate::fight::CHILL; }
         f.stance_wait = 0;
+        if matches!(f.ai, Ai::Wait(_)) { f.pressed += 1; }
         out.push(Event::Hit { enemy: i, mv: Move::Loose });
         if f.hp <= 0.0 {
             f.hp = 0.0;
@@ -979,6 +1037,8 @@ impl SideFight {
             if f.chill % 3 == 0 { f.hurt = f.hurt.saturating_sub(1); return; }
         }
         let hero_s = self.hero.s;
+        // What it reads of the hero: a flask raised, a guard held.
+        let (drinking, guarding) = (matches!(self.hero.act, Some((Act::Flask, _))), self.hero.guarding);
         // Another foe winding up or live holds this one back; and it will not walk through one
         // that stands between it and the hero.
         let busy = self.foes.iter().enumerate().any(|(j, f)| j != i && f.alive() && f.pressing());
@@ -1034,15 +1094,28 @@ impl SideFight {
                 let gap = (hero_s - b.s).abs();
                 // Closing in at a walk while it waits, unless another stands in its way.
                 if gap > b.breed.keep && !held { b.s += step; }
+                // A boss does not wait on a hero beating at it, nor on one drinking within a rush
+                // of it.
+                let reads = b.breed.enrages;
+                let pressed = reads && b.pressed >= TEMPER;
+                let n = if reads && (pressed || (drinking && gap < 3.0 * b.breed.near)) { 0 } else { n };
                 if n == 0 && busy {
                     // Its turn comes when the other's blow is over.
                     b.ai = Ai::Wait(10);
                 } else if n == 0 {
                     let near = gap < b.breed.near;
-                    let pick = self.roll(10);
+                    let (pick, read) = (self.roll(10), self.roll(10));
                     let b = &mut self.foes[i];
-                    let k = (b.breed.pick)(near, pick, b.enraged()).min(b.breed.blows.len() - 1);
+                    let k = (b.breed.pick)(near, pick, b.enraged());
+                    // Its answers: to a beating, the reply; to a guard held up close, half the
+                    // time the grab.
+                    let k = match (pressed && near, near && guarding && reads && read < 5) {
+                        (true, _) => b.breed.reply.unwrap_or(k),
+                        (_, true) => b.breed.grab.unwrap_or(k),
+                        _ => k,
+                    }.min(b.breed.blows.len() - 1);
                     b.count += 1;
+                    b.pressed = 0;
                     b.ai = Ai::Blow { i: k, t: 0, hit: false, from: b.s, aim: hero_s };
                     out.push(Event::WindsUp { enemy: i, attack: b.breed.blows[k].name });
                 } else {
@@ -1210,6 +1283,175 @@ mod tests {
         f.foes[0].s = f.hero.s + gap;
         f.foes[0].ai = Ai::Blow { i, t: 0, hit: false, from: f.foes[0].s, aim: f.hero.s };
         f
+    }
+
+    /// How a bot plays a boss: mashing, hiding behind a guard, or reading every blow.
+    #[derive(Clone, Copy, Debug, PartialEq)]
+    enum Bot { Masher, Turtle, Reader }
+
+    /// What `bot` presses this tick against the first foe.
+    fn bot_input(f: &SideFight, bot: Bot) -> SideInput {
+        let (h, b) = (&f.hero, &f.foes[0]);
+        let mut i = SideInput::default();
+        let toward = if b.s >= h.s { 1.0 } else { -1.0 };
+        let gap = (b.s - h.s).abs() - b.breed.half;
+        let reach = Act::Light.strike_spec(h.stats.kit.arms.class).reach;
+        let walk = |i: &mut SideInput, dir: f32| if dir > 0.0 { i.right = true } else { i.left = true };
+        let low = h.hp < 0.4 * h.stats.max_hp();
+        let open = matches!(b.ai, Ai::Open(_));
+        let recovering = b.blow().is_some_and(|(_, ph, _)| ph == crate::fight::Phase::Recover);
+        match bot {
+            Bot::Masher => {
+                if low && h.flasks > 0 { i.flask = true; }
+                else if gap > reach - 0.2 { walk(&mut i, toward); } else { i.light = true; }
+            }
+            Bot::Turtle => {
+                if low && h.flasks > 0 && gap > 2.5 { i.flask = true; }
+                else if gap > reach - 0.2 { walk(&mut i, toward); i.guard = true; }
+                else if (open || recovering) && h.stamina > 25.0 { i.light = true; } else { i.guard = true; }
+            }
+            Bot::Reader => {
+                if let (Some((bl, ph, _)), Ai::Blow { t, .. }) = (b.blow(), b.ai) {
+                    if ph != crate::fight::Phase::Recover {
+                        let to_live = bl.frames.0 as i32 - t as i32;
+                        let (lo, hi, ..) = b.warning().unwrap();
+                        let covers = h.s + 0.8 > lo && h.s - 0.8 < hi;
+                        // Ticks until it reaches the hero: a jump needs about five to clear a low
+                        // blow; a roll's i-frames start at once.
+                        let jump = bl.height.1 < 1.0;
+                        let k = match bl.motion {
+                            Motion::Ring => match b.ring() {
+                                Some((at, r)) => ((h.s - at).abs() - r - RING_HALF - HERO_HALF) / RING_V,
+                                None => to_live as f32 + ((h.s - b.s - b.facing * 1.4).abs() - RING_HALF - HERO_HALF).max(0.0) / RING_V,
+                            },
+                            Motion::Shot(v) => match b.shot() {
+                                Some(at) => ((at - h.s).abs() - SHOT_HALF - HERO_HALF) / v,
+                                None => to_live as f32 + ((h.s - b.s - b.facing * SHOT_FROM).abs() - SHOT_HALF - HERO_HALF).max(0.0) / v,
+                            },
+                            _ => to_live as f32,
+                        };
+                        // Ticks a jump takes to rise past the blow's top.
+                        let up = { let (v, g) = (JUMP_V, GRAVITY); (v - (v * v - 2.0 * g * bl.height.1).max(0.0).sqrt()) / g };
+                        let soon = if jump { (up..=up + 2.0).contains(&k) } else { (0.5..=3.0).contains(&k) };
+                        let parry_at = Act::Parry.frames(&h.stats.kit).0 as i32;
+                        if bl.parry && bl.motion == Motion::Strike && covers && (parry_at - 2..=parry_at).contains(&to_live) && h.act.is_none() { i.parry = true; return i; }
+                        if covers && soon && !(bl.parry && bl.motion == Motion::Strike) {
+                            if jump { i.jump = true; } else { i.roll = true; walk(&mut i, if matches!(bl.motion, Motion::Charge(_) | Motion::Ring | Motion::Shot(_)) { toward } else { -toward }); }
+                            return i;
+                        }
+                        // Out of the way of what is coming from afar: wait for it.
+                        if gap > reach { return i; }
+                        // Too close to a big swing that is not parried: back off.
+                        if covers && !bl.parry { walk(&mut i, -toward); return i; }
+                        if !covers && gap > reach - 0.2 { walk(&mut i, toward); }
+                        return i;
+                    }
+                }
+                if low && h.flasks > 0 && gap > 3.0 { i.flask = true; }
+                else if gap > reach - 0.2 { walk(&mut i, toward); }
+                else if h.stamina > 20.0 && (open || recovering || matches!(b.ai, Ai::Wait(n) if n > 18)) { i.light = true; }
+            }
+        }
+        i
+    }
+
+    /// `bot` against `breed` as the world scales it at `tier`, the hero levelled for that tier:
+    /// (won, seconds, hero health left of full, flasks drunk).
+    fn bout(breed: &'static Breed, tier: u32, bot: Bot, seed: u32) -> (bool, f32, f32, u32) {
+        let t = tier as f32 - 1.0;
+        let scale = ((1.0 + 0.3 * t).max(0.8), (1.0 + 0.22 * t).max(0.85));
+        let l = 2 * tier;
+        let stats = Stats { vigor: l, endurance: l, might: l, weapon: tier / 2, armour: tier / 2, ..Stats::default() };
+        let mut f = SideFight::boss(stats, stats.max_hp(), stats.max_stamina(), 3, breed, scale);
+        f.seed = seed;
+        let mut n = 0;
+        while n < 60 * 240 && !f.won() && !f.hero.dead {
+            let i = bot_input(&f, bot);
+            let was = f.hero.hp;
+            let by = f.foes[0].blow().map(|b| b.0.name);
+            f.tick(&i);
+            if f.hero.hp < was && bot == Bot::Reader { HURT.with(|h| *h.borrow_mut().entry(by.unwrap_or("?")).or_insert(0.0) += was - f.hero.hp); }
+            n += 1;
+        }
+        (f.won(), n as f32 / 60.0, f.hero.hp / f.hero.stats.max_hp(), 3 - f.hero.flasks)
+    }
+    thread_local! { static HURT: std::cell::RefCell<std::collections::BTreeMap<&'static str, f32>> = Default::default(); }
+
+    /// Every boss against the three bots: `cargo test --release boss_bots -- --ignored --nocapture`.
+    #[test]
+    #[ignore]
+    fn boss_bots() {
+        let roster: [(&'static Breed, u32); 15] = [(&COLLECTOR, 0), (&ALPHA, 2), (&WARDEN, 1), (&SCREAMER, 1), (&AGENT, 3), (&CHIEF, 2),
+            (&MAGISTRATE, 3), (&SENTINEL, 4), (&WRAITH, 4), (&BUTCHER, 5), (&PRIEST, 5), (&STALKER, 6), (&STATUE, 6), (&ARCHANGEL, 7), (&HUSK, 0)];
+        for (breed, tier) in roster {
+            let mut line = format!("{:<26} t{tier}", breed.name);
+            for bot in [Bot::Masher, Bot::Turtle, Bot::Reader] {
+                let runs: Vec<_> = (0..12u32).map(|k| bout(breed, tier, bot, 0x51DE + 977 * k)).collect();
+                let wins = runs.iter().filter(|r| r.0).count();
+                let secs = runs.iter().map(|r| r.1).sum::<f32>() / runs.len() as f32;
+                let left = runs.iter().filter(|r| r.0).map(|r| r.2).sum::<f32>() / wins.max(1) as f32;
+                let drunk = runs.iter().map(|r| r.3).sum::<u32>() as f32 / runs.len() as f32;
+                line += &format!(" | {bot:?} {wins:>2}/12 {secs:>5.1}s hp{:>3.0}% fl{drunk:.1}", 100.0 * left);
+            }
+            println!("{line}");
+            let hurt = HURT.with(|h| std::mem::take(&mut *h.borrow_mut()));
+            let mut v: Vec<_> = hurt.into_iter().collect();
+            v.sort_by(|a, b| b.1.total_cmp(&a.1));
+            println!("    reader hurt by: {}", v.iter().map(|(n, d)| format!("{n} {d:.0}")).collect::<Vec<_>>().join(", "));
+        }
+    }
+
+    /// Each boss beats a player who mashes or hides behind a shield, falls to one who reads its
+    /// blows, and still costs that player: (breed, tier, most of the reader's health it may leave).
+    #[test]
+    fn bosses_beat_a_masher_and_a_turtle_and_fall_to_a_reader_at_a_cost() {
+        for (breed, tier, most) in [(&COLLECTOR, 0, 0.7), (&WARDEN, 1, 0.85), (&CHIEF, 2, 0.75), (&BUTCHER, 5, 0.75), (&STATUE, 6, 0.75)] {
+            let runs = |bot| (0..12u32).map(|k| bout(breed, tier, bot, 0x51DE + 977 * k)).collect::<Vec<_>>();
+            let wins = |r: &[(bool, f32, f32, u32)]| r.iter().filter(|r| r.0).count();
+            let (mash, turtle, read) = (runs(Bot::Masher), runs(Bot::Turtle), runs(Bot::Reader));
+            let left = read.iter().filter(|r| r.0).map(|r| r.2).sum::<f32>() / wins(&read).max(1) as f32;
+            assert!(wins(&mash) <= 2 && wins(&turtle) <= 2 && wins(&read) >= 8 && left <= most,
+                "{}: masher {}/12, turtle {}/12, reader {}/12 with {:.0}% left", breed.name, wins(&mash), wins(&turtle), wins(&read), 100.0 * left);
+        }
+    }
+
+    /// The Collector squared up (`wait` ticks to go) a metre and a half in front of the hero.
+    fn collector(wait: u32) -> SideFight {
+        let mut f = SideFight::boss(Stats::default(), 1e6, 100.0, 3, &COLLECTOR, (1.0, 1.0));
+        f.foes[0].s = f.hero.s + 1.5;
+        f.foes[0].ai = Ai::Wait(wait);
+        f
+    }
+    fn wound_up(e: &[Event]) -> Option<&'static str> { e.iter().find_map(|e| match e { Event::WindsUp { attack, .. } => Some(*attack), _ => None }) }
+
+    #[test]
+    fn a_boss_beaten_at_while_squared_up_answers_at_once() {
+        let mut f = collector(400);
+        let mut answer = None;
+        run(&mut f, 300, SideInput { light: true, ..idle() }, |_, e| { answer = wound_up(e); answer.is_some() });
+        assert_eq!(answer, Some("rap"));
+        assert!(f.ticks < 200, "it waited {} ticks", f.ticks);
+        // A road foe does not.
+        let mut f = SideFight::ambush(Stats::default(), 1e6, 100.0, 3, &[(&HUSK, 1.5)]);
+        f.foes[0].ai = Ai::Wait(400);
+        f.hero.s = 0.0;
+        assert!(!run(&mut f, 150, SideInput { light: true, ..idle() }, |_, e| wound_up(e).is_some()));
+    }
+
+    #[test]
+    fn a_flask_raised_in_reach_brings_the_boss_on_and_a_guard_held_close_gets_grabbed() {
+        let mut f = collector(400);
+        let mut came = None;
+        run(&mut f, 10, SideInput { flask: true, ..idle() }, |_, e| { came = wound_up(e); came.is_some() });
+        assert!(came.is_some(), "it let the hero drink");
+        let grabs = (0..20u32).filter(|&k| {
+            let mut f = collector(0);
+            f.seed = 0x51DE + 977 * k;
+            let mut what = None;
+            run(&mut f, 5, SideInput { guard: true, ..idle() }, |_, e| { what = wound_up(e); what.is_some() });
+            what == Some("collar")
+        }).count();
+        assert!((6..=16).contains(&grabs), "{grabs} of 20 grabs at a guard held up close");
     }
 
     #[test]

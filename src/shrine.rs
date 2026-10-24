@@ -32,6 +32,15 @@ impl Calling {
             Calling::Frostweaver => "Sword and a frost focus, a catalyst, no shield: frost bolts that crack a foe's stance and chill it (C, cast), their charges filled by blows landed up close.",
         }
     }
+    /// What it sets out with: the weapon and what the other hand holds, and its attributes.
+    pub fn outfit(self) -> String {
+        let mut gear = crate::gear::Loadout::starting();
+        if let Some(name) = self.offhand() { let i = crate::gear::find(name); gear.gain(i); gear.wear(1, Some(i)); }
+        let held: Vec<&str> = gear.worn[..2].iter().flatten().map(|&i| ITEMS[i].name).collect();
+        let st = crate::fight::Stats::default();
+        let [m, d, f] = self.leaning();
+        format!("Sets out with {}.   Might {}   Dexterity {}   Focus {}", held.join(" and "), st.might + m, st.dexterity + d, st.focus + f)
+    }
     /// Whether it can be played yet (one that cannot is listed so the road ahead is visible):
     /// all of them now.
     pub fn playable(self) -> bool { true }
@@ -75,13 +84,15 @@ pub enum Front {
     Forget(usize, usize),
     /// A free slot: the calling to set out in.
     Callings(usize, usize),
+    /// The calling chosen (by index): with the prologue first (0) or without it (1).
+    Prologue(usize, usize, usize),
 }
 
 /// What the title has decided.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Begin {
-    /// A new pilgrimage in this slot, in this calling.
-    New(usize, Calling),
+    /// A new pilgrimage in this slot, in this calling, with the prologue first or not.
+    New(usize, Calling, bool),
     /// Carry on the one kept in this slot.
     Continue(usize),
     /// Empty this slot for good.
@@ -97,6 +108,7 @@ pub enum Begin {
 const KEPT: [&str; 3] = ["Carry on", "Forget this pilgrimage", "Back"];
 const FORGET: [&str; 2] = ["Keep it", "Forget it for good"];
 const PAUSE: [&str; 3] = ["Resume", "Change profile", "Quit game"];
+const PROLOGUE: [&str; 2] = ["Begin with the prologue", "Skip it: straight to the pilgrimage"];
 
 impl Front {
     /// The list, the newest pilgrimage chosen (else the first free slot).
@@ -108,6 +120,8 @@ impl Front {
     pub fn press(&mut self, k: Key, slots: &[Slot]) -> Option<Begin> {
         let last = slots.len().saturating_sub(1);
         match (*self, k) {
+            // A first launch, nothing kept: straight to choosing a calling in the first place.
+            (Front::Title, Key::Use) if slots.iter().all(|s| *s == Slot::Empty) => *self = Front::Callings(0, 0),
             (Front::Title, Key::Use) => *self = Front::profiles(slots),
             (Front::Profiles(i), Key::Up | Key::Left) => *self = Front::Profiles(i.saturating_sub(1)),
             (Front::Profiles(i), Key::Down | Key::Right) => *self = Front::Profiles((i + 1).min(last)),
@@ -139,8 +153,12 @@ impl Front {
             (Front::Forget(i, _), Key::Use | Key::Back) => *self = Front::Kept(i, 1),
             (Front::Callings(s, i), Key::Up | Key::Left) => *self = Front::Callings(s, i.saturating_sub(1)),
             (Front::Callings(s, i), Key::Down | Key::Right) => *self = Front::Callings(s, (i + 1).min(Calling::ALL.len() - 1)),
-            (Front::Callings(s, i), Key::Use) if Calling::ALL[i].playable() => return Some(Begin::New(s, Calling::ALL[i])),
+            (Front::Callings(s, i), Key::Use) if Calling::ALL[i].playable() => *self = Front::Prologue(s, i, 0),
             (Front::Callings(s, _), Key::Back) => *self = Front::Profiles(s),
+            (Front::Prologue(s, i, c), Key::Up | Key::Left) => *self = Front::Prologue(s, i, c.saturating_sub(1)),
+            (Front::Prologue(s, i, c), Key::Down | Key::Right) => *self = Front::Prologue(s, i, (c + 1).min(PROLOGUE.len() - 1)),
+            (Front::Prologue(s, i, c), Key::Use) => return Some(Begin::New(s, Calling::ALL[i], c == 0)),
+            (Front::Prologue(s, i, _), Key::Back) => *self = Front::Callings(s, i),
             _ => {}
         }
         None
@@ -189,9 +207,16 @@ impl Front {
             },
             Front::Callings(_, i) => Panel {
                 title: "Choose a calling".into(),
-                text: Calling::ALL[i].blurb().into(),
+                text: format!("{}\n{}", Calling::ALL[i].blurb(), Calling::ALL[i].outfit()),
                 options: Calling::ALL.iter().map(|c| (if c.playable() { c.name().to_owned() } else { format!("{}  (not yet)", c.name()) }, c.playable())).collect(),
                 choice: i,
+                hint: "W/S choose   E begin   Esc back".into(),
+            },
+            Front::Prologue(_, i, c) => Panel {
+                title: format!("{}: a prologue first?", Calling::ALL[i].name()),
+                text: "A short remembered fight that teaches the road: walking, striking, guarding, rolling and parrying, and a side-on bout. Nothing of the story is lost without it, and Esc leaves it at any time.".into(),
+                options: PROLOGUE.iter().map(|o| (o.to_string(), true)).collect(),
+                choice: c,
                 hint: "W/S choose   E begin   Esc back".into(),
             },
         }
@@ -286,16 +311,16 @@ impl Sanctum {
             }
             (View::Choices(_), Station::Smith) => vec![("Forge".into(), true), ("Craft from a remnant".into(), !w.craftable().is_empty()), ("Talk".into(), true), ("Step away".into(), true)],
             (View::Craft(_), _) => w.craftable().into_iter()
-                .map(|(r, can)| (format!("{}   from the {}   {} {}, {} shards   {}", r.item, r.remnant, r.echoes, crate::world::CURRENCY, r.shards, ITEMS[crate::gear::find(r.item)].text), can))
+                .map(|(r, can)| (format!("{}   {}\n      from the {}   {} {}, {} shards", r.item, ITEMS[crate::gear::find(r.item)].text, r.remnant, r.echoes, crate::world::CURRENCY, r.shards), can))
                 .chain([("Back".to_string(), true)]).collect(),
             (View::Levels(_), _) => {
                 let can = w.souls >= st.level_cost();
                 // Each line says what one more level would change, as the hero is now equipped.
                 let up = |f: fn(&mut Stats)| { let mut n = st; f(&mut n); n };
-                let strikes = |name: &str, lvl: u32, n: Stats| (format!("{name} {lvl}   strikes x{:.2} -> x{:.2}", st.damage(), n.damage()), can);
+                let strikes = |name: &str, lvl: u32, n: Stats| (format!("{name} {lvl}\tstrikes x{:.2} -> x{:.2}", st.damage(), n.damage()), can);
                 vec![
-                    (format!("Vigor {}   health {:.0} -> {:.0}", st.vigor, st.max_hp(), up(|s| s.vigor += 1).max_hp()), can),
-                    (format!("Endurance {}   stamina {:.0} -> {:.0}", st.endurance, st.max_stamina(), up(|s| s.endurance += 1).max_stamina()), can),
+                    (format!("Vigor {}\thealth {:.0} -> {:.0}", st.vigor, st.max_hp(), up(|s| s.vigor += 1).max_hp()), can),
+                    (format!("Endurance {}\tstamina {:.0} -> {:.0}", st.endurance, st.max_stamina(), up(|s| s.endurance += 1).max_stamina()), can),
                     strikes("Might", st.might, up(|s| s.might += 1)),
                     strikes("Dexterity", st.dexterity, up(|s| s.dexterity += 1)),
                     strikes("Focus", st.focus, up(|s| s.focus += 1)),
@@ -310,13 +335,14 @@ impl Sanctum {
                 vec![line("Weapon", st.weapon), line("Armour", st.armour), ("Back".into(), true)]
             }
             (View::Gear(_), _) => SLOTS.iter().zip(&w.gear.worn)
-                .map(|((_, place), worn)| (format!("{place:<9} {}", worn.map_or("nothing", |i| ITEMS[i].name)), true))
+                .map(|((_, place), worn)| (format!("{place}\t{}", worn.map_or("nothing", |i| ITEMS[i].name)), true))
                 .chain([("Back".to_string(), true)]).collect(),
             (View::Wear(p, _), _) => Self::wearable(w, *p).into_iter()
                 .map(|i| (match i {
                     Some(i) => match (ITEMS[i].arms, held_line(&ITEMS[i], &st)) {
-                        (Some(a), _) => format!("{}   {}   {}", ITEMS[i].name, arms_line(&a, &st), ITEMS[i].text),
-                        (None, Some(line)) => format!("{}   {}   {}", ITEMS[i].name, line, ITEMS[i].text),
+                        // The name and what it does, and under it what it is.
+                        (Some(a), _) => format!("{}   {}\n      {}", ITEMS[i].name, ITEMS[i].text, arms_line(&a, &st)),
+                        (None, Some(line)) => format!("{}   {}\n      {}", ITEMS[i].name, ITEMS[i].text, line),
                         (None, None) => format!("{}   {}", ITEMS[i].name, ITEMS[i].text),
                     },
                     None => "Nothing".into(),
@@ -442,7 +468,16 @@ impl Sanctum {
             View::Choices(i) => { p.choice = *i; p.hint = "W/S choose   E take   Esc back".into(); }
             View::Levels(i) => {
                 p.title = "Grow stronger".into();
-                p.text = format!("{} {}.   Level {}: the next costs {}.", crate::world::CURRENCY_TITLE, w.souls, f.hero.stats.level(), f.hero.stats.level_cost());
+                // What the attribute picked does, so a level is bought knowing.
+                const DOES: [&str; 5] = [
+                    "Vigor is health: more of it, more blows survived.",
+                    "Endurance is stamina: every strike, roll, run and blocked blow spends it.",
+                    "Might feeds heavy weapons (axes, greatswords): they need it, and hit harder for it.",
+                    "Dexterity feeds quick weapons and bows: swords, spears and arrows grow with it.",
+                    "Focus feeds catalysts and spells: a spell needs it to be cast, and hits harder and holds more charges with it.",
+                ];
+                p.text = format!("{} {}.   Level {}: the next costs {}.{}", crate::world::CURRENCY_TITLE, w.souls, f.hero.stats.level(), f.hero.stats.level_cost(),
+                    DOES.get(*i).map_or(String::new(), |d| format!("\n{d}")));
                 p.choice = *i;
                 p.hint = "W/S choose   E buy   Esc back".into();
             }
@@ -545,14 +580,18 @@ mod tests {
     fn every_calling_can_be_chosen_and_sets_out_with_its_own() {
         let free = vec![Slot::Empty; crate::profile::SLOTS];
         for (k, c) in Calling::ALL.into_iter().enumerate() {
+            // Nothing kept: the title goes straight to the callings, in the first place.
             let mut f = Front::Title;
-            assert_eq!(f.press(Key::Use, &free), None);
-            assert_eq!(f, Front::Profiles(0));
             assert_eq!(f.press(Key::Use, &free), None);
             assert_eq!(f, Front::Callings(0, 0));
             for _ in 0..k { f.press(Key::Down, &free); }
             assert!(Front::Callings(0, k).panel(&free).options[k].1, "{} is listed as playable", c.name());
-            assert_eq!(f.press(Key::Use, &free), Some(Begin::New(0, c)));
+            assert_eq!(f.press(Key::Use, &free), None);
+            assert_eq!(f, Front::Prologue(0, k, 0), "asked whether to play the prologue");
+            let mut skip = f;
+            skip.press(Key::Down, &free);
+            assert_eq!(skip.press(Key::Use, &free), Some(Begin::New(0, c, false)));
+            assert_eq!(f.press(Key::Use, &free), Some(Begin::New(0, c, true)));
             // What it holds in the other hand is a real piece.
             if let Some(name) = c.offhand() { let _ = crate::gear::find(name); }
         }

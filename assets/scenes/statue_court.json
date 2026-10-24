@@ -284,17 +284,17 @@
   "sky": {
     "enabled": true,
     "top": [
-      84,
-      124,
-      176
+      8,
+      10,
+      26
     ],
     "horizon": [
-      206,
-      206,
-      186
+      38,
+      44,
+      68
     ],
     "sun": {
-      "enabled": true,
+      "enabled": false,
       "pos": [
         0.78,
         0.45
@@ -310,19 +310,19 @@
     },
     "moon": {
       "body": {
-        "enabled": false,
+        "enabled": true,
         "pos": [
-          0.25,
-          0.3
+          0.55,
+          0.12
         ],
         "radius": 0.06,
         "color": [
+          210,
           222,
-          230,
           255
         ],
         "emits_light": true,
-        "intensity": 0.35
+        "intensity": 0.6
       },
       "phase": 0.0,
       "opacity": 0.9,
@@ -331,10 +331,10 @@
       "seed": 0
     },
     "stars": {
-      "enabled": false,
+      "enabled": true,
       "count": 140,
       "size": 1.0,
-      "twinkle": 0.5,
+      "twinkle": 0.4,
       "seed": 0
     },
     "meteors": {
@@ -356,15 +356,15 @@
     "clouds": {
       "enabled": true,
       "kind": "Cumulus",
-      "cover": 0.45,
+      "cover": 0.3,
       "count": 10,
       "drift": 1.0,
       "scale": 1.0,
-      "opacity": 0.5,
+      "opacity": 0.35,
       "tint": [
-        226,
-        230,
-        238
+        70,
+        78,
+        104
       ],
       "variation": 0.55,
       "shade": 0.55,
@@ -374,7 +374,7 @@
     },
     "cloud_layers": [
       {
-        "enabled": true,
+        "enabled": false,
         "kind": "Cirrus",
         "cover": 0.45,
         "count": 10,
@@ -621,26 +621,26 @@
     }
   },
   "light": {
-    "ambient": 0.55,
+    "ambient": 0.36,
     "ambient_color": [
-      190,
-      200,
-      225
+      120,
+      138,
+      190
     ],
     "void_color": [
-      190,
-      196,
-      190
+      22,
+      26,
+      42
     ],
     "fog": {
       "enabled": true,
       "color": [
-        190,
-        196,
-        190
+        26,
+        30,
+        48
       ],
-      "distance": 55.0,
-      "match_sky": true
+      "distance": 34.0,
+      "match_sky": false
     },
     "bands": 0
   },
@@ -835,13 +835,13 @@
       "seed": 0
     },
     "mist": {
-      "enabled": false,
-      "height": 0.8,
-      "density": 0.25,
+      "enabled": true,
+      "height": 0.9,
+      "density": 0.2,
       "color": [
-        205,
-        210,
-        220
+        120,
+        132,
+        168
       ],
       "patchiness": 0.6,
       "wisps": 0.4,
@@ -970,7 +970,7 @@
       ],
       "objects_only": true
     },
-    "paint": 2.0,
+    "paint": 0.0,
     "grade": "",
     "grade_strength": 1.0,
     "paper": 0.0,

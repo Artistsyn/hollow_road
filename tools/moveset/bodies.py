@@ -68,10 +68,19 @@ STAND = {
                        w=dict(blade=118, reach=0.9, over=False)),
     "east": dict(hip=(0.54, 0.63), torso=0, head=0, wide=1.0, ra=(-16, 35), la=(13, 7), rl=(-18, 5), ll=(-4, 0),
                  w=dict(blade=107, reach=0.97)),
+    # Straight behind: the blade carried forward and up shows over the right shoulder, behind him.
+    "north": dict(hip=(0.50, 0.63), torso=0, head=0, wide=1.0, ra=(20, 15), la=(-20, -15), rl=(4, 4), ll=(-4, -3),
+                  w=dict(blade=150, reach=0.6, over=False)),
 }
 
 
 def k(t, **p): return (t, p)
+
+
+# Seen from straight behind, a bone that points away from the camera (forward) or at it climbs or
+# drops the screen and shortens (`ks`); so a body kneeling has short thighs and shins, and one lying
+# face down away from the camera is a short stack up the screen from the feet.
+KNEEL_N = dict(hip=(0.50, 0.75), rl=(6, 2), ll=(-6, -2), ks=dict(rt=0.5, rs=0.75, lt=0.5, ls=0.75))
 
 
 # On the back, head to the left, knees a little up, the weapon arm out along the ground with the
@@ -86,7 +95,18 @@ CLIPS = {
     # Struck down for good: the knees go, onto them, forward onto the hands, face down; the weapon
     # slips from the hand as it goes down and lies by it. The game plays it over 60 ticks and
     # holds the last frame; waking plays it backwards.
-    "death": dict(shared=True, frames={"north-east": 9}, keys={"north-east": [
+    "death": dict(shared=True, frames={"north-east": 9, "north": 9}, keys={"north": [
+        # Straight behind: the knees go, down onto them, the body slumps and topples over onto its
+        # left side (head to the left), the weapon falling from the hand to lie at his right.
+        k(0),
+        k(0.25, hip=(0.50, 0.67), ra=(15, 10), la=(-15, -10), rl=(8, -4), ll=(-8, 4), ks=dict(rt=0.8, rs=0.9, lt=0.8, ls=0.9),
+          w=dict(blade=140, reach=0.6, over=False)),
+        k(0.5, **KNEEL_N, torso=0, ra=(12, 8), la=(-12, -8), w=dict(blade=110, reach=0.8, over=True)),
+        k(0.75, hip=(0.54, 0.78), torso=-40, head=-10, wide=0.8, ra=(-10, -30), la=(-30, -40), rl=(55, 100), ll=(45, 95),
+          ks=dict(rt=0.7, lt=0.7), w=dict(drop=(0.78, 0.88, 100), over=True)),
+        k(1, hip=(0.62, 0.82), torso=-84, head=7, wide=0.6, ra=(-85, -100), la=(-70, -80), rl=(88, 90), ll=(86, 88),
+          ks=dict(ru=0.8), w=dict(drop=(0.80, 0.92, 95), over=True)),
+    ], "north-east": [
         k(0),
         k(0.25, hip=(0.49, 0.67), torso=5, ra=(10, 10), la=(-10, -5), rl=(10, -5), ll=(0, -15), w=dict(blade=100, reach=0.9, over=False)),
         k(0.5, hip=(0.47, 0.74), torso=19, head=-5, ra=(-5, -30), la=(10, 15), rl=(17, -95), ll=(10, -100),
@@ -99,7 +119,7 @@ CLIPS = {
     # Thrown off the feet: the blow snaps the chest back and flings the arms, two steps back, down
     # onto the seat and over onto the back, head to the left, the weapon still in the fist. The game
     # plays 1-8 as the fall and holds the last; getup starts from it.
-    "knockdown": dict(shared=True, frames={"north-east": 9}, keys={"north-east": [
+    "knockdown": dict(shared=True, frames={"north-east": 9, "north": 9}, keys={"north-east": [
         k(0),
         k(0.125, hip=(0.50, 0.65), torso=-12, head=-10, ra=(60, 100), la=(-60, -90), rl=(5, 0), ll=(-15, -5), w=dict(blade=150, reach=0.9, over=True)),
         k(0.25, hip=(0.52, 0.66), torso=-25, ra=(80, 130), la=(-45, -70), rl=(20, 5), ll=(-25, -10), w=dict(blade=160, reach=0.9, over=True)),
@@ -110,7 +130,7 @@ CLIPS = {
     ]}),
     # Up off the back the way the knockdown left it: onto an elbow, sitting up and round onto one
     # knee, the weapon out in front, up through a crouch to the carry.
-    "getup": dict(shared=True, frames={"north-east": 9}, keys={"north-east": [
+    "getup": dict(shared=True, frames={"north-east": 9, "north": 9}, keys={"north-east": [
         k(0, **LIE_BACK),
         k(0.25, hip=(0.58, 0.81), torso=-60, head=-5, wide=-0.4, ra=(-50, -90), la=(-130, -150), rl=(70, 110), ll=(40, 120), w=dict(blade=-70, reach=0.95, over=True)),
         k(0.5, hip=(0.5, 0.76), torso=-10, head=0, wide=0.6, ra=(20, 40), la=(-20, -10), rl=(10, -95), ll=(70, 5), w=dict(blade=100, reach=0.9, over=True)),
@@ -120,7 +140,17 @@ CLIPS = {
     # Resting at a shrine: the weapon turned point down at the side, then down onto the left knee,
     # the right foot planted, the fist on the pommel and the point in the ground, the head bowed.
     # The game kneels over it, holds the last frame, and plays it backwards to rise.
-    "rest": dict(shared=True, frames={"north-east": 11}, keys={"north-east": [
+    "rest": dict(shared=True, frames={"north-east": 11, "north": 11}, keys={"north": [
+        # Straight behind: the blade turned point down at the right side, then down onto the left
+        # knee (its shin toward the camera), the right foot planted ahead, the fist on the pommel.
+        k(0),
+        k(0.2, ra=(12, 8), w=dict(blade=10, reach=0.95, over=True)),
+        k(0.4, hip=(0.50, 0.66), ra=(18, 8), rl=(6, 2), ll=(-6, -2), w=dict(blade=2, reach=0.95, over=True)),
+        k(0.6, hip=(0.50, 0.76), ra=(25, 5), la=(-12, -5), rl=(172, 0), ll=(-4, 0),
+          ks=dict(torso=0.92, rt=0.35, lt=0.45, ls=0.7), w=dict(blade=0, reach=0.85, over=True)),
+        k(1, hip=(0.50, 0.77), ra=(25, 5), la=(-12, -5), rl=(172, 0), ll=(-4, 0),
+          ks=dict(torso=0.88, rt=0.35, lt=0.45, ls=0.7), w=dict(blade=0, reach=0.85, over=True)),
+    ], "north-east": [
         k(0),
         k(0.2, ra=(10, 10), w=dict(blade=10, reach=0.95, over=True)),
         k(0.4, hip=(0.5, 0.66), torso=5, ra=(25, 10), rl=(5, 0), ll=(-12, -5), w=dict(blade=0, reach=0.95, over=True)),
@@ -130,7 +160,16 @@ CLIPS = {
     # The parry: one-handed, the free hand flicks out to turn the blow (the buckler's way), the
     # weapon carried; two-handed, the weapon itself swept up across the body to meet it. The
     # game's live frames are 3-5; a fumble shows 0.62 and the flourish runs 0.45-0.95.
-    "parry": dict(frames={"north-east": 7}, keys={"north-east": [
+    "parry": dict(frames={"north-east": 7, "north": 7}, keys={"north": [
+        # Straight behind: the free hand flicked forward and up at the blow (up the screen, short),
+        # or the weapon swept up across the front, the fists before the face.
+        k(0, two=dict(ra=(10, -40), w=dict(blade=160, reach=0.7, over=False))),
+        k(0.33, la=(-60, -120), ks=dict(lu=0.8, lf=0.8), two=dict(ra=(15, -120), ks=dict(ru=0.85, rf=0.8), w=dict(blade=170, reach=0.8, over=False))),
+        k(0.5, la=(-150, -170), rl=(4, 2), ll=(-6, -3), ks=dict(lu=0.6, lf=0.7), two=dict(ra=(25, -175), ks=dict(ru=0.8, rf=0.8), w=dict(blade=195, reach=0.9, over=False))),
+        k(0.67, la=(-152, -172), ks=dict(lu=0.6, lf=0.7), two=dict(ra=(25, -178), ks=dict(ru=0.8, rf=0.8), w=dict(blade=198, reach=0.9, over=False))),
+        k(0.83, la=(-140, -160), ks=dict(lu=0.65, lf=0.75), two=dict(ra=(22, -170), ks=dict(ru=0.8, rf=0.8), w=dict(blade=190, reach=0.85, over=False))),
+        k(1, la=(-110, -130), ks=dict(lu=0.75, lf=0.8), two=dict(ra=(18, -150), ks=dict(ru=0.85, rf=0.85), w=dict(blade=175, reach=0.8, over=False))),
+    ], "north-east": [
         k(0, two=dict(ra=(5, -60), w=dict(blade=150, reach=0.8, over=False))),
         k(0.33, torso=-5, la=(40, 70), two=dict(ra=(10, -120), w=dict(blade=160, reach=0.85, over=False))),
         k(0.5, torso=8, wide=0.6, la=(100, 100), rl=(5, 0), ll=(-12, -8), two=dict(ra=(30, -185), w=dict(blade=175, reach=0.85, over=True))),
@@ -192,6 +231,10 @@ CLIPS = {
         k(1, **STAND["east"]),
     ]}),
 }
+
+
+for _n in ("knockdown", "getup"):
+    CLIPS[_n]["keys"]["north"] = [(t, dict(p) if p != STAND["north-east"] else dict(STAND["north"])) for t, p in CLIPS[_n]["keys"]["north-east"]]
 
 
 def blend(p, q, t):
@@ -301,6 +344,9 @@ def build(name, view):
     base = mv.load_base(view)
     L = bones(base)
     for family in (["one"] if clip.get("shared") else ["one", "two"]):
+        # The one-handed parry straight behind is posed in 3D by stances.py (the buckler punched
+        # out ahead); this one's flick out to the side read as a wave, the shield turned about.
+        if (name, view, family) == ("parry", "north", "one"): continue
         yield family, [pose(base, L, f, family, clip.get("shared")) for f in frames(clip, view, family)]
 
 

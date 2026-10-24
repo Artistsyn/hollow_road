@@ -15,11 +15,14 @@
 //! and a fork goes the way of the lane the hero holds as it comes into view.
 
 use crate::anim::{Clip, Sheet};
+use crate::audio::{Audio, Sfx, Tune};
+use crate::cutscene::{Cue, Cutscene, Focus};
 use crate::atlas;
 use crate::art::{self, HuskPose, Pose};
 use crate::fx::{self, Fx};
-use crate::fight::{Ai, Archetype, Enemy, Event, Fight, Input, Kind, Look, Move, Phase, Reel, DOWN_FALL, DOWN_LIE, DOWN_RISE, HERO_D, LANE_W, SHOULDER, STUMBLE, TRAVEL};
+use crate::fight::{Ai, Archetype, Enemy, Event, Fight, Idle, Input, Kind, Look, Move, Phase, Reel, Way, DOWN_FALL, DOWN_LIE, DOWN_RISE, HERO_D, LANE_W, SHOULDER, STUMBLE, TRAVEL};
 use crate::profile::{self, Slot};
+use crate::prologue::{self, Lesson, Prologue, Step};
 use crate::shrine::{self, Begin, Calling, Front, Meeting, Outcome, Panel, Sanctum};
 use crate::side::{self, SideFight, SideInput};
 use crate::world::{self, Go, Note, World};
@@ -27,7 +30,7 @@ use image::RgbaImage;
 use quartz::plugin::QuartzPlugin;
 use quartz::*;
 use quartz_path_forge::light::Relighter;
-use quartz_path_forge::marks::{Cast, Fill, GroundMark, Shadow, Sigil};
+use quartz_path_forge::marks::{Blow, Cast, Fill, GroundMark, Shadow, Sigil, Telegraph};
 use quartz::plugin::terrain_collision::TerrainCollisionPlugin;
 use quartz_path_forge::PathForgePlugin;
 use std::cell::RefCell;
@@ -58,8 +61,8 @@ const AMBUSH_OUT: u32 = 80;
 /// Degrees the camera turns to look down a side path, and ticks it looks before the walk goes.
 const PEEK_YAW: f32 = 38.0;
 const PEEK_T: u32 = 60;
-const BOSS_HELP: &str = "A/D move   A A / D D (held) run   Shift+A/D roll   W jump   LMB strike   Shift+LMB heavy   RMB guard   Shift+RMB parry   R drink   F ranged attack   C cast      gold parry  ·  orange roll or block  ·  purple roll  ·  a blow held high: wait for it  ·  a dodged leap leaves it open";
-const AMBUSH_HELP: &str = "A/D move   A A / D D (held) run   Shift+A/D roll   W jump   LMB strike   Shift+LMB heavy (cuts through all in reach)   RMB guard   Shift+RMB parry   R drink   F ranged attack   C cast      jump a low sweep  ·  step off a rune  ·  roll through a lunge or pounce";
+const BOSS_HELP: &str = "A/D move   A A / D D (held) run   Shift+A/D roll   W / Space jump   LMB strike   Shift+LMB heavy   RMB guard   Shift+RMB parry   R drink   F ranged attack   C cast      gold parry  ·  orange roll or block  ·  purple roll  ·  a blow held high: wait for it  ·  a dodged leap leaves it open";
+const AMBUSH_HELP: &str = "A/D move   A A / D D (held) run   Shift+A/D roll   W / Space jump   LMB strike   Shift+LMB heavy (cuts through all in reach)   RMB guard   Shift+RMB parry   R drink   F ranged attack   C cast      jump a low sweep  ·  step off a rune  ·  roll through a lunge or pounce";
 /// A spot on the canvas: top-left and size.
 type Rect = ((f32, f32), (f32, f32));
 
@@ -95,9 +98,19 @@ const CALLOUT_T: u32 = 54;
 const FLOURISH_T: u32 = 18;
 /// The controls, along the bottom.
 const HELP: &str = "help";
+const FOE_NAME: &str = "foe_name";
 /// The kit's shrine and signpost, stood on the road where the world says they are.
 const SHRINE: &str = "shrine";
 const SIGNPOST: &str = "signpost";
+/// What is set in the wall a barred fork branch is shut with (PathForge walls it up in its own
+/// wall material, `PathForgePlugin::bar`): a locked gate where a key opens it, a door barred from
+/// the far side for a shortcut.
+const BARRIER_ART: (&str, &str) = ("pixellab/barrier/locked.png", "pixellab/barrier/shut.png");
+/// Where in each picture its two leaves are (x0 y0 x1 y1), to swing them back once opened.
+const BARRIER_LEAVES: ([f32; 4], [f32; 4]) = ([0.11, 0.1, 0.89, 0.9], [0.16, 0.14, 0.84, 0.94]);
+/// The least brightness the road may fall to (the mean of its ground half, 0..1): enough to see
+/// a threat coming down a night street (`PathForgePlugin::set_visibility_floor`).
+const VISIBILITY_FLOOR: f32 = 0.15;
 /// The souls left where the hero fell.
 const STAIN: &str = "stain";
 const CHEST: &str = "chest";
@@ -108,6 +121,52 @@ const SMITH: &str = "smith";
 const FADE: &str = "fade";
 const PANEL_BG: &str = "panel_bg";
 const PANEL: &str = "panel";
+/// What E would do here, on a plate low in the middle: the plate, the key on it, the key's letter
+/// and the words.
+const PROMPT_BG: &str = "prompt_bg";
+const PROMPT_KEY: &str = "prompt_key";
+const PROMPT_E: &str = "prompt_e";
+const PROMPT: &str = "prompt";
+const PROMPT_Y: f32 = 1880.0;
+/// The touch stick's ring and the thumb's knob on it; each button's objects (`touch_id`).
+const TOUCH_STICK: &str = "touch_stick";
+const TOUCH_KNOB: &str = "touch_knob";
+fn touch_id(part: &str, i: usize) -> String { format!("touch_{part}_{i}") }
+/// Where the stick's ring rests with no thumb on it, showing where one goes.
+const STICK_REST: (f32, f32) = (700.0, 1640.0);
+
+/// A soft disc `size` pixels across, `fill` inside a rim of `edge`, smoothed at both edges.
+fn touch_disc(size: u32, fill: [u8; 4], edge: [u8; 4]) -> Arc<RgbaImage> {
+    let r = size as f32 * 0.5;
+    let rim = (size as f32 * 0.035).max(2.0);
+    Arc::new(RgbaImage::from_fn(size, size, |x, y| {
+        let d = ((x as f32 + 0.5 - r).powi(2) + (y as f32 + 0.5 - r).powi(2)).sqrt();
+        let outer = (r - 0.5 - d).clamp(0.0, 1.0);
+        let in_rim = ((d - (r - 1.5 - rim)) + 0.5).clamp(0.0, 1.0);
+        let mix = |k: usize| (fill[k] as f32 + (edge[k] as f32 - fill[k] as f32) * in_rim).round() as u8;
+        let a = (fill[3] as f32 + (edge[3] as f32 - fill[3] as f32) * in_rim) * outer;
+        image::Rgba([mix(0), mix(1), mix(2), a.round() as u8])
+    }))
+}
+/// A cutscene's letterbox bars, its words under the picture, its title card (the big line and the
+/// small), the white it fades through, and how to skip it.
+const CINE_TOP: &str = "cine_top";
+const CINE_BOTTOM: &str = "cine_bottom";
+const CINE_CAPTION: &str = "cine_caption";
+const CINE_TITLE: &str = "cine_title";
+const CINE_SUB: &str = "cine_sub";
+const CINE_WHITE: &str = "cine_white";
+const CINE_SKIP: &str = "cine_skip";
+/// A soft dark band behind the title card, so it reads over anything.
+const CINE_SHADE: &str = "cine_shade";
+/// How far past the canvas the cutscene's bars and white reach: a window of another shape shows
+/// the road beyond the canvas (`BLEED`).
+const CINE_OVER: f32 = 1200.0;
+/// A watcher looks along the road for the first this many ticks of each of its waits (it faces the
+/// road the rest of the time).
+const LINGER_GLANCE: u32 = 150;
+/// The top of a prologue lesson's box, under the hero's bars.
+const LESSON_Y: f32 = 420.0;
 /// The world map (M), where it is drawn on the screen and how much larger than its picture, and its
 /// place names.
 const MAP: &str = "map";
@@ -121,7 +180,7 @@ const STATION_D: f32 = HERO_D + 2.6;
 const BEFORE_X: f32 = 0.7;
 /// Bars: (id, x, y, width, height, colour) along the top left; the enemy's along the top middle.
 /// Under the stamina, a bulwark's ward: dim gold while it fills, bright once it can burst.
-const BARS: [(&str, f32, f32, f32, f32, [u8; 4]); 9] = [
+const BARS: [(&str, f32, f32, f32, f32, [u8; 4]); 10] = [
     ("bar_hp_back", 60.0, 140.0, 900.0, 34.0, [30, 20, 22, 200]),
     ("bar_hp", 60.0, 140.0, 900.0, 34.0, [176, 36, 40, 255]),
     ("bar_st_back", 60.0, 186.0, 700.0, 22.0, [20, 26, 22, 200]),
@@ -129,8 +188,10 @@ const BARS: [(&str, f32, f32, f32, f32, [u8; 4]); 9] = [
     ("bar_ward_back", 60.0, 218.0, 500.0, 16.0, [24, 22, 16, 200]),
     ("bar_ward", 60.0, 218.0, 500.0, 16.0, [150, 132, 84, 255]),
     ("bar_ward_ready", 60.0, 218.0, 500.0, 16.0, [255, 236, 170, 255]),
-    ("bar_foe", 1320.0, 140.0, 1200.0, 26.0, [150, 40, 44, 255]),
-    ("bar_foe_stance", 1320.0, 172.0, 1200.0, 12.0, [214, 176, 70, 255]),
+    // The foe's, top right, mirroring the hero's, its name over it (`FOE_NAME`).
+    ("bar_foe_back", 2580.0, 140.0, 1200.0, 26.0, [30, 20, 22, 200]),
+    ("bar_foe", 2580.0, 140.0, 1200.0, 26.0, [150, 40, 44, 255]),
+    ("bar_foe_stance", 2580.0, 172.0, 1200.0, 12.0, [214, 176, 70, 255]),
 ];
 
 fn enemy_id(i: usize) -> String { format!("enemy_{i}") }
@@ -233,10 +294,45 @@ fn kind_art(k: Archetype) -> (&'static str, f32) {
 }
 
 /// A full-object image of one colour (stretched to the object's size).
+/// Lines whose parts are split by tabs, laid out as columns in a proportional `font` at `size`:
+/// each part padded with spaces to the widest of its column (measured), so the next starts level.
+fn columns(font: &Font, lines: &[&str], size: f32) -> Vec<String> {
+    let width = |t: &str| t.chars().map(|ch| font.0.metrics(ch, size).advance_width).sum::<f32>();
+    let space = width(" ").max(1.0);
+    let parts: Vec<Vec<&str>> = lines.iter().map(|l| l.split('\t').collect()).collect();
+    let n = parts.iter().map(|p| p.len()).max().unwrap_or(0);
+    let mut out: Vec<String> = vec![String::new(); lines.len()];
+    for col in 0..n {
+        // The widest part in this column, among lines with a column after it.
+        let widest = parts.iter().filter(|p| p.len() > col + 1).map(|p| width(p[col])).fold(0.0, f32::max);
+        for (o, p) in out.iter_mut().zip(&parts) {
+            let Some(part) = p.get(col) else { continue };
+            o.push_str(part);
+            if p.len() > col + 1 { o.push_str(&" ".repeat(((widest - width(part)) / space).round() as usize + 3)); }
+        }
+    }
+    out
+}
+
 fn swatch(c: [u8; 4]) -> Arc<RgbaImage> { Arc::new(RgbaImage::from_pixel(1, 1, image::Rgba(c))) }
+
+/// The canvas camera at `zoom`, centred on `at` (canvas units) as far as the canvas allows: a
+/// cutscene closing in on a figure, the road and everything on it scaling together (the HUD is
+/// screen-space and stays). 1 and the middle is the whole canvas, as the game plays it.
+fn frame_canvas(c: &mut Canvas, zoom: f32, at: (f32, f32)) {
+    let Some(cam) = c.camera_mut() else { return };
+    let zoom = zoom.max(1.0);
+    (cam.zoom, cam.zoom_target, cam.zoom_anchor) = (zoom, zoom, None);
+    let (w, h) = (3840.0 / zoom, 2160.0 / zoom);
+    cam.position = ((at.0 - 0.5 * w).clamp(0.0, 3840.0 - w), (at.1 - 0.5 * h).clamp(0.0, 2160.0 - h));
+}
 
 /// Set the scene up on `canvas`: the road, the hero, the enemies, the numbers, and the game.
 pub fn setup(canvas: &mut Canvas) {
+    // On a phone: rayon's pool (before anything else uses it) and the road's threads on the fast
+    // cores, and this, the game's thread, on one of its own.
+    quartz_path_forge::cores::use_fast_cores();
+    quartz_path_forge::cores::pin_game();
     canvas.set_camera(Camera::new((3840.0, 2160.0), (3840.0, 2160.0)));
     let road_rect = |id: &str, layer: i32| {
         let mut o = GameObject::build(id)
@@ -255,9 +351,16 @@ pub fn setup(canvas: &mut Canvas) {
     match PathForgePlugin::live(journey, ROAD, ROAD_PX) {
         // The road is pixel art scaled up eight times: hard pixels, like the sprites over it.
         // It measures its light along the road, so the figures on it are lit as it is.
-        Ok(p) => canvas.add_plugin(p.with_speed(0.0).with_pixel_art(true).with_sprite_light()),
+        // On a phone it runs at an even 30 (each frame shown for two refreshes), with the frame
+        // queued behind as headroom and the heat left for the long run; elsewhere up to 60.
+        Ok(p) => {
+            let p = p.with_speed(0.0).with_pixel_art(true).with_sprite_light();
+            canvas.add_plugin(if cfg!(target_os = "android") { p.with_render_fps(30.0) } else { p })
+        }
         Err(e) => eprintln!("hollow_road: the road would not open: {e}"),
     }
+    // Never too dark to see what is coming (a place meant to hide its threats sets `keep_dark`).
+    if let Some(pf) = canvas.get_plugin_mut::<PathForgePlugin>() { pf.set_visibility_floor(Some(VISIBILITY_FLOOR)); }
 
     let sprite = |id: &str, layer: i32| { let mut o = GameObject::build(id).size(1.0, 1.0).position(0.0, 0.0).layer(layer).finish(); o.unlit = true; o };
     canvas.add_game_object(HERO.to_owned(), sprite(HERO, 60));
@@ -285,6 +388,9 @@ pub fn setup(canvas: &mut Canvas) {
     canvas.add_game_object(CALLOUT.to_owned(), callout);
     let help = GameObject::build(HELP).size(3720.0, 80.0).position(60.0, 2060.0).layer(200).screen_space().finish();
     canvas.add_game_object(HELP.to_owned(), help);
+    let mut foe_name = GameObject::build(FOE_NAME).size(1200.0, 80.0).position(2580.0, 62.0).layer(201).screen_space().finish();
+    foe_name.visible = false;
+    canvas.add_game_object(FOE_NAME.to_owned(), foe_name);
     for (id, x, y, w, h, c) in BARS {
         let mut o = GameObject::build(id).size(w, h).position(x, y).layer(201).screen_space().finish();
         o.unlit = true;
@@ -302,6 +408,31 @@ pub fn setup(canvas: &mut Canvas) {
     }
     let panel = GameObject::build(PANEL).size(2240.0, 640.0).position(800.0, 1320.0).layer(211).screen_space().finish();
     canvas.add_game_object(PANEL.to_owned(), panel);
+    // The touch controls (`draw_touch`): over the menus, under the fade. A button is a disc as it
+    // rests and a brighter one held, swapped by showing one or the other (no picture changes
+    // hands while a thumb is on it), and its word.
+    let disc_objects = [(TOUCH_STICK, touch_disc(240, [14, 12, 18, 70], [236, 228, 210, 110]), 240), (TOUCH_KNOB, touch_disc(120, [236, 228, 210, 80], [255, 250, 236, 170]), 241)];
+    for (id, art, layer) in disc_objects {
+        let mut o = GameObject::build(id).size(1.0, 1.0).layer(layer).screen_space().finish();
+        (o.unlit, o.visible) = (true, false);
+        o.set_image(Image { shape: ShapeType::Rectangle(0.0, (1.0, 1.0), 0.0), image: art, color: None });
+        canvas.add_game_object(id.to_owned(), o);
+    }
+    let (rest, held) = (touch_disc(160, [14, 12, 18, 120], [236, 228, 210, 200]), touch_disc(160, [200, 160, 80, 150], [255, 236, 180, 240]));
+    for i in 0..crate::touch::Btn::ALL.len() {
+        for (part, art) in [("ring", Some(rest.clone())), ("glow", Some(held.clone())), ("label", None)] {
+            let id = touch_id(part, i);
+            let mut o = GameObject::build(&id).size(1.0, 1.0).layer(if part == "label" { 243 } else { 242 }).screen_space().finish();
+            (o.unlit, o.visible) = (true, false);
+            if let Some(art) = art { o.set_image(Image { shape: ShapeType::Rectangle(0.0, (1.0, 1.0), 0.0), image: art, color: None }); }
+            canvas.add_game_object(id, o);
+        }
+    }
+    for (id, layer) in [(PROMPT_BG, 204), (PROMPT_KEY, 205), (PROMPT_E, 206), (PROMPT, 206)] {
+        let mut o = GameObject::build(id).size(1.0, 1.0).position(0.0, PROMPT_Y).layer(layer).screen_space().finish();
+        (o.unlit, o.visible) = (true, false);
+        canvas.add_game_object(id.to_owned(), o);
+    }
     let size = (crate::map::W as f32 * MAP_SCALE, crate::map::H as f32 * MAP_SCALE);
     let mut o = GameObject::build(MAP).size(size.0, size.1).position(MAP_AT.0, MAP_AT.1).layer(212).screen_space().finish();
     (o.unlit, o.visible) = (true, false);
@@ -312,17 +443,42 @@ pub fn setup(canvas: &mut Canvas) {
         canvas.add_game_object(map_label(i), o);
     }
 
+    // A cutscene's bars over the HUD, its words over them, its white under the cut's black.
+    for (id, layer) in [(CINE_TOP, 290), (CINE_BOTTOM, 290), (CINE_WHITE, 296), (CINE_SHADE, 291)] {
+        let (w, h) = (3840.0 + 2.0 * CINE_OVER, 2160.0 + 2.0 * CINE_OVER);
+        let mut o = GameObject::build(id).size(w, h).position(-CINE_OVER, -CINE_OVER).layer(layer).screen_space().finish();
+        (o.unlit, o.visible) = (true, false);
+        let img = match id {
+            CINE_WHITE => swatch([255, 252, 244, 255]),
+            // Dark in the middle, clear at the top and bottom.
+            CINE_SHADE => Arc::new(RgbaImage::from_fn(1, 64, |_, y| { let u = (y as f32 + 0.5) / 64.0 * 2.0 - 1.0; image::Rgba([0, 0, 0, (200.0 * (1.0 - u * u).powf(1.5)) as u8]) })),
+            _ => swatch([0, 0, 0, 255]),
+        };
+        o.set_image(Image { shape: ShapeType::Rectangle(0.0, (w, h), 0.0), image: img, color: None });
+        canvas.add_game_object(id.to_owned(), o);
+    }
+    for (id, y, h) in [(CINE_CAPTION, 1910.0, 220.0), (CINE_TITLE, 1420.0, 260.0), (CINE_SUB, 1660.0, 110.0), (CINE_SKIP, 50.0, 70.0)] {
+        let mut o = GameObject::build(id).size(3840.0, h).position(0.0, y).layer(292).screen_space().finish();
+        o.visible = false;
+        canvas.add_game_object(id.to_owned(), o);
+    }
+
     let presses = Arc::new(Mutex::new(Vec::new()));
     let q = presses.clone();
     canvas.on_key_press(move |c, k| { let shift = shift_held(c); q.lock().unwrap().push(Press::Key(k.clone(), shift)); });
     let q = presses.clone();
-    canvas.on_mouse_press(move |c, b, _| { let shift = shift_held(c); q.lock().unwrap().push(Press::Mouse(b, shift)); });
-    canvas.add_plugin(Pilgrimage::new(Fight::new(world.foes()), world, presses));
+    // A touch arrives as a finger first and then as the mouse; the finger is the control, so its
+    // mouse twin is not a click (a strike).
+    canvas.on_mouse_press(move |c, b, _| { if !c.touches().is_empty() { return; } let shift = shift_held(c); q.lock().unwrap().push(Press::Mouse(b, shift)); });
+    let fingers = Arc::new(Mutex::new(Vec::new()));
+    let f = fingers.clone();
+    canvas.on_touch(move |_, id, phase, at| f.lock().unwrap().push((id, phase, at)));
+    canvas.add_plugin(Pilgrimage::new(Fight::new(world.foes()), world, presses, fingers));
 }
 
 /// A key or a click, as it came, with whether Shift was down.
 #[derive(Clone, Debug)]
-enum Press { Key(Key, bool), Mouse(MouseButton, bool) }
+enum Press { Key(Key, bool), Mouse(MouseButton, bool), Touch(crate::touch::Tap) }
 
 /// A second press of the same way within this long (seconds of play), held, is a run.
 const DOUBLE_TAP: f64 = 0.3;
@@ -335,6 +491,22 @@ fn way(k: &Key) -> Option<char> {
 fn way_held(c: &Canvas, w: char) -> bool {
     let (ch, n) = match w { 'w' => ("w", NamedKey::ArrowUp), 'a' => ("a", NamedKey::ArrowLeft), 's' => ("s", NamedKey::ArrowDown), _ => ("d", NamedKey::ArrowRight) };
     c.is_key_held(&Key::Character(ch.into())) || c.is_key_held(&Key::Named(n))
+}
+
+/// A menu's hint as a touch screen is worked: "W/S choose   E take   Esc back" is a tap on a
+/// choice, "E continue" a tap, and so on.
+fn for_touch(hint: &str) -> String {
+    if let Some(rest) = hint.strip_prefix("W/S choose   E ") {
+        return format!("Tap a choice to {}   BACK to go back", rest.split("   ").next().unwrap_or(rest));
+    }
+    match hint {
+        "E or Enter to begin" => "Tap to begin".into(),
+        "E continue" => "Tap to continue".into(),
+        "M or Esc close" => "BACK to close".into(),
+        "E leave   Esc stay" => "Tap to leave   BACK to stay".into(),
+        "A/D move   E approach" => "Swipe to move   Tap to approach".into(),
+        h => h.replacen("E go on", "Tap to go on", 1),
+    }
 }
 
 /// A key as the title, the sanctum and their menus read it.
@@ -377,6 +549,8 @@ pub(crate) enum Mode {
     Peek(u32, i8),
     /// The world map open, the road standing still.
     Map,
+    /// A cutscene on its own over the road (`Pilgrimage::scene`), and what follows it.
+    Scene(Then),
 }
 
 /// The boss fight under way: the fight, ticks since it began (the camera swings round first),
@@ -384,20 +558,24 @@ pub(crate) enum Mode {
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Arena { pub side: SideFight, pub t: u32, pub done: u32, pub why: Why }
 
-/// What a side-on fight is: the boss at the gate, or one of the place's ambushes.
+/// What a side-on fight is: the boss at the gate, one of the place's ambushes, or the prologue's.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum Why { Boss, Ambush(usize) }
+pub(crate) enum Why { Boss, Ambush(usize), Prologue }
 
 /// What a fade to black leads to.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum Next { Start, Resume, Sanctum, Road, Respawn, Detour(i8), Back, Turn }
+pub(crate) enum Next { Start, Prologue, Resume, Sanctum, Road, Respawn, Detour(i8), Back, Turn, Opening(bool) }
+/// What comes after a cutscene played on its own: a pilgrimage begun (through the prologue or
+/// not), or the pilgrimage's end.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Then { Begin(bool), Conclude }
 /// What a cut shows once the road is there.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum After { Sanctum, Rise, Wake, Walk }
+pub(crate) enum After { Sanctum, Rise, Wake, Walk, Prologue }
 
 /// How a panel is drawn.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Style { Title, Menu, Died }
+enum Style { Title, Menu, Died, Lesson }
 
 const KNEEL_T: u32 = 50;
 const RISE_T: u32 = 40;
@@ -439,6 +617,19 @@ pub struct Pilgrimage {
     #[cfg(test)]
     pub(crate) staged: Vec<Event>,
     presses: Arc<Mutex<Vec<Press>>>,
+    /// Fingers' events since the last tick (`Canvas::on_touch`), the touch controls they work
+    /// (`touch`), what those hold now, and where each choice of the menu shown last stood (top,
+    /// bottom; virtual units) for a tap to pick.
+    fingers: Arc<Mutex<Vec<(u64, TouchPhase, (f32, f32))>>>,
+    pad: crate::touch::Pad,
+    touch_held: crate::touch::Held,
+    menu_rows: RefCell<Vec<(f32, f32)>>,
+    /// The touch controls shown whatever the device (`HR_TOUCH=1`, or a capture): on Android they
+    /// always are, elsewhere from the first touch.
+    pub(crate) touch_ui: bool,
+    /// The controls as last laid out (for what, at what window scale): their words and places
+    /// are set again only when that changes.
+    touch_laid: std::cell::Cell<Option<(crate::touch::Ui, f32)>>,
     /// Presses not yet given to a fight tick (game time can stand still while keys arrive).
     pending: Input,
     /// Fight ticks owed: game time over the fight's 60 Hz tick.
@@ -459,10 +650,15 @@ pub struct Pilgrimage {
     last_frame: Option<Arc<RgbaImage>>,
     /// The road's speed last tick (the hero strides while it moves).
     last_speed: f32,
+    /// How far through a stride the hero's legs are (0..1): carried on by the road's speed, a
+    /// walk's stride or a run's, so going from one gait into the other keeps the step.
+    stride: f32,
     /// The warnings painted last, to repaint only on change.
     last_marks: Vec<GroundMark>,
     last_sigils: Vec<Sigil>,
     last_marks_frame: Option<Arc<RgbaImage>>,
+    /// Whether the marks last painted held a telegraph (so the next tick without one clears it).
+    telegraphed: bool,
     /// Sprite frames lit by the road's light, and the shadows last painted with the frame they
     /// were painted for (`place` works from `&self`).
     relit: RefCell<Relighter>,
@@ -504,6 +700,9 @@ pub struct Pilgrimage {
     flourish: u32,
     /// The kit's shrine and signpost pictures.
     props: Option<(Arc<RgbaImage>, Arc<RgbaImage>)>,
+    /// The stop and the gates last stood on the road's fork (`PathForgePlugin::bar`): each gated
+    /// way, whether a key opens it, and whether it is open.
+    bar_sent: Option<(String, [Option<(bool, bool)>; 2])>,
     /// A cache's chest, shut and opened.
     chest: Option<(Arc<RgbaImage>, Arc<RgbaImage>)>,
     /// The save slot this pilgrimage is kept in (`profile`), the folder the slots are in, and the
@@ -516,6 +715,31 @@ pub struct Pilgrimage {
     played: f64,
     kept: Option<(serde_json::Value, u64)>,
     keep_failed: bool,
+    /// The prologue under way, from its first lesson to its side-on bout (`prologue`).
+    pub(crate) prologue: Option<Prologue>,
+    /// The face for titles, banners and callouts (Cinzel); the plain one reads the rest.
+    title_font: Option<Arc<Font>>,
+    /// What the prompt plate says, and how far it has faded in.
+    prompt: (&'static str, f32),
+    /// Whether the list of controls is shown (H), and the developer's numbers (F3); kept in
+    /// `settings.json` beside the profiles' folder.
+    show_help: bool,
+    show_dev: bool,
+    audio: Audio,
+    /// The cutscene playing, over whatever the mode draws (`run_scene`).
+    scene: Option<Cutscene>,
+}
+
+/// What the player chose to see, kept between launches.
+fn settings_path(saves: &std::path::Path) -> std::path::PathBuf { saves.parent().unwrap_or(saves).join("settings.json") }
+fn read_settings(saves: &std::path::Path) -> (bool, bool) {
+    let v: serde_json::Value = std::fs::read_to_string(settings_path(saves)).ok().and_then(|t| serde_json::from_str(&t).ok()).unwrap_or_default();
+    (v["show_controls"].as_bool().unwrap_or(false), v["show_dev"].as_bool().unwrap_or(false))
+}
+fn write_settings(saves: &std::path::Path, (help, dev): (bool, bool)) {
+    let path = settings_path(saves);
+    if let Some(dir) = path.parent() { let _ = std::fs::create_dir_all(dir); }
+    if let Err(e) = std::fs::write(&path, serde_json::json!({ "show_controls": help, "show_dev": dev }).to_string()) { eprintln!("[hollow_road] could not keep settings: {e}"); }
 }
 
 /// How often the pilgrimage is looked at to be kept, ticks; a save that has not changed is
@@ -531,6 +755,43 @@ fn save_dir() -> std::path::PathBuf {
 
 /// An attack's warning colour, by how it can be met: gold for a parry, red for a blow that only
 /// blocks, red-orange for one that breaks guards, purple for one only a roll escapes.
+/// Metres back within which a chaser shows at the bottom of the screen, brightening as it nears.
+const BEHIND_SHOWN: f32 = 12.0;
+
+/// Enemies after the hero from behind, warned of where the road meets the bottom of the screen
+/// (nothing behind the camera is in view): an ember glow rising from the edge in the chaser's
+/// lane (`xs`, pixels), stronger the nearer it is, flaring and pulsing in its blow's colour as it
+/// winds up. Dithered like the ground's telegraphs.
+fn paint_behind(img: &mut RgbaImage, chasers: &[crate::fight::Chaser], xs: &[f32], time: f32) {
+    const BAYER: [[f32; 4]; 4] = [[0.0, 8.0, 2.0, 10.0], [12.0, 4.0, 14.0, 6.0], [3.0, 11.0, 1.0, 9.0], [15.0, 7.0, 13.0, 5.0]];
+    let (w, h) = (img.width() as f32, img.height() as f32);
+    for (ch, &cx) in chasers.iter().zip(xs).take(3) {
+        let near = (1.0 - ch.back / BEHIND_SHOWN).clamp(0.0, 1.0);
+        if near <= 0.0 { continue; }
+        let (rgb, strength) = match ch.blow {
+            Some((kind, parry, progress)) => (warning_rgb(kind, parry), (0.8 + 0.3 * progress) * (0.85 + 0.15 * (time * 14.0).sin())),
+            None => ([210, 72, 40], 0.4 + 0.5 * near),
+        };
+        let half = w * 0.2;
+        let top = h * (1.0 - 0.1 - 0.14 * near.max(strength.min(1.0)));
+        let (x0, x1) = ((cx - half).max(0.0) as u32, ((cx + half).min(w - 1.0)) as u32);
+        for y in top.max(0.0) as u32..img.height() {
+            let up = ((y as f32 - top) / (h - top)).clamp(0.0, 1.0).powf(1.6);
+            for x in x0..=x1 {
+                let across = 1.0 - ((x as f32 - cx) / half).powi(2);
+                if across <= 0.0 { continue; }
+                // Six steps of strength, dithered, the brightest of the glows kept.
+                let a = (strength * up * across).min(1.0);
+                let level = ((a * 6.0 + BAYER[(y % 4) as usize][(x % 4) as usize] / 16.0).floor() / 6.0).min(1.0);
+                if level <= 0.0 { continue; }
+                let p = img.get_pixel_mut(x, y);
+                let alpha = (level * 230.0) as u8;
+                if alpha > p[3] { *p = image::Rgba([rgb[0], rgb[1], rgb[2], alpha]); }
+            }
+        }
+    }
+}
+
 pub(crate) fn warning_rgb(kind: Kind, parry: bool) -> [u8; 3] {
     match kind {
         Kind::Physical if parry => [240, 190, 56],
@@ -545,6 +806,23 @@ fn kit_picture(name: &str) -> Option<Arc<RgbaImage>> {
     let img = Arc::new(image::open(path).ok()?.to_rgba8());
     set_pixel_art(&img, true);
     Some(img)
+}
+
+/// Where a picture of something standing meets the ground, as a share of its height from the
+/// top: its widest row in the lower part of what is drawn (a round plinth seen from above is
+/// widest across its middle, where it lies on the ground; a flat base, along its foot). The
+/// lowest such row when several tie, and the foot of what is drawn when nothing is.
+fn ground_line(img: &RgbaImage) -> f32 {
+    let (w, h) = img.dimensions();
+    let width = |y: u32| -> u32 {
+        let row = (0..w).filter(|&x| img.get_pixel(x, y)[3] > 16);
+        match (row.clone().next(), row.last()) { (Some(a), Some(b)) => b - a + 1, _ => 0 }
+    };
+    let drawn: Vec<u32> = (0..h).filter(|&y| width(y) > 0).collect();
+    let (Some(&top), Some(&foot)) = (drawn.first(), drawn.last()) else { return 1.0 };
+    let from = foot - (foot - top) * 35 / 100;
+    let widest = (from..=foot).max_by_key(|&y| (width(y), y)).unwrap_or(foot);
+    (widest + 1) as f32 / h as f32
 }
 
 /// A still Pixellab picture (`assets/pixellab/<path>`), as pixel art.
@@ -604,6 +882,11 @@ fn loosing<'a>(s: &'a Sheet, kit: &crate::gear::Kit, prefix: &str, cast: bool) -
 /// The clip `name` (`e_` side-on) with what is worn in hand: the bare-handed clip drawn for the
 /// way the weapon is held (`<family>_<name>`, see `Class::family`) with weapon and offhand put in
 /// (`kitted`) where there is one, else the clip as drawn (the Wayfarer's sword in it).
+/// Road walked over one stride (two steps) of the hero's walk and of the run: the legs' reach
+/// (tools/moveset/stances.py GAIT3) at the road's pace, a little long for so short a body.
+const WALK_STRIDE: f32 = 1.4;
+const RUN_STRIDE: f32 = 2.0;
+
 fn worn<'a>(s: &'a Sheet, kit: &crate::gear::Kit, name: &str) -> Option<&'a Clip> {
     let (pre, rest) = name.strip_prefix("e_").map_or(("", name), |r| ("e_", r));
     kitted(s, kit, &format!("{pre}{}_{rest}", kit.arms.class.family())).or_else(|| s.clip(name))
@@ -636,7 +919,7 @@ fn is(k: &Key, chars: &[&str], named: Option<NamedKey>) -> bool {
 }
 
 impl Pilgrimage {
-    fn new(mut fight: Fight, world: World, presses: Arc<Mutex<Vec<Press>>>) -> Pilgrimage {
+    fn new(mut fight: Fight, world: World, presses: Arc<Mutex<Vec<Press>>>, fingers: Arc<Mutex<Vec<(u64, TouchPhase, (f32, f32))>>>) -> Pilgrimage {
         fight.hero.stats.kit = world.gear.kit();
         let font = Font::from_bytes(include_bytes!("../assets/font.ttf")).ok().map(Arc::new);
         Pilgrimage {
@@ -644,16 +927,50 @@ impl Pilgrimage {
             log: Vec::new(),
             #[cfg(test)]
             staged: Vec::new(),
-            fight, presses, pending: Input::default(), owed: 0.0, slow: (0, 1.0), dead_for: 0,
-            art: Art::new(), hero_sheet: armed_sheet("wayfarer_ne").or_else(|| load_sheet("wayfarer")), enemy_sheets: Archetype::ALL.iter().filter_map(|&k| Some((k, load_sheet(kind_art(k).0)?))).collect(), font, ticks: 0, frames: (0, 0), last_frame: None, last_speed: 0.0, last_marks: Vec::new(), last_sigils: Vec::new(), last_marks_frame: None, relit: RefCell::new(Relighter::new()), frosted: RefCell::new(std::collections::HashMap::new()), last_shadows: RefCell::new((Vec::new(), Vec::new(), None)), tracer: RefCell::new(TerrainCollisionPlugin::new()), boss_sheet: load_sheet("bell_warden"), boss_art: None, map_img: None, side_pending: SideInput::default(), tap: None, running: None, fx: Fx::load(),
-            world, mode: Mode::Front(Front::Title), calling: None, fade: (1.0, 0.0), keeper_sheet: load_sheet("keeper"), smith_sheet: load_sheet("smith"), banner: (String::new(), 0), callout: (String::new(), [0; 3], 0), flourish: 0, props: kit_picture("shrine").zip(kit_picture("signpost")), chest: pixellab_picture("chest/shut.png").zip(pixellab_picture("chest/open.png")),
-            slot: None, saves: save_dir(), slots: Vec::new(), played: 0.0, kept: None, keep_failed: false,
+            fight, presses, fingers, pad: crate::touch::Pad::default(), touch_held: crate::touch::Held::default(), menu_rows: RefCell::new(Vec::new()),
+            touch_ui: cfg!(target_os = "android") || std::env::var_os("HR_TOUCH").is_some(), touch_laid: std::cell::Cell::new(None), pending: Input::default(), owed: 0.0, slow: (0, 1.0), dead_for: 0,
+            art: Art::new(), hero_sheet: armed_sheet("wayfarer_ne").or_else(|| load_sheet("wayfarer")), enemy_sheets: Archetype::ALL.iter().filter_map(|&k| Some((k, load_sheet(kind_art(k).0)?))).collect(), font, ticks: 0, frames: (0, 0), last_frame: None, last_speed: 0.0, stride: 0.0, last_marks: Vec::new(), last_sigils: Vec::new(), last_marks_frame: None, telegraphed: false, relit: RefCell::new(Relighter::new()), frosted: RefCell::new(std::collections::HashMap::new()), last_shadows: RefCell::new((Vec::new(), Vec::new(), None)), tracer: RefCell::new(TerrainCollisionPlugin::new()), boss_sheet: load_sheet("bell_warden"), boss_art: None, map_img: None, side_pending: SideInput::default(), tap: None, running: None, fx: Fx::load(),
+            world, mode: Mode::Front(Front::Title), calling: None, fade: (1.0, 0.0), keeper_sheet: load_sheet("keeper"), smith_sheet: load_sheet("smith"), banner: (String::new(), 0), callout: (String::new(), [0; 3], 0), flourish: 0, props: kit_picture("shrine").zip(kit_picture("signpost")), bar_sent: None, chest: pixellab_picture("chest/shut.png").zip(pixellab_picture("chest/open.png")),
+            slot: None, saves: save_dir(), slots: Vec::new(), played: 0.0, kept: None, keep_failed: false, prologue: None,
+            title_font: Font::from_bytes(include_bytes!("../assets/fonts/Cinzel-Bold.ttf")).ok().map(Arc::new), prompt: ("", 0.0), show_help: false, show_dev: false, audio: Audio::new(), scene: None,
         }
         .listed()
     }
 
-    /// With the slots read for the title.
-    fn listed(mut self) -> Pilgrimage { self.slots = profile::summaries(&self.saves); self }
+    /// A pilgrimage begun: whole, the world as at the start, at the levels everyone starts with
+    /// and the calling's own (what the other hand holds, and where its levels lean).
+    fn set_out(&mut self, walked: f64) {
+        self.world = World::new(walked);
+        self.fight = Fight::new(self.world.foes());
+        self.fight.hero.stats = crate::fight::Stats::default();
+        if let Some(c) = self.calling {
+            if let Some(name) = c.offhand() {
+                let i = crate::gear::find(name);
+                self.world.gear.gain(i);
+                self.world.gear.wear(1, Some(i));
+            }
+            let (st, [m, d, f]) = (&mut self.fight.hero.stats, c.leaning());
+            (st.might, st.dexterity, st.focus) = (st.might + m, st.dexterity + d, st.focus + f);
+        }
+        self.fight.hero.stats.kit = self.world.gear.kit();
+        self.fight.hero = crate::fight::Hero::with(self.fight.hero.stats);
+    }
+
+    /// The prologue's side-on bout: one husk, soft in the arm, the hero whole.
+    fn prologue_bout(&self) -> Box<Arena> {
+        let h = &self.fight.hero;
+        let mut side = SideFight::ambush(h.stats, h.stats.max_hp(), h.stats.max_stamina(), h.flasks.max(1), &[(&side::HUSK, 3.0)]);
+        (side.hero.arrows, side.hero.charges, side.hero.bulwark) = (h.arrows, h.charges, h.bulwark);
+        side.foes = side.foes.into_iter().map(|f| f.scaled((1.0, 0.35))).collect();
+        Box::new(Arena { side, t: 0, done: 0, why: Why::Prologue })
+    }
+
+    /// With the slots read for the title, and the settings kept last time.
+    fn listed(mut self) -> Pilgrimage {
+        self.slots = profile::summaries(&self.saves);
+        (self.show_help, self.show_dev) = read_settings(&self.saves);
+        self
+    }
 
     /// Keep the pilgrimage in its slot, if it has one and something has changed (or a minute of
     /// play has gone by since it was last written); not before the world it was set out into is
@@ -694,7 +1011,7 @@ impl Pilgrimage {
             if self.tap.is_some_and(|(t, at)| t == w && self.played - at <= DOUBLE_TAP) { self.running = Some(w); }
             self.tap = Some((w, self.played));
         }
-        if self.running.is_some_and(|w| !way_held(c, w)) { self.running = None; }
+        if self.running.is_some_and(|w| !way_held(c, w) && !self.touch_held.way(w)) { self.running = None; }
     }
 
     /// A chilled foe's frame: paled toward ice, its shading kept, its edge rimed. Made once a frame.
@@ -725,7 +1042,8 @@ impl Pilgrimage {
     /// A and D step a lane across; with Shift, W, A, S and D roll that way; W twice, held, runs.
     fn input(&mut self, c: &Canvas, presses: &[Press]) -> Input {
         self.taps(c, presses);
-        let run = self.running == Some('w');
+        let th = self.touch_held;
+        let run = self.running == Some('w') || (th.run && th.up);
         let p = &mut self.pending;
         for press in presses {
             match press {
@@ -748,18 +1066,32 @@ impl Pilgrimage {
                 Press::Mouse(MouseButton::Left, true) => p.heavy = true,
                 Press::Mouse(MouseButton::Right, true) => p.parry = true,
                 Press::Mouse(..) => {}
+                // A roll goes the way the stick leans: a lane, on ahead, or back.
+                Press::Touch(t) => {
+                    use crate::touch::Tap;
+                    match t {
+                        Tap::Light => p.light = true, Tap::Heavy => p.heavy = true, Tap::Parry => p.parry = true,
+                        Tap::Flask => p.flask = true, Tap::Loose => p.loose = true, Tap::Cast => p.cast = true,
+                        Tap::Roll if th.left => p.step = -1,
+                        Tap::Roll if th.right => p.step = 1,
+                        Tap::Roll if th.up => p.tumble = true,
+                        Tap::Roll => p.backstep = true,
+                        Tap::Jump => {}
+                    }
+                }
             }
         }
         Input {
-            forward: way_held(c, 'w'),
-            back: way_held(c, 's'),
+            forward: way_held(c, 'w') || th.up,
+            back: way_held(c, 's') || th.down,
             run,
-            guard: c.is_mouse_held(MouseButton::Right) && !shift_held(c),
+            guard: (c.is_mouse_held(MouseButton::Right) && !shift_held(c)) || th.guard,
             ..*p
         }
     }
 
-    /// Hitstop, slow motion, shake and flashes for what the fight did.
+    /// Hitstop, slow motion, shake and flashes for what the fight did. A flash is a brief tint,
+    /// never a wash: the sparks and the callout carry the moment, and the fight stays readable.
     fn show(&mut self, c: &mut Canvas, events: &[Event]) {
         for e in events {
             match *e {
@@ -777,7 +1109,7 @@ impl Pilgrimage {
                 Event::Parried { .. } => {
                     c.hitstop(10);
                     self.slow = (24, 0.5);
-                    c.run(Action::CameraFlash { color: Color(255, 236, 190, 90), duration: 0.18 });
+                    c.run(Action::CameraFlash { color: Color(255, 236, 190, 30), duration: 0.1 });
                     self.call("PARRIED", [255, 214, 110]);
                     self.flourish = FLOURISH_T;
                 }
@@ -791,7 +1123,7 @@ impl Pilgrimage {
                 Event::WardBurst { power, .. } => {
                     c.hitstop(12);
                     self.slow = (30, 0.4);
-                    c.run(Action::CameraFlash { color: Color(255, 240, 200, (24.0 + 40.0 * power) as u8), duration: 0.16 });
+                    c.run(Action::CameraFlash { color: Color(255, 240, 200, (14.0 + 24.0 * power) as u8), duration: 0.12 });
                     c.run(Action::CameraShake { intensity: 30.0 + 30.0 * power, duration: 0.3 });
                     c.run(Action::CameraZoomPunch { amount: 0.05, duration: 0.3 });
                     self.call("WARD BURST", [255, 236, 170]);
@@ -809,23 +1141,23 @@ impl Pilgrimage {
                 Event::Struck { heavy: false, .. } => {
                     c.hitstop(3);
                     c.run(Action::CameraShake { intensity: 18.0, duration: 0.12 });
-                    c.run(Action::CameraFlash { color: Color(160, 0, 0, 55), duration: 0.12 });
+                    c.run(Action::CameraFlash { color: Color(160, 0, 0, 32), duration: 0.1 });
                 }
                 Event::Struck { heavy: true, .. } => {
                     c.hitstop(7);
                     c.run(Action::CameraShake { intensity: 42.0, duration: 0.26 });
-                    c.run(Action::CameraFlash { color: Color(170, 0, 0, 120), duration: 0.26 });
+                    c.run(Action::CameraFlash { color: Color(170, 0, 0, 64), duration: 0.2 });
                 }
                 Event::Staggered { .. } => {
                     c.hitstop(9);
                     c.run(Action::CameraShake { intensity: 50.0, duration: 0.34 });
-                    c.run(Action::CameraFlash { color: Color(190, 70, 0, 120), duration: 0.3 });
+                    c.run(Action::CameraFlash { color: Color(190, 70, 0, 60), duration: 0.22 });
                     self.call("STAGGERED", [255, 170, 70]);
                 }
                 Event::KnockedDown { .. } => {
                     c.hitstop(11);
                     c.run(Action::CameraShake { intensity: 72.0, duration: 0.45 });
-                    c.run(Action::CameraFlash { color: Color(150, 0, 0, 150), duration: 0.4 });
+                    c.run(Action::CameraFlash { color: Color(150, 0, 0, 90), duration: 0.3 });
                     c.run(Action::CameraZoomPunch { amount: 0.05, duration: 0.4 });
                     self.call("KNOCKED DOWN", [235, 70, 60]);
                 }
@@ -838,20 +1170,20 @@ impl Pilgrimage {
                 Event::Blocked { chip } => {
                     c.hitstop(5);
                     c.run(Action::CameraShake { intensity: 26.0, duration: 0.16 });
-                    c.run(Action::CameraFlash { color: Color(255, 140, 40, 45), duration: 0.12 });
+                    c.run(Action::CameraFlash { color: Color(255, 140, 40, 24), duration: 0.1 });
                     self.call(&format!("BLOCKED  -{}", chip.round().max(1.0)), [255, 176, 96]);
                 }
                 Event::Deflected { .. } => { c.hitstop(5); c.run(Action::CameraShake { intensity: 22.0, duration: 0.15 }); }
                 Event::GuardBroken { .. } => {
                     c.hitstop(8);
                     c.run(Action::CameraShake { intensity: 44.0, duration: 0.3 });
-                    c.run(Action::CameraFlash { color: Color(255, 120, 30, 90), duration: 0.22 });
+                    c.run(Action::CameraFlash { color: Color(255, 120, 30, 50), duration: 0.18 });
                     self.call("GUARD BROKEN", [255, 140, 50]);
                 }
                 Event::ParryMissed { .. } => {
                     c.hitstop(5);
                     c.run(Action::CameraShake { intensity: 30.0, duration: 0.2 });
-                    c.run(Action::CameraFlash { color: Color(110, 100, 100, 80), duration: 0.16 });
+                    c.run(Action::CameraFlash { color: Color(110, 100, 100, 40), duration: 0.12 });
                     self.call("MISSED PARRY", [200, 150, 150]);
                 }
                 Event::Died => c.run(Action::CameraFlash { color: Color(60, 0, 0, 200), duration: 1.5 }),
@@ -901,34 +1233,56 @@ impl Pilgrimage {
         far * s * s * (3.0 - 2.0 * s)
     }
 
-    /// The warnings on the road for every attack under way: where it will land, how it is met;
-    /// and at a fork, a trail up the side the hero leans toward.
+    /// The marks on the road that are not blows: at a fork, a trail up the side the hero leans
+    /// toward.
     fn marks(&self, walked: f64) -> Vec<GroundMark> {
-        if let Mode::Side(a) = &self.mode { return Self::side_marks(a); }
-        let lean = self.world.signpost.filter(|_| !self.world.chose).zip(self.world.lean).map(|(sign, b)| {
+        if matches!(self.mode, Mode::Side(_)) { return Vec::new(); }
+        self.world.signpost.filter(|_| !self.world.chose).zip(self.world.lean).map(|(sign, b)| {
             let side = match b { quartz_path_forge::Branch::Left => -1.0, quartz_path_forge::Branch::Right => 1.0 };
             let to = ((sign - walked) as f32 - world::SIGNPOST_PAST).max(HERO_D + 1.0);
             GroundMark { x: (side * LANE_W - 0.35 * LANE_W, side * LANE_W + 0.35 * LANE_W), d: (HERO_D + 0.8, to), color: [240, 214, 130, 70], fill: Fill::Dots, edge: None }
-        });
-        self.fight.threats(walked).iter().map(|t| {
-            let live = t.phase != Phase::Windup;
-            // Brighter as the wind-up runs out. The colour says how to meet it (gold: parry it;
-            // red-orange: it breaks guards and cannot be parried, so roll or pay to block; purple:
-            // only a roll), and the fill says the same without colour.
-            let a = if live { 200 } else { (70.0 + 90.0 * t.progress) as u8 };
-            let [r, g, b] = warning_rgb(t.kind, t.parry);
-            let color = [r, g, b, a];
-            let fill = match t.kind { Kind::Physical => Fill::Solid, Kind::GuardBreak => Fill::Stripes, Kind::Unblockable => Fill::Dots };
+        }).into_iter().collect()
+    }
+
+    /// The telegraph of every blow under way: where it will land, lit in how it is met (gold:
+    /// parry it; red-orange: it breaks guards, so roll or pay to block; purple: only a roll), shaped
+    /// by what it is (a blade down the lane, a crescent across lanes, a crackling oval nothing
+    /// stops), with a front of light running from the attacker that lands as the blow does.
+    fn telegraphs(&self, walked: f64) -> Vec<Telegraph> {
+        let time = self.ticks as f32 / 60.0;
+        if let Mode::Side(a) = &self.mode {
+            return a.side.foes.iter().filter_map(|f| Some((f.facing, f.blow()?.0.motion, f.warning()?))).map(|(facing, motion, (from, to, kind, parry, progress))| Telegraph {
+                x: (-1.1, 1.1), d: (ARENA_D + from, ARENA_D + to), rgb: warning_rgb(kind, parry),
+                // What comes down on a spot has no way to it; the rest point at the hero (seen
+                // side-on, a blade's chevrons point along the road at them).
+                blow: match motion {
+                    side::Motion::Ring | side::Motion::Leap | side::Motion::Rune => Blow::Area,
+                    _ if kind == Kind::Unblockable => Blow::Crush,
+                    _ => Blow::Chop,
+                },
+                toward: if facing > 0.0 { 1.0 } else { -1.0 }, progress, live: progress >= 1.0, fade: 1.0, time,
+            }).collect();
+        }
+        let threats = self.fight.threats(walked);
+        // The last of them are arrows and hexes in flight: charged all the way, never a flash.
+        let swung = threats.len().saturating_sub(self.fight.missiles.len());
+        threats.iter().enumerate().map(|(k, t)| {
             // Short of the lane's edges, so a gap shows which lane is safe.
-            let half = 0.4 * LANE_W;
-            GroundMark {
-                x: (t.lanes.0 as f32 * LANE_W - half, t.lanes.1 as f32 * LANE_W + half),
-                d: t.d,
-                color,
-                fill,
-                edge: Some([color[0].saturating_add(40), color[1].saturating_add(40), color[2].saturating_add(40), if live { 255 } else { a.saturating_add(40) }]),
+            let half = 0.42 * LANE_W;
+            let blow = match t.kind {
+                _ if t.area => Blow::Area,
+                Kind::Physical => Blow::Chop,
+                // Across, from the attacker's own lane toward the one it reaches into.
+                Kind::GuardBreak => Blow::Sweep(if self.fight.enemies.get(t.enemy).is_some_and(|e| e.lane > t.lanes.0) { -1.0 } else { 1.0 }),
+                Kind::Unblockable => Blow::Crush,
+            };
+            let flying = k >= swung;
+            Telegraph {
+                x: (t.lanes.0 as f32 * LANE_W - half, t.lanes.1 as f32 * LANE_W + half), d: t.d, rgb: warning_rgb(t.kind, t.parry), blow, toward: -1.0,
+                progress: if flying { 1.0 } else { t.progress }, live: !flying && t.phase == Phase::Active,
+                fade: if t.phase == Phase::Recover { 0.3 } else { 1.0 }, time,
             }
-        }).chain(lean).collect()
+        }).collect()
     }
 
     /// The runes being cast, as circles on the ground inside their warnings.
@@ -950,12 +1304,22 @@ impl Pilgrimage {
     fn paint_marks(&mut self, c: &mut Canvas, walked: f64) {
         let marks = self.marks(walked);
         let sigils = self.sigils(walked);
+        let telegraphs = self.telegraphs(walked);
+        let chasers = if self.mode == Mode::Play { self.fight.chasers(walked) } else { Vec::new() };
         let Some(pf) = c.get_plugin::<PathForgePlugin>() else { return };
-        // The camera moves with every new road frame, so repaint on those too.
+        // The camera moves with every new road frame, so repaint on those too; a telegraph moves
+        // every tick.
         let frame = pf.current_image().cloned();
         let same_frame = match (&frame, &self.last_marks_frame) { (Some(a), Some(b)) => Arc::ptr_eq(a, b), (None, None) => true, _ => false };
-        if marks == self.last_marks && sigils == self.last_sigils && (same_frame || (marks.is_empty() && sigils.is_empty())) { return; }
-        let img = if marks.is_empty() && sigils.is_empty() { None } else { pf.paint_ground(&marks, &sigils) };
+        let none = marks.is_empty() && sigils.is_empty() && telegraphs.is_empty() && chasers.is_empty();
+        if telegraphs.is_empty() && chasers.is_empty() && marks == self.last_marks && sigils == self.last_sigils && (same_frame || none) && !self.telegraphed { return; }
+        self.telegraphed = !telegraphs.is_empty() || !chasers.is_empty();
+        let mut img = if none { None } else { pf.paint_warnings(&marks, &sigils, &telegraphs) };
+        if let Some(img) = img.as_mut() {
+            let lane_x = |lane: i32| pf.project(lane as f32 * LANE_W, 0.0, 1.0).map_or(img.width() as f32 * (0.5 + 0.3 * lane as f32), |p| p.0);
+            let xs: Vec<f32> = chasers.iter().map(|ch| lane_x(ch.lane)).collect();
+            paint_behind(img, &chasers, &xs, self.ticks as f32 / 60.0);
+        }
         self.last_marks = marks;
         self.last_sigils = sigils;
         self.last_marks_frame = frame;
@@ -972,7 +1336,7 @@ impl Pilgrimage {
         }
     }
 
-    /// The hero's frame now, from their Pixellab animations (seen from behind and to the right,
+    /// The hero's frame now, from their Pixellab animations (seen from straight behind,
     /// as the camera sees them); standing still where a clip is missing.
     fn hero_frame(&self, s: &Sheet, walked: f64) -> Option<Arc<RgbaImage>> {
         // Standing is the first frame of the walk, with what is worn in hand.
@@ -1003,13 +1367,18 @@ impl Pilgrimage {
             // Getting up off the ground: the getup where there is one, else the fall played backwards.
             Mode::Wake(t) => return clip("getup").map(|c| c.at(k(t, WAKE_T), false).clone()).or_else(|| fall(1.0 - k(t, WAKE_T))),
             Mode::Out(Next::Respawn | Next::Start) | Mode::Cut(After::Wake) => return fall(1.0),
-            // Off into the side path: the north-east walk, mirrored when it leaves on the left.
-            Mode::Peek(t, side) => return clip("walk").map(|c| c.at((t as f32 / 36.0).rem_euclid(1.0), side < 0).clone()),
-            Mode::Out(Next::Detour(side)) => return clip("walk").map(|c| c.at(((PEEK_T as f32 + 24.0 * self.fade.0) / 36.0).rem_euclid(1.0), side < 0).clone()),
+            // Off into the side path: turned side-on and walking that way (the side-on walk,
+            // mirrored when it leaves on the left), else the walk away.
+            Mode::Peek(t, side) => return clip("e_walk").or_else(|| clip("walk")).map(|c| c.at((t as f32 / 36.0).rem_euclid(1.0), side < 0).clone()),
+            Mode::Out(Next::Detour(side)) => return clip("e_walk").or_else(|| clip("walk")).map(|c| c.at(((PEEK_T as f32 + 24.0 * self.fade.0) / 36.0).rem_euclid(1.0), side < 0).clone()),
             Mode::Sanctum(_) => {
                 let target = self.fight.hero.lane as f32 * BEFORE_X;
-                let k = if (target - h.x).abs() > 0.05 { (self.ticks as f32 / 36.0).rem_euclid(1.0) } else { 0.0 };
-                return clip("walk").map(|c| c.at(k, self.fight.hero.lane < 0).clone());
+                // Crossing to a place in the sanctum: side-on, walking that way; there, the stand.
+                if (target - h.x).abs() > 0.05 {
+                    let k = (self.ticks as f32 / 36.0).rem_euclid(1.0);
+                    return clip("e_walk").or_else(|| clip("walk")).map(|c| c.at(k, target < h.x).clone());
+                }
+                return clip("walk").map(|c| c.frames[0].clone());
             }
             _ => {}
         }
@@ -1019,19 +1388,25 @@ impl Pilgrimage {
             let spec = a.spec;
             let (w, b, r) = spec.frames;
             return match a.mv {
-                // The blow's frames, read off the north-east contact sheet: the light's blade is out
+                // The blow's frames, read off the contact sheet (tools/moveset PHASES): the light's blade is out
                 // on 5 and 6, the heavy comes down on 7 and 8, the buckler flashes on 3 to 5.
                 Move::Light => held(s, &h.stats.kit, "", "light").map(|c| phased(c, spec.frames, a.t, (5, 7), false)),
                 Move::Heavy | Move::Riposte => held(s, &h.stats.kit, "", "heavy").map(|c| phased(c, spec.frames, a.t, (7, 9), false)),
                 Move::Parry => clip("parry").map(|c| phased(c, spec.frames, a.t, (3, 6), false)),
-                Move::Backstep => clip("backstep").or_else(|| clip("hop")).map(|c| c.at(k(a.t, w + b + r), false).clone()),
+                // A roll backwards toward the camera: tucked from the wind-up, over through the
+                // live ticks, up in a crouch for the recovery. (Else the hop back.)
+                Move::Backstep => clip("roll_back").map(|c| phased(c, spec.frames, a.t, (3, 9), false))
+                    .or_else(|| clip("backstep").or_else(|| clip("hop")).map(|c| c.at(k(a.t, w + b + r), false).clone())),
                 // The roll (side-on, a dip, over the shoulder a full turn, a crouch, back) turns the
                 // way it travels: drawn going right, mirrored going left. The turn fills the travel.
                 Move::Step(d) => clip("roll_side").or_else(|| clip("roll_spun")).or_else(|| clip("roll"))
                     .map(|c| phased(c, (3, TRAVEL - 3, w + b + r - TRAVEL), a.t, s.roll_keys, d < 0)),
                 // A plain step across: a quick walk that way (mirrored going left).
                 Move::Lane(d) => clip("walk").map(|c| c.at(k(a.t, w + b + r), d < 0).clone()),
-                Move::Tumble => clip("roll").map(|c| phased(c, (3, TRAVEL - 3, w + b + r - TRAVEL), a.t, (2, 8), false)),
+                // A somersault away down the road: the dive in the first ticks, head over heels
+                // while it travels, the crouch and rise after. (Else the old low dodge.)
+                Move::Tumble => clip("roll_forward").map(|c| phased(c, (3, TRAVEL - 3, w + b + r - TRAVEL), a.t, (3, 9), false))
+                    .or_else(|| clip("roll").map(|c| phased(c, (3, TRAVEL - 3, w + b + r - TRAVEL), a.t, (2, 8), false))),
                 Move::Flask => clip("drink").map(|c| c.at(k(a.t, w + b + r), false).clone()),
                 // The draw and the release, or the cast: its own clip, held at full draw until it
                 // looses; without one, the other hand raised as for a parry.
@@ -1092,9 +1467,10 @@ impl Pilgrimage {
             return clip("parry").map(|c| c.at((0.45 + 0.5 * k).min(0.999), false).clone());
         }
         if h.guarding { return clip("guard").map(|c| c.at(1.0, false).clone()); }
-        // Walking strides with the road (a stride every 1.6 m); standing is the first frame.
+        // Walking or running strides with the road (`stride`); standing is the walk's first frame.
         if self.fight.speed(&self.pending, walked) != 0.0 || self.last_speed != 0.0 {
-            if let Some(c) = clip("walk") { return Some(c.looped(walked as f32, 1.6).clone()); }
+            let gait = if self.last_speed >= crate::fight::RUN { clip("run").or_else(|| clip("walk")) } else { clip("walk") };
+            if let Some(c) = gait { return Some(c.at(self.stride, false).clone()); }
         }
         None
     }
@@ -1148,7 +1524,21 @@ impl Pilgrimage {
             Ai::Stumbled(n) => clip("stagger").map(|c| c.at(((STUMBLE - n) as f32 / 40.0).min(1.0), false).clone()).or_else(first),
             _ if e.hurt > 0 => clip("hurt").map(|c| c.at(1.0 - e.hurt as f32 / 12.0, false).clone()).or_else(first),
             Ai::Dead => clip("death").map(|c| c.frames[c.frames.len() - 1].clone()),
-            _ => clip("idle").map(|c| c.looped(self.ticks as f32, 90.0).clone()).or_else(first),
+            _ => {
+                // Each its own time through its idle, so a group never breathes as one.
+                let own = e.idle.map_or(((e.s * 37.0) as i64).unsigned_abs() as f32, |i| (i.seed % 997) as f32);
+                let idle = || clip("idle").map(|c| c.looped(self.ticks as f32 + own, 90.0).clone()).or_else(first);
+                // Unaware: walking across the road side-on (its west-facing walk, turned to go
+                // right), or standing side-on looking along it; once it notices, it faces the hero.
+                let side = |moving: bool, facing: f32| clip("w_walk").map(|c| if moving { c.at(((self.ticks as f32 + own) / 54.0).rem_euclid(1.0), facing > 0.0).clone() } else { c.at(0.0, facing > 0.0).clone() });
+                match e.idle {
+                    Some(Idle { way: Way::Pace, wait: 0, facing, .. }) => side(true, facing).or_else(idle),
+                    Some(Idle { way: Way::Pace, facing, .. }) => side(false, facing).or_else(idle),
+                    // A watcher faces the road, glancing along it for a moment every so often.
+                    Some(Idle { way: Way::Watch, wait, facing, .. }) if wait > LINGER_GLANCE => side(false, facing).or_else(idle),
+                    _ => idle(),
+                }
+            }
         }
     }
 
@@ -1169,13 +1559,16 @@ impl Pilgrimage {
         // What stands on the road, for its shadows: (x, d, height, width) in metres.
         let mut stands: Vec<(f32, f32, f32, f32)> = Vec::new();
         // Where something stands and how big it is: its feet on screen and its size, in canvas units.
-        let at = |x: f32, d: f32, metres: f32, img: &RgbaImage| -> Option<((f32, f32), (f32, f32))> {
+        let place_at = |x: f32, d: f32, metres: f32, img: &RgbaImage, ground: f32| -> Option<((f32, f32), (f32, f32))> {
             let (fx, fy) = pf.project_on(c, x, 0.0, d)?;
             let ppm = pf.scale_on(c, d)?;
             let h = metres * ppm;
             let w = h * img.width() as f32 / img.height() as f32;
-            Some(((fx - 0.5 * w, fy - h), (w, h)))
+            Some(((fx - 0.5 * w, fy - ground * h), (w, h)))
         };
+        let at = |x: f32, d: f32, metres: f32, img: &RgbaImage| place_at(x, d, metres, img, 1.0);
+        // A prop's picture stands with its ground line on the ground there (`ground_line`).
+        let on_ground = |x: f32, d: f32, metres: f32, img: &RgbaImage| place_at(x, d, metres, img, ground_line(img));
         let h = &self.fight.hero;
         let pose = match h.act.map(|a| (a.mv, a.phase())) {
             Some((Move::Light | Move::Heavy | Move::Riposte, Phase::Windup)) => 1,
@@ -1195,7 +1588,9 @@ impl Pilgrimage {
             Mode::Out(Next::Detour(side)) => peek_walk((hx, hd), side, 1.0 + 0.4 * self.fade.0),
             _ => (hx, hd),
         };
+        let shown = !matches!(self.mode, Mode::Scene(_)) || self.scene.as_ref().is_some_and(Cutscene::hero);
         let hero = match self.hero_sheet.as_ref().and_then(|s| Some((s, self.hero_frame(s, walked)?))) {
+            _ if !shown => None,
             Some((s, img)) => (!h.dead || s.clip("death").is_some()).then(|| sheet_at(s, hx, hd, art::HERO_METRES)).flatten().map(|r| (r, lit(r, img, hx, hd), 60)),
             None => {
                 let img = &self.art.hero[pose];
@@ -1219,13 +1614,17 @@ impl Pilgrimage {
             let img = if e.hurt > 0 { &self.art.husk_hurt[pose] } else { &self.art.husk[pose] };
             // A hit sets it rocking.
             let sway = if e.hurt > 0 { 0.06 * (e.hurt as f32 * 1.3).sin() } else { 0.0 };
-            let x = e.lane as f32 * LANE_W + sway;
+            let x = e.lane as f32 * LANE_W + e.drift + sway;
             let metres = kind_art(e.kind).1;
             let sheet = |k: Archetype| self.enemy_sheets.iter().find(|(s, _)| *s == k).map(|(_, s)| s);
             let drawn = sheet(e.kind).or_else(|| sheet(Archetype::Husk)).and_then(|s| Some((s, self.enemy_frame(s, e)?)));
+            // One got past is drawn while it is still beside the hero; further back it would stand
+            // between them and the camera, huge, and is warned of at the screen's edge instead
+            // (`paint_behind`).
+            let shown = e.alive() && d > 0.6 && e.gap(walked) > -0.6;
             let (spot, img) = match drawn {
-                Some((s, frame)) => ((e.alive() && d > 0.6).then(|| sheet_at(s, x, d, metres)).flatten(), frame),
-                None => ((e.alive() && d > 0.6).then(|| at(x, d, metres, img)).flatten(), img.clone()),
+                Some((s, frame)) => (shown.then(|| sheet_at(s, x, d, metres)).flatten(), frame),
+                None => (shown.then(|| at(x, d, metres, img)).flatten(), img.clone()),
             };
             let img = if e.chill > 0 && e.alive() { self.frosted(img) } else { img };
             // Nearer draws over further; all of them under the hero, who stands nearest.
@@ -1289,10 +1688,12 @@ impl Pilgrimage {
         let prop = |img: &Arc<RgbaImage>, s: Option<f64>, x: f32, metres: f32, stands: &mut Vec<(f32, f32, f32, f32)>| {
             let d = (s? - walked) as f32;
             let layer = (50.0 - d * 2.0).round().clamp(1.0, 50.0) as i32;
-            let r = (d > 0.8).then(|| at(x, d, metres, img)).flatten()?;
+            let r = (d > 0.8).then(|| on_ground(x, d, metres, img)).flatten()?;
             stands.push((x, d, metres, 0.35 * metres));
             Some((r, lit(r, img.clone(), x, d), layer))
         };
+        // The prologue's road is a memory: none of the world's things stand on it.
+        let tutoring = self.prologue.is_some() || matches!(self.mode, Mode::Out(Next::Prologue) | Mode::Cut(After::Prologue));
         let (shrine, signpost) = match &self.props { Some((a, b)) => (Some(a), Some(b)), None => (None, None) };
         // At rest the shrine stands in the middle of the clearing, the keeper to its left and the
         // smith (once met) to its right; on the road the shrine is on the right verge and the
@@ -1312,14 +1713,20 @@ impl Pilgrimage {
             placed.push((KEEPER.to_owned(), npc(&self.keeper_sheet, -STATION_X, STATION_D, 80.0, &mut stands)));
             placed.push((SMITH.to_owned(), self.world.met_smith.then(|| npc(&self.smith_sheet, STATION_X, STATION_D, 70.0, &mut stands)).flatten()));
         } else {
-            placed.push((SHRINE.to_owned(), shrine.and_then(|img| prop(img, self.world.shrine(), 3.4 * self.world.side(), 1.9, &mut stands))));
+            // Beside the path, but inside the walls of a narrow street (half its width in from them).
+            let inside = |x: f32, s: f64, half: f32| match pf.wall_x((s - walked) as f32) {
+                Some(w) => x.signum() * x.abs().min((w - half - 0.15).max(0.0)),
+                None => x,
+            };
+            let shrine_x = |img: &Arc<RgbaImage>, s: f64| inside(3.4 * self.world.side(), s, 0.5 * 1.9 * img.width() as f32 / img.height().max(1) as f32);
+            placed.push((SHRINE.to_owned(), shrine.filter(|_| !tutoring).and_then(|img| { let s = self.world.shrine()?; prop(img, Some(s), shrine_x(img, s), 1.9, &mut stands) })));
             placed.push((KEEPER.to_owned(), None));
-            let smith = self.world.smith_at().and_then(|s| npc(&self.smith_sheet, -3.0 * self.world.side(), (s - walked) as f32, 70.0, &mut stands));
+            let smith = self.world.smith_at().filter(|_| !tutoring).and_then(|s| npc(&self.smith_sheet, inside(-3.0 * self.world.side(), s, 0.45), (s - walked) as f32, 70.0, &mut stands));
             placed.push((SMITH.to_owned(), smith));
         }
         // On the island where the branches part.
-        placed.push((SIGNPOST.to_owned(), signpost.filter(|_| !resting).and_then(|img| prop(img, self.world.signpost, self.world.signpost_x(walked), 2.4, &mut stands))));
-        let stain = self.world.stain_at().filter(|_| !resting).and_then(|s| {
+        placed.push((SIGNPOST.to_owned(), signpost.filter(|_| !resting && !tutoring).and_then(|img| prop(img, self.world.signpost, self.world.signpost_x(walked), 2.4, &mut stands))));
+        let stain = self.world.stain_at().filter(|_| !resting && !tutoring).and_then(|s| {
             let d = (s - walked) as f32;
             let (fx, fy) = pf.project_on(c, 0.0, 0.0, d)?;
             let w = 0.6 * pf.scale_on(c, d)?;
@@ -1328,7 +1735,7 @@ impl Pilgrimage {
         placed.push((STAIN.to_owned(), stain));
         // The place's cache: a chest at its metre, beside the path, shut until it is taken.
         let side = self.world.side();
-        let chest = self.world.cache_at().filter(|_| !resting).zip(self.chest.as_ref()).and_then(|(at, (shut, open))| {
+        let chest = self.world.cache_at().filter(|_| !resting && !tutoring).zip(self.chest.as_ref()).and_then(|(at, (shut, open))| {
             let img = if self.world.cache_taken() { open } else { shut };
             prop(img, Some(at), 1.1 * side, 0.95, &mut stands)
         });
@@ -1458,7 +1865,7 @@ impl Pilgrimage {
         let mut placed: Vec<(String, Option<(Rect, Arc<RgbaImage>, i32)>)> = vec![(HERO.to_owned(), hero), (BOSS.to_owned(), boss)];
         for i in 0..world::MOST_FOES {
             let drawn = match (a.why, a.side.foes.get(i)) {
-                (Why::Ambush(_), Some(f)) => {
+                (Why::Ambush(_) | Why::Prologue, Some(f)) => {
                     let kind = f.breed.kind.unwrap_or(Archetype::Husk);
                     let sheet = self.enemy_sheets.iter().find(|(s, _)| *s == kind).map(|(_, s)| s);
                     foe(f, sheet, kind_art(kind).1, 40 - i as i32, &mut stands)
@@ -1549,6 +1956,8 @@ impl Pilgrimage {
         let pre = if f.breed.kind.is_some() { "w_" } else { "" };
         let clip = |n: &str| s.clip(&format!("{pre}{n}")).or_else(|| s.clip(&format!("{pre}walk"))).or_else(|| s.clip("idle"));
         let at = |n: &str, k: f32| clip(n).map(|c| c.at(k.clamp(0.0, 0.999), mirror).clone());
+        // A boss's entrance: the clip its cutscene asks for.
+        if let Some((n, k)) = self.scene.as_ref().and_then(Cutscene::pose).filter(|_| f.breed.kind.is_none() && f.alive()) { return at(n, k); }
         match f.ai {
             // Without a fall of its own to play, a felled foe is gone.
             side::Ai::Dead => s.clip(&format!("{pre}death")).map(|c| c.at((f.down as f32 / 60.0).min(0.999), mirror).clone()),
@@ -1564,33 +1973,23 @@ impl Pilgrimage {
     }
 
     /// The side-on fight's warnings on the ground, one for each foe winding up or live.
-    fn side_marks(a: &Arena) -> Vec<GroundMark> {
-        a.side.foes.iter().filter_map(|f| f.warning()).map(|(from, to, kind, parry, progress)| {
-            let live = progress >= 1.0;
-            let al = if live { 200 } else { (70.0 + 90.0 * progress) as u8 };
-            let [r, g, b] = warning_rgb(kind, parry);
-            let fill = match kind { Kind::Physical => Fill::Solid, Kind::GuardBreak => Fill::Stripes, Kind::Unblockable => Fill::Dots };
-            GroundMark { x: (-1.1, 1.1), d: (ARENA_D + from, ARENA_D + to), color: [r, g, b, al], fill, edge: Some([r.saturating_add(40), g.saturating_add(40), b.saturating_add(40), al.saturating_add(40)]) }
-        }).collect()
-    }
-
     /// This tick's presses for the side-on fight, joined to any waiting; held keys as they are.
     /// A and D are left and right on screen, whichever way the road runs across it.
     fn side_input(&mut self, c: &Canvas, presses: &[Press]) -> SideInput {
         self.taps(c, presses);
-        let run = matches!(self.running, Some('a' | 'd'));
+        let th = self.touch_held;
+        let run = matches!(self.running, Some('a' | 'd')) || (th.run && (th.left || th.right));
         let dir = c.get_plugin::<PathForgePlugin>().map_or(1.0, screen_dir);
         let held = |ch: &str, n: NamedKey| c.is_key_held(&Key::Character(ch.into())) || c.is_key_held(&Key::Named(n));
-        let (l, r) = (held("a", NamedKey::ArrowLeft), held("d", NamedKey::ArrowRight));
+        let (l, r) = (held("a", NamedKey::ArrowLeft) || th.left, held("d", NamedKey::ArrowRight) || th.right);
         let (left, right) = if dir > 0.0 { (l, r) } else { (r, l) };
         let p = &mut self.side_pending;
         for press in presses {
             match press {
                 Press::Key(k, shift) => {
-                    // Shift with A or D rolls that way; Space rolls the way held, or faced.
+                    // Shift with A or D rolls that way; W and Space both jump.
                     if *shift && matches!(way(k), Some('a' | 'd')) { p.roll = true; }
-                    if is(k, &[" "], Some(NamedKey::Space)) { p.roll = true; }
-                    if is(k, &["w"], Some(NamedKey::ArrowUp)) { p.jump = true; }
+                    if is(k, &["w", " "], Some(NamedKey::ArrowUp)) || is(k, &[], Some(NamedKey::Space)) { p.jump = true; }
                     if is(k, &["r"], None) { p.flask = true; }
                     if is(k, &["f"], None) { p.loose = true; }
                     if is(k, &["c"], None) { p.cast = true; }
@@ -1599,9 +1998,17 @@ impl Pilgrimage {
                 Press::Mouse(MouseButton::Left, true) => p.heavy = true,
                 Press::Mouse(MouseButton::Right, true) => p.parry = true,
                 Press::Mouse(..) => {}
+                Press::Touch(t) => {
+                    use crate::touch::Tap;
+                    match t {
+                        Tap::Light => p.light = true, Tap::Heavy => p.heavy = true, Tap::Parry => p.parry = true,
+                        Tap::Flask => p.flask = true, Tap::Loose => p.loose = true, Tap::Cast => p.cast = true,
+                        Tap::Roll => p.roll = true, Tap::Jump => p.jump = true,
+                    }
+                }
             }
         }
-        SideInput { left, right, run, guard: c.is_mouse_held(MouseButton::Right) && !shift_held(c), ..*p }
+        SideInput { left, right, run, guard: (c.is_mouse_held(MouseButton::Right) && !shift_held(c)) || th.guard, ..*p }
     }
 
     fn swing(c: &mut Canvas, spec: &str) {
@@ -1637,15 +2044,27 @@ impl Pilgrimage {
         set("bar_ward_back", bulwark.then_some(1.0));
         set("bar_ward", (bulwark && !ready).then_some(ward / crate::fight::WARD_MAX));
         set("bar_ward_ready", (bulwark && ready).then_some(ward / crate::fight::WARD_MAX));
-        if let Mode::Side(a) = &self.mode {
+        let name = if let Mode::Side(a) = &self.mode {
             // The boss; in an ambush, the nearest still standing.
             let b = a.side.nearest().map(|i| &a.side.foes[i]);
+            set("bar_foe_back", b.map(|_| 1.0));
             set("bar_foe", b.map(|b| b.hp / b.max_hp()));
             set("bar_foe_stance", b.map(|b| if matches!(b.ai, side::Ai::Open(_)) { 0.0 } else { b.stance / b.max_stance() }));
+            b.map(|b| b.breed.name.to_string())
+        } else {
+            set("bar_foe_back", foe.map(|_| 1.0));
+            set("bar_foe", foe.map(|e| e.hp / e.top));
+            set("bar_foe_stance", foe.map(|e| if matches!(e.ai, Ai::Staggered(_)) { 0.0 } else { e.stance / e.kind.stance() }));
+            foe.map(|e| format!("{:?}", e.kind))
+        };
+        // Whose bar it is, over it, right-aligned to its end.
+        let (Some(name), Some(face)) = (name.filter(|_| shown), self.title_font.clone().or_else(|| self.font.clone())) else {
+            if let Some(o) = c.get_game_object_mut(FOE_NAME) { o.visible = false; }
             return;
-        }
-        set("bar_foe", foe.map(|e| e.hp / e.top));
-        set("bar_foe_stance", foe.map(|e| if matches!(e.ai, Ai::Staggered(_)) { 0.0 } else { e.stance / e.kind.stance() }));
+        };
+        let s = c.base_scale();
+        let text = Text::new(vec![Span::new(name, 56.0 * s, Some(70.0 * s), face, Color(236, 222, 196, 235), 0.0)], Some(1200.0 * s), Align::Right, None);
+        if let Some(o) = c.get_game_object_mut(FOE_NAME) { o.visible = true; o.set_drawable(Box::new(text)); }
     }
 
     fn hud(&mut self, c: &mut Canvas, walked: f64) {
@@ -1656,12 +2075,13 @@ impl Pilgrimage {
         let calling = self.calling.map_or("", |c| c.name());
         let line = match self.mode {
             Mode::Front(_) => String::new(),
+            _ if self.prologue.is_some() => format!("Prologue  |  a remembered road  |  {calling}  |  flasks {}", h.flasks),
             Mode::Sanctum(_) => format!(
                 "At rest  |  {calling}  level {}  |  {} {}  |  shards {}  |  weapon +{}  armour +{}",
                 h.stats.level(), world::CURRENCY, w.souls, w.shards, h.stats.weapon, h.stats.armour,
             ),
             _ => format!(
-                "{}  |  {} {}  shards {}  |  level {}  |  flasks {}{}  |  {} {:.1} ms  road {} fps  {:.0} m{}",
+                "{}  |  {} {}  shards {}  |  level {}  |  flasks {}{}{}",
                 w.here().title, world::CURRENCY, w.souls, w.shards, h.stats.level(), h.flasks,
                 {
                     let hand = match h.stats.kit.ranged {
@@ -1676,10 +2096,7 @@ impl Pilgrimage {
                     };
                     hand + &spell
                 },
-                pf.engine().to_uppercase(), pf.render_ms(), self.frames.1, walked,
-                if w.can_rest(&self.fight, walked) { "  |  E rest at the shrine" } else if w.can_meet_smith(&self.fight, walked) { "  |  E speak with the smith" }
-                    else if self.mode == Mode::Play && w.side_path_at(&self.fight, walked, &pf.state().side_paths).is_some() { "  |  E turn down the side path" }
-                    else if w.can_come_back(&self.fight, walked) { "  |  E go back to the road" } else { "" },
+                if self.show_dev { format!("  |  {} {:.1} ms  road {} fps  {:.0} m", pf.engine().to_uppercase(), pf.render_ms(), self.frames.1, walked) } else { String::new() },
             ),
         };
         // Text is laid out in window pixels: sized by the window's fit, like the box it sits in.
@@ -1688,13 +2105,27 @@ impl Pilgrimage {
         if let Some(o) = c.get_game_object_mut(HUD) { o.set_drawable(Box::new(text)); }
         let boss = matches!(self.mode, Mode::Side(_));
         let help = if let Mode::Side(a) = &self.mode { if a.why == Why::Boss { BOSS_HELP } else { AMBUSH_HELP } } else { "W/S walk   W W (held) run   A/D change lane   Shift+W/A/S/D roll   LMB strike   Shift+LMB heavy   RMB guard   Shift+RMB parry   R drink   F ranged attack   C cast   E rest   T turn back   M map      warnings: gold parry  ·  orange roll or block  ·  purple roll" };
-        let help = Text::new(vec![Span::new(help.into(), 40.0 * s, Some(50.0 * s), font.clone(), Color(236, 228, 210, 190), 0.0)], Some(3720.0 * s), Align::Left, None);
+        // The controls stay out of the way until asked for.
+        let (help, size, a) = if self.show_help { (help, 40.0, 190) } else { ("H  show controls", 36.0, 120) };
+        let help = Text::new(vec![Span::new(help.into(), size * s, Some(size * 1.25 * s), font.clone(), Color(236, 228, 210, a), 0.0)], Some(3720.0 * s), Align::Left, None);
         if let Some(o) = c.get_game_object_mut(HELP) { o.visible = self.mode == Mode::Play || boss; o.set_drawable(Box::new(help)); }
         // The banner, fading out over its last second.
         let (line, left) = &self.banner;
         let a = (*left as f32 / 60.0).min(1.0);
-        let banner = Text::new(vec![Span::new(line.clone(), 110.0 * s, Some(130.0 * s), font, Color(240, 226, 190, (255.0 * a) as u8), 0.0)], Some(3840.0 * s), Align::Center, None);
-        if let Some(o) = c.get_game_object_mut(BANNER) { o.visible = *left > 0; o.set_drawable(Box::new(banner)); }
+        let face = self.title_font.clone().unwrap_or(font);
+        // Never over a title or a card; over a menu, small, under the bars on the side away from
+        // its box (the HUD's line is along the top).
+        let style = self.panel().map(|(_, st, _)| st);
+        let menu_left = matches!(&self.mode, Mode::Sanctum(s) if s.station() == shrine::Station::Smith) || self.mode == Mode::Map;
+        let ((size, x, y), (w, align)) = if style == Some(Style::Menu) {
+            ((64.0, if menu_left { 3840.0 - 60.0 - 1700.0 } else { 60.0 }, 380.0), (1700.0, if menu_left { Align::Right } else { Align::Left }))
+        } else { ((100.0, 0.0, 560.0), (3840.0, Align::Center)) };
+        let banner = Text::new(vec![Span::new(line.clone(), size * s, Some(size * 1.3 * s), face, Color(240, 226, 190, (255.0 * a) as u8), 0.0)], Some(w * s), align, None);
+        if let Some(o) = c.get_game_object_mut(BANNER) {
+            o.visible = *left > 0 && !matches!(style, Some(Style::Title | Style::Died));
+            o.position = (x, y);
+            o.set_drawable(Box::new(banner));
+        }
     }
 
     /// The callout, while it lasts: popping in a little large, fading over its last third.
@@ -1705,13 +2136,60 @@ impl Pilgrimage {
             return;
         }
         self.callout.2 -= 1;
-        let Some(font) = self.font.clone() else { return };
+        let Some(font) = self.title_font.clone().or_else(|| self.font.clone()) else { return };
         let s = c.base_scale();
         let age = CALLOUT_T - left;
         let size = 76.0 * (1.0 + 0.25 * (1.0 - (age as f32 / 6.0).min(1.0)));
         let a = (left as f32 / (CALLOUT_T as f32 / 3.0)).min(1.0);
         let text = Text::new(vec![Span::new(word, size * s, Some(size * 1.15 * s), font, Color(rgb[0], rgb[1], rgb[2], (255.0 * a) as u8), 0.0)], Some(1800.0 * s), Align::Center, None);
         if let Some(o) = c.get_game_object_mut(CALLOUT) { o.visible = true; o.set_drawable(Box::new(text)); }
+    }
+
+    /// What E would do where the hero stands now, on the road.
+    fn prompt_line(&self, c: &Canvas, walked: f64) -> Option<&'static str> {
+        if self.mode != Mode::Play || self.prologue.is_some() { return None; }
+        let pf = c.get_plugin::<PathForgePlugin>()?;
+        let (w, f) = (&self.world, &self.fight);
+        if w.can_rest(f, walked) { Some("Rest at the shrine") }
+        else if w.can_meet_smith(f, walked) { Some("Speak with the smith") }
+        else if w.side_path_at(f, walked, &pf.state().side_paths).is_some() { Some("Turn down the side path") }
+        else if w.can_come_back(f, walked) { Some("Go back to the road") }
+        else { None }
+    }
+
+    /// The prompt plate: low in the middle, the key on a gold cap beside the words, easing in
+    /// (rising a little) when there is something to do and out when there is not.
+    fn draw_prompt(&mut self, c: &mut Canvas, walked: f64) {
+        let want = self.prompt_line(c, walked);
+        if let Some(t) = want { self.prompt.0 = t; }
+        self.prompt.1 = if want.is_some() { (self.prompt.1 + 0.1).min(1.0) } else { (self.prompt.1 - 0.1).max(0.0) };
+        let a = self.prompt.1;
+        for id in [PROMPT_BG, PROMPT_KEY, PROMPT_E, PROMPT] { if let Some(o) = c.get_game_object_mut(id) { o.visible = a > 0.0; } }
+        let (Some(font), Some(face)) = (self.font.clone(), self.title_font.clone().or_else(|| self.font.clone())) else { return };
+        if a <= 0.0 { return; }
+        let s = c.base_scale();
+        let al = |v: f32| (v * a).round().clamp(0.0, 255.0) as u8;
+        let size = 62.0;
+        let label_w = self.prompt.0.len() as f32 * size * 0.56;
+        let (cap, gap, pad, h) = (96.0, 34.0, 44.0, 136.0);
+        let w = pad + cap + gap + label_w + pad;
+        let (x, y) = (1920.0 - 0.5 * w, PROMPT_Y + (1.0 - a) * 30.0);
+        // The key breathes, so the eye finds it.
+        let glow = 0.82 + 0.18 * (self.ticks as f32 * 0.07).sin();
+        let plate = |o: &mut GameObject, at: (f32, f32), size: (f32, f32), r: f32, c: [u8; 4]| {
+            o.position = at;
+            o.size = size;
+            o.set_image(Image { shape: ShapeType::RoundedRectangle(0.0, size, 0.0, r), image: swatch(c), color: None });
+        };
+        // On a touch screen the plate is the button: TAP on the cap, and lit while a thumb is on it.
+        let held = self.touch_ui && self.pad.pressed(crate::touch::Btn::Use);
+        let (cap_word, cap_size) = if self.touch_ui { ("TAP", 34.0) } else { ("E", 64.0) };
+        if let Some(o) = c.get_game_object_mut(PROMPT_BG) { plate(o, (x, y), (w, h), 40.0, if held { [70, 58, 34, al(225.0)] } else { [12, 11, 16, al(205.0)] }); }
+        if let Some(o) = c.get_game_object_mut(PROMPT_KEY) { plate(o, (x + pad, y + 0.5 * (h - cap)), (cap, cap), 18.0, [232, 200, 120, al(255.0 * glow)]); }
+        let key = Text::new(vec![Span::new(cap_word.into(), cap_size * s, Some(1.25 * cap_size * s), font, Color(20, 16, 12, al(255.0)), 0.0)], Some(cap * s), Align::Center, None);
+        if let Some(o) = c.get_game_object_mut(PROMPT_E) { (o.position, o.size) = ((x + pad, y + 0.5 * (h - 1.25 * cap_size)), (cap, 1.25 * cap_size)); o.set_drawable(Box::new(key)); }
+        let words = Text::new(vec![Span::new(self.prompt.0.into(), size * s, Some(size * 1.25 * s), face, Color(240, 230, 208, al(255.0)), 0.0)], Some((label_w + pad) * s), Align::Left, None);
+        if let Some(o) = c.get_game_object_mut(PROMPT) { (o.position, o.size) = ((x + pad + cap + gap, y + 0.5 * (h - size * 1.25)), (label_w + pad, size * 1.25)); o.set_drawable(Box::new(words)); }
     }
 
     fn say(&mut self, notes: &[Note]) {
@@ -1730,6 +2208,8 @@ impl Pilgrimage {
                 Note::Barred(to, None) => format!("The way to {to} will not open from this side."),
                 Note::Opened(to) => format!("A shortcut opens back to {to}"),
                 Note::Turned => "You turn back.".into(),
+                Note::Held(kind, false) => format!("The way on is held. The {kind:?} keeping it must fall."),
+                Note::Held(_, true) => "The way on is held while any of them stands.".into(),
                 Note::Recovered(n) => format!("{n} {} recovered", world::CURRENCY),
                 Note::Forged(what, n) => format!("{what} forged to +{n}"),
                 Note::Met(who) => format!("{who} will wait at the shrines"),
@@ -1748,10 +2228,136 @@ impl Pilgrimage {
     /// Whether the road shown is the sanctum's (no enemies, no road props).
     fn at_rest(&self) -> bool { matches!(self.mode, Mode::Sanctum(_) | Mode::Cut(After::Sanctum) | Mode::Out(Next::Road)) }
     /// Whether the road's own things (enemies, bars) are shown: not at rest, not on the title.
-    fn road_shown(&self) -> bool { !self.at_rest() && !matches!(self.mode, Mode::Front(_) | Mode::Out(Next::Start)) }
+    fn road_shown(&self) -> bool { !self.at_rest() && !matches!(self.mode, Mode::Front(_) | Mode::Out(Next::Start) | Mode::Out(Next::Opening(_)) | Mode::Scene(_)) }
+
+    /// One tick of the cutscene playing, if one is: what its shot starts and cues do to the road
+    /// and the game, the canvas camera closing in, and the bars, words, title, black and white over
+    /// it all. A key that backs out or uses skips to the end. False when none is playing; it
+    /// ends here, the road and the canvas put back.
+    fn run_scene(&mut self, c: &mut Canvas, keys: &[shrine::Key]) -> bool {
+        let Some(cs) = self.scene.as_mut() else { return false };
+        if keys.iter().any(|k| matches!(k, shrine::Key::Back | shrine::Key::Use)) { cs.skip(); }
+        if cs.done() { self.end_scene(c); return false; }
+        // Its cuts got ready first; nothing else while it plays, since each holds up a frame.
+        if cs.i == 0 && cs.t == 0 { if let Some(pf) = c.get_plugin_mut::<PathForgePlugin>() { pf.warm(&cs.stops()); pf.set_warming(false); } }
+        let (start, cues) = (cs.starting().cloned(), cs.cues().into_iter().cloned().collect::<Vec<_>>());
+        if let (Some(s), Some(pf)) = (start, c.get_plugin_mut::<PathForgePlugin>()) {
+            if let Some((stop, at)) = s.stop { pf.warp_at(stop, at); }
+            if let Some(h) = s.hour { pf.set_hour(h); }
+            if let Some(g) = s.grade { pf.grade(g); }
+        }
+        for cue in cues {
+            match cue {
+                Cue::Swing(spec) => Self::swing(c, &spec),
+                Cue::Sound(s, volume, pitch) => self.audio.play_at(c, s, volume, pitch),
+                Cue::Flash([r, g, b, a], secs) => c.run(Action::CameraFlash { color: Color(r, g, b, a), duration: secs }),
+                Cue::Shake(px, secs) => if let Some(cam) = c.camera_mut() { cam.shake(px, secs) },
+                Cue::Slow(scale, secs) => self.slow = ((secs * crate::cutscene::TICKS) as u32, scale),
+            }
+        }
+        let Some(cs) = self.scene.as_ref() else { return false };
+        let (bars, black, white, push) = (cs.bars(), cs.black(), cs.white(), cs.push());
+        let caption = cs.caption().map(|(w, a)| (w.to_owned(), a));
+        let title = cs.title().map(|(b, s, a)| (b.to_owned(), s.to_owned(), a));
+        // The canvas camera: closed in on the boss or the hero, or left whole.
+        let focus = match push {
+            Some((z, Focus::Boss)) => c.get_game_object(BOSS).filter(|o| o.visible).map(|o| (z, (o.position.0 + 0.5 * o.size.0, o.position.1 + 0.45 * o.size.1))),
+            Some((z, Focus::Hero)) => c.get_game_object(HERO).map(|o| (z, (o.position.0 + 0.5 * o.size.0, o.position.1 + 0.45 * o.size.1))),
+            Some((z, Focus::Middle)) => Some((z, (1920.0, 1080.0))),
+            None => None,
+        };
+        let (z, at) = focus.unwrap_or((1.0, (1920.0, 1080.0)));
+        frame_canvas(c, z, at);
+        self.draw_cine(c, bars, black, white, caption, title);
+        let going = self.scene.as_mut().is_some_and(Cutscene::advance);
+        if !going { self.end_scene(c); }
+        true
+    }
+
+    /// The cutscene over: the road's camera, hour and grade as they were (when it moved them), the
+    /// canvas camera whole, its bars and words gone. Ending in white, the white stays for the next.
+    fn end_scene(&mut self, c: &mut Canvas) {
+        let Some(cs) = self.scene.take() else { return };
+        if let Some(pf) = c.get_plugin_mut::<PathForgePlugin>() {
+            pf.grade(None);
+            pf.set_warming(true);
+            if cs.owns_road { pf.set_hour(None); }
+        }
+        if cs.owns_road { Self::swing(c, r#"{"view":"home","seconds":0.02}"#); }
+        frame_canvas(c, 1.0, (1920.0, 1080.0));
+        self.slow.0 = self.slow.0.min(1);
+        for id in [CINE_TOP, CINE_BOTTOM, CINE_CAPTION, CINE_TITLE, CINE_SUB, CINE_SKIP, CINE_SHADE] { if let Some(o) = c.get_game_object_mut(id) { o.visible = false; } }
+        if !cs.ends_white() { if let Some(o) = c.get_game_object_mut(CINE_WHITE) { o.visible = false; } }
+    }
+
+    /// The cutscene's overlay: bars `bars` of the frame each, black and white (0..1), its words and
+    /// title card with how clear they are.
+    fn draw_cine(&mut self, c: &mut Canvas, bars: f32, black: f32, white: f32, caption: Option<(String, f32)>, title: Option<(String, String, f32)>) {
+        // From past the canvas's edge to `h` inside it, top and bottom.
+        let h = 2160.0 * bars;
+        let (w, deep) = (3840.0 + 2.0 * CINE_OVER, CINE_OVER + h.max(1.0));
+        for (id, y) in [(CINE_TOP, -CINE_OVER), (CINE_BOTTOM, 2160.0 - h)] {
+            if let Some(o) = c.get_game_object_mut(id) {
+                o.visible = h > 0.5;
+                (o.position, o.size) = ((-CINE_OVER, y), (w, deep));
+                o.set_image(Image { shape: ShapeType::Rectangle(0.0, (w, deep), 0.0), image: swatch([0, 0, 0, 255]), color: None });
+            }
+        }
+        if let Some(o) = c.get_game_object_mut(CINE_WHITE) {
+            o.visible = white > 0.0;
+            let size = (w, 2160.0 + 2.0 * CINE_OVER);
+            o.set_image(Image { shape: ShapeType::Rectangle(0.0, size, 0.0), image: swatch([255, 252, 244, (255.0 * white) as u8]), color: None });
+        }
+        // The band behind the title card, as clear as the card.
+        if let Some(o) = c.get_game_object_mut(CINE_SHADE) {
+            let a = title.as_ref().map_or(0.0, |t| t.2);
+            o.visible = a > 0.01;
+            (o.position, o.size) = ((-CINE_OVER, 1300.0), (w, 560.0));
+            o.set_image(Image { shape: ShapeType::Rectangle(0.0, (w, 560.0), 0.0), image: Arc::new(RgbaImage::from_fn(1, 64, |_, y| { let u = (y as f32 + 0.5) / 64.0 * 2.0 - 1.0; image::Rgba([0, 0, 0, (210.0 * a * (1.0 - u * u).powf(1.5)) as u8]) })), color: None });
+        }
+        self.fade = (black, black);
+        if let Some(o) = c.get_game_object_mut(FADE) {
+            o.visible = black > 0.0;
+            o.set_image(Image { shape: ShapeType::Rectangle(0.0, (3840.0, 2160.0), 0.0), image: swatch([0, 0, 0, (255.0 * black) as u8]), color: None });
+        }
+        let s = c.base_scale();
+        let (Some(title_face), Some(body)) = (self.title_font.clone().or_else(|| self.font.clone()), self.font.clone()) else { return };
+        let words = |o: &mut GameObject, text: &str, size: f32, face: &Arc<Font>, rgb: (u8, u8, u8), a: f32, kern: f32| {
+            o.visible = a > 0.01;
+            let t = Text::new(vec![Span::new(text.to_owned(), size * s, Some(size * 1.3 * s), face.clone(), Color(rgb.0, rgb.1, rgb.2, (255.0 * a) as u8), kern)], Some(3000.0 * s), Align::Center, None);
+            o.set_drawable(Box::new(t));
+            o.position.0 = 420.0;
+        };
+        match (&caption, c.get_game_object_mut(CINE_CAPTION)) {
+            (Some((text, a)), Some(o)) => words(o, text, 58.0, &title_face, (232, 222, 200), *a, 0.0),
+            (None, Some(o)) => o.visible = false,
+            _ => {}
+        }
+        match (&title, c.get_game_object_mut(CINE_TITLE)) {
+            // As big as fits the card's width on one line.
+            (Some((big, _, a)), Some(o)) => words(o, big, (2900.0 / (0.82 * big.chars().count().max(1) as f32)).min(190.0), &title_face, (240, 226, 190), *a, 10.0),
+            (None, Some(o)) => o.visible = false,
+            _ => {}
+        }
+        match (&title, c.get_game_object_mut(CINE_SUB)) {
+            (Some((_, small, a)), Some(o)) => words(o, small, 66.0, &title_face, (214, 200, 172), *a * 0.9, 0.0),
+            (None, Some(o)) => o.visible = false,
+            _ => {}
+        }
+        if let Some(o) = c.get_game_object_mut(CINE_SKIP) {
+            let t = Text::new(vec![Span::new(if self.touch_ui { "Tap  skip" } else { "Esc  skip" }.into(), 40.0 * s, Some(52.0 * s), body, Color(220, 210, 190, (110.0 * (bars / crate::cutscene::BAR)) as u8), 0.0)], Some(3700.0 * s), Align::Right, None);
+            o.set_drawable(Box::new(t));
+            o.visible = bars > 0.02;
+        }
+    }
 
     /// Whether the hero is on the road with the fight running (the capture waits for it).
     pub(crate) fn playing(&self) -> bool { self.mode == Mode::Play }
+    /// Whether a cutscene is playing.
+    pub(crate) fn in_scene(&self) -> bool { self.scene.is_some() }
+    /// The cutscene playing: its name, shot and ticks into it.
+    #[cfg(test)]
+    pub(crate) fn scene_at(&self) -> Option<(&'static str, usize, u32)> { self.scene.as_ref().map(|s| (s.name, s.i, s.t)) }
 
     /// The black eases toward where it is headed.
     fn fade_step(&mut self, c: &mut Canvas) {
@@ -1765,8 +2371,121 @@ impl Pilgrimage {
         }
     }
 
+    #[cfg(test)]
+    pub(crate) fn touch_held_for_test(&self) -> crate::touch::Held { self.touch_held }
+    #[cfg(test)]
+    pub(crate) fn stick_for_test(&self) -> Option<((f32, f32), (f32, f32))> { self.pad.stick() }
+    #[cfg(test)]
+    pub(crate) fn touch_mode_for_test(&self) -> crate::touch::Ui { self.touch_mode() }
+    /// Where choice `i` of the menu shown last stood (top, bottom).
+    #[cfg(test)]
+    pub(crate) fn menu_row_for_test(&self, i: usize) -> (f32, f32) { self.menu_rows.borrow().get(i).copied().unwrap_or_else(|| panic!("no choice {i}: {:?}", self.menu_rows.borrow())) }
+
+    /// What the touch controls are for now.
+    fn touch_mode(&self) -> crate::touch::Ui {
+        use crate::touch::Ui;
+        if self.in_scene() { return Ui::Tap; }
+        let shots = |k: &crate::gear::Kit| (k.ranged.is_some(), k.spell_cast().is_some());
+        match &self.mode {
+            // The prologue's question of leaving is answered with a tap or BACK; its cards with a tap.
+            Mode::Play | Mode::Side(_) if self.prologue.as_ref().is_some_and(|p| p.leaving) => Ui::Menu,
+            Mode::Play if self.prologue.as_ref().is_some_and(|p| p.still()) => Ui::Tap,
+            Mode::Play => { let (ranged, cast) = shots(&self.fight.hero.stats.kit); Ui::Road { prompt: self.prompt.1 > 0.5, ranged, cast } }
+            Mode::Side(a) => { let (ranged, cast) = shots(&a.side.hero.stats.kit); Ui::Side { ranged, cast } }
+            // The map has nothing to choose but closes with BACK.
+            Mode::Map => Ui::Menu,
+            // Words with no choices (the title) go on with a tap.
+            Mode::Front(_) | Mode::Sanctum(_) | Mode::Meet(_) => match self.panel() {
+                Some((p, _, _)) if p.options.is_empty() => Ui::Tap,
+                _ => Ui::Menu,
+            },
+            _ => Ui::None,
+        }
+    }
+
+    /// The fingers' events since the last tick, through the touch controls, added to `presses`
+    /// as the keyboard and mouse would have given them; and what they hold now.
+    fn touch_presses(&mut self, presses: &mut Vec<Press>) {
+        use crate::touch::{self, Out};
+        let touch_ui = self.touch_ui;
+        if let Some(p) = &mut self.prologue { p.touch = touch_ui; }
+        let ui = self.touch_mode();
+        let buttons = touch::layout(ui);
+        let mut out = Vec::new();
+        for (id, phase, at) in std::mem::take(&mut *self.fingers.lock().unwrap()) { out.extend(self.pad.feed(id, phase, at, ui, &buttons)); }
+        if self.pad.seen { self.touch_ui = true; }
+        if ui == touch::Ui::None { self.pad.clear(); }
+        self.touch_held = self.pad.tick(&mut out);
+        let key = |ch: char| Press::Key(Key::Character(ch.to_string()), false);
+        for o in out {
+            match o {
+                Out::Tap(t) => presses.push(Press::Touch(t)),
+                Out::Key(ch) => presses.push(key(ch)),
+                // A tap on a choice: up or down to it, then take it.
+                Out::Pick((_, y)) => {
+                    let Some((p, _, _)) = self.panel() else { continue };
+                    // Nothing to choose (the prologue's question of leaving): a tap goes on.
+                    if p.options.is_empty() { presses.push(key('e')); continue; }
+                    let rows = self.menu_rows.borrow();
+                    // The row under the thumb, or the nearest one within half a row of it.
+                    let near = |&(top, bottom): &(f32, f32)| if y >= top && y < bottom { 0.0 } else { (top - y).max(y - bottom) / (bottom - top).max(1.0) };
+                    let Some(i) = (0..rows.len()).filter(|&i| near(&rows[i]) <= 0.5).min_by(|&a, &b| near(&rows[a]).total_cmp(&near(&rows[b]))) else { continue };
+                    let (way, n) = if i >= p.choice { ('s', i - p.choice) } else { ('w', p.choice - i) };
+                    presses.extend((0..n).map(|_| key(way)));
+                    presses.push(key('e'));
+                }
+            }
+        }
+    }
+
+    /// The touch controls as they stand: the buttons for what the screen is for now, the held
+    /// ones bright, and the stick's ring where the thumb came down (where one goes, before).
+    fn draw_touch(&self, c: &mut Canvas) {
+        use crate::touch::{self, Btn, Ui};
+        let ui = if self.touch_ui { self.touch_mode() } else { Ui::None };
+        let buttons = touch::layout(ui);
+        let s = c.base_scale();
+        let relay = self.touch_laid.get() != Some((ui, s));
+        for (i, b) in Btn::ALL.iter().enumerate() {
+            let at = buttons.iter().find(|x| x.btn == *b).copied();
+            let down = at.is_some() && self.pad.pressed(*b);
+            // Use has no ring of its own: the prompt plate is the button.
+            let at = at.filter(|_| *b != Btn::Use);
+            for (part, on) in [("ring", at.is_some() && !down), ("glow", down), ("label", at.is_some())] {
+                let Some(o) = c.get_game_object_mut(&touch_id(part, i)) else { continue };
+                o.visible = on;
+                let Some(x) = at.filter(|_| relay) else { continue };
+                if part == "label" {
+                    let size = (x.r * 0.3).clamp(34.0, 60.0);
+                    (o.position, o.size) = ((x.at.0 - x.r, x.at.1 - 0.62 * size), (2.0 * x.r, 1.25 * size));
+                    if let Some(font) = &self.font {
+                        o.set_drawable(Box::new(Text::new(vec![Span::new(b.label().into(), size * s, Some(size * 1.25 * s), font.clone(), Color(240, 232, 214, 235), 0.0)], Some(2.0 * x.r * s), Align::Center, None)));
+                    }
+                } else {
+                    (o.position, o.size) = ((x.at.0 - x.r, x.at.1 - x.r), (2.0 * x.r, 2.0 * x.r));
+                }
+            }
+        }
+        self.touch_laid.set(Some((ui, s)));
+        // The stick, on the road and in the yard.
+        let stick = matches!(ui, Ui::Road { .. } | Ui::Side { .. });
+        let (mid, thumb) = self.pad.stick().unwrap_or((STICK_REST, STICK_REST));
+        let (dx, dy) = (thumb.0 - mid.0, thumb.1 - mid.1);
+        let k = (touch::RIM / (dx * dx + dy * dy).sqrt().max(1e-3)).min(1.0);
+        let knob = (mid.0 + dx * k, mid.1 + dy * k);
+        for (id, at, r) in [(TOUCH_STICK, mid, touch::RIM), (TOUCH_KNOB, knob, 120.0)] {
+            if let Some(o) = c.get_game_object_mut(id) { o.visible = stick; (o.position, o.size) = ((at.0 - r, at.1 - r), (2.0 * r, 2.0 * r)); }
+        }
+        // The keyboard's help line says nothing to a thumb.
+        if self.touch_ui { if let Some(o) = c.get_game_object_mut(HELP) { o.visible = false; } }
+    }
+
     /// The words and choices to show now, and how.
     fn panel(&self) -> Option<(Panel, Style, f32)> {
+        if let Some(p) = self.prologue.as_ref().filter(|_| matches!(self.mode, Mode::Play | Mode::Side(_))) {
+            let (panel, card) = p.panel(&self.fight);
+            return Some((panel, if card { Style::Title } else { Style::Lesson }, 1.0));
+        }
         match &self.mode {
             Mode::Front(f) => Some((f.panel(&self.slots), if matches!(f, Front::Pause(_)) { Style::Menu } else { Style::Title }, 1.0)),
             Mode::Sanctum(s) => Some((s.panel(&self.world, &self.fight), Style::Menu, 1.0)),
@@ -1791,31 +2510,56 @@ impl Pilgrimage {
         let cream = Color(236, 228, 210, al(255.0));
         let dim = Color(236, 228, 210, al(150.0));
         let span = |t: String, size: f32, col: Color| Span::new(t, size * s, Some(size * 1.25 * s), font.clone(), col, 0.0);
-        // (box position and size, its darkness, text position and size, alignment, title size and colour)
         // A menu stands on the side away from who is spoken to (the keeper is on the left, the
         // smith on the right, by the road and at rest), as tall as its lines.
         let left = matches!(&self.mode, Mode::Sanctum(s) if s.station() == shrine::Station::Smith) || self.mode == Mode::Map;
-        let (mw, pad) = (1560.0, 60.0);
-        let wrap = |t: &str, size: f32| (t.len() as f32 * size * 0.5 / (mw - 2.0 * pad)).ceil();
-        let lines = 66.0 * 1.25 + wrap(&p.text, 52.0) * 52.0 * 1.25 + if p.options.is_empty() { 0.0 } else { 30.0 * 1.25 + p.options.len() as f32 * 54.0 * 1.25 } + 2.0 * 40.0 * 1.25;
-        let mh = lines + 2.0 * pad;
-        let mx = if left { 120.0 } else { 3840.0 - 120.0 - mw };
-        let my = (1960.0 - mh).min(980.0);
-        let (bg, bg_a, at, size, align, title) = match style {
-            Style::Title => (((0.0, 0.0), (3840.0, 2160.0)), 165.0, (0.0, 520.0), (3840.0, 1400.0), Align::Center, (190.0, gold)),
-            Style::Menu => (((mx, my), (mw, mh)), 215.0, (mx + pad, my + pad), (mw - 2.0 * pad, mh - 2.0 * pad), Align::Left, (66.0, gold)),
-            Style::Died => (((0.0, 800.0), (3840.0, 480.0)), 215.0, (0.0, 870.0), (3840.0, 380.0), Align::Center, (220.0, Color(158, 14, 10, al(255.0)))),
-        };
-        let mut spans = vec![span(format!("{}\n", p.title), title.0, title.1)];
-        if !p.text.is_empty() { spans.push(span(format!("{}\n", p.text), if style == Style::Title { 64.0 } else { 52.0 }, cream)); }
+        let pad = 60.0;
+        // On a touch screen the choices are bigger and set further apart, each a thumb's target.
+        let (cs, cl) = if self.touch_ui { (70.0, 1.75) } else { (54.0, 1.25) };
+        let labels = columns(&font, &p.options.iter().map(|o| o.0.as_str()).collect::<Vec<_>>(), cs);
+        // As wide as its longest choice (each line of one), within reason: a long one wraps.
+        let width = |t: &str| t.chars().map(|ch| font.0.metrics(ch, cs).advance_width).sum::<f32>();
+        let widest = labels.iter().flat_map(|l| l.lines()).map(|l| width(&format!("> {l}"))).fold(0.0, f32::max);
+        let mw = if style == Style::Lesson { 1320.0 } else { (widest + 2.0 * pad + 24.0).clamp(1560.0, 1900.0) };
+        let face = self.title_font.clone().unwrap_or_else(|| font.clone());
+        let (title_size, title_col) = match style { Style::Title => (190.0, gold), Style::Died => (220.0, Color(158, 14, 10, al(255.0))), _ => (66.0, gold) };
+        let mut spans = vec![Span::new(format!("{}\n", p.title), title_size * s, Some(title_size * 1.25 * s), face, title_col, 0.0)];
+        let text = if self.touch_ui { p.text.replace("Esc leaves it", "the pause button leaves it") } else { p.text.clone() };
+        if !text.is_empty() { spans.push(span(format!("{}\n", text), if style == Style::Title { 64.0 } else { 52.0 }, cream)); }
         if !p.options.is_empty() { spans.push(span("\n".into(), 30.0, cream)); }
-        for (i, (label, can)) in p.options.iter().enumerate() {
+        let first_choice = spans.len();
+        for (i, ((_, can), label)) in p.options.iter().zip(labels).enumerate() {
             let picked = i == p.choice;
             let col = if picked && *can { gold } else if *can { cream } else if picked { Color(196, 176, 140, al(230.0)) } else { Color(170, 164, 156, al(220.0)) };
-            spans.push(span(format!("{}{label}\n", if picked { "> " } else { "   " }), 54.0, col));
+            spans.push(Span::new(format!("{}{label}\n", if picked { "> " } else { "   " }), cs * s, Some(cs * cl * s), font.clone(), col, 0.0));
         }
-        if !p.hint.is_empty() { spans.push(span(format!("\n{}", p.hint), 40.0, dim)); }
-        let text = Text::new(spans, Some(size.0 * s), align, None);
+        // A lesson's last line is how the last try went: warmer, to be read mid-fight.
+        let hint = if style == Style::Lesson { Color(244, 214, 150, al(240.0)) } else { dim };
+        let hint_text = if self.touch_ui { for_touch(&p.hint) } else { p.hint.clone() };
+        if !hint_text.is_empty() { spans.push(span(format!("\n{hint_text}"), if style == Style::Lesson { 44.0 } else { 40.0 }, hint)); }
+        // A menu is as tall as its words laid out, wrapped lines and all.
+        let boxed = matches!(style, Style::Menu | Style::Lesson);
+        let text = Text::new(if self.touch_ui { spans.clone() } else { std::mem::take(&mut spans) }, Some(if boxed { mw - 2.0 * pad } else { 3840.0 } * s), if boxed { Align::Left } else { Align::Center }, None);
+        let mh = text.size().1 / s.max(1e-6) + 2.0 * pad;
+        let mx = if left { 120.0 } else { 3840.0 - 120.0 - mw };
+        let my = (1960.0 - mh).min(980.0).max(200.0);
+        // Where each choice stands, for a tap to pick it: the words laid out up to it, and then
+        // through it.
+        if self.touch_ui {
+            let width = Some(if boxed { mw - 2.0 * pad } else { 3840.0 } * s);
+            let align = if boxed { Align::Left } else { Align::Center };
+            let top = match style { Style::Title => 520.0, Style::Menu => my + pad, Style::Lesson => LESSON_Y + pad, Style::Died => 870.0 };
+            let below = |k: usize| top + Text::new(spans[..k].to_vec(), width, align, None).size().1 / s.max(1e-6);
+            *self.menu_rows.borrow_mut() = (0..p.options.len()).map(|i| (below(first_choice + i), below(first_choice + i + 1))).collect();
+        }
+        let (bg, bg_a, at, size) = match style {
+            Style::Title => (((0.0, 0.0), (3840.0, 2160.0)), 165.0, (0.0, 520.0), (3840.0, 1400.0)),
+            Style::Menu => (((mx, my), (mw, mh)), 215.0, (mx + pad, my + pad), (mw - 2.0 * pad, mh - 2.0 * pad)),
+            Style::Died => (((0.0, 800.0), (3840.0, 480.0)), 215.0, (0.0, 870.0), (3840.0, 380.0)),
+            // A lesson: on the left under the hero's bars, clear of the fight in the middle and of
+            // the callouts and the foe's bar over it.
+            Style::Lesson => (((60.0, LESSON_Y), (mw, mh)), 190.0, (60.0 + pad, LESSON_Y + pad), (mw - 2.0 * pad, mh - 2.0 * pad)),
+        };
         if let Some(o) = c.get_game_object_mut(PANEL_BG) {
             o.visible = true;
             o.position = bg.0;
@@ -1862,7 +2606,28 @@ impl Pilgrimage {
         }
     }
 
-    /// Tell the road what the world asks.
+    /// On Android, once a second to logcat: the game's updates a second and their spread (median,
+/// 95th, worst gap, ms), the road's new frames a second, and PathForge's engine and render time.
+#[cfg(target_os = "android")]
+fn pace_report(ticks: u64, road_fps: u32, engine: &str, render_ms: f32) {
+    use std::sync::Mutex;
+    use std::time::Instant;
+    static PACE: Mutex<Option<(Instant, Instant, Vec<f32>)>> = Mutex::new(None);
+    let now = Instant::now();
+    let mut p = PACE.lock().unwrap();
+    let (start, last, gaps) = p.get_or_insert_with(|| (now, now, Vec::new()));
+    gaps.push((now - *last).as_secs_f32() * 1000.0);
+    *last = now;
+    let secs = (now - *start).as_secs_f32();
+    if secs < 1.0 { return; }
+    gaps.sort_by(f32::total_cmp);
+    let at = |q: f32| gaps[((gaps.len() - 1) as f32 * q) as usize];
+    log::info!("[pace] {:.1} updates/s  gap {:.1}/{:.1}/{:.1} ms  road {road_fps} fps  {engine} {render_ms:.1} ms  tick {ticks}",
+        gaps.len() as f32 / secs, at(0.5), at(0.95), at(1.0));
+    *p = Some((now, now, Vec::new()));
+}
+
+/// Tell the road what the world asks.
     fn send(c: &mut Canvas, go: Go) {
         let Some(pf) = c.get_plugin_mut::<PathForgePlugin>() else { return };
         match go {
@@ -1894,7 +2659,8 @@ impl QuartzPlugin for Pilgrimage {
             self.slow.0 -= 1;
             c.set_time_scale(if self.slow.0 > 0 { self.slow.1 } else { 1.0 });
         }
-        let presses = std::mem::take(&mut *self.presses.lock().unwrap());
+        let mut presses = std::mem::take(&mut *self.presses.lock().unwrap());
+        self.touch_presses(&mut presses);
         let Some(pf) = c.get_plugin::<PathForgePlugin>() else { return };
         // Where the frame shown stands (sprites and warnings go by it) and where the walk is headed
         // (the rules go by that, or a slow frame lets the hero walk on into an enemy).
@@ -1908,11 +2674,43 @@ impl QuartzPlugin for Pilgrimage {
             if !self.last_frame.as_ref().is_some_and(|l| Arc::ptr_eq(l, img)) { self.frames.0 += 1; self.last_frame = Some(img.clone()); }
         }
         if self.ticks % 60 == 0 { self.frames = (0, self.frames.0); }
+        #[cfg(target_os = "android")]
+        Self::pace_report(self.ticks, self.frames.1, pf.engine(), pf.render_ms());
         self.fade_step(c);
-        let keys: Vec<shrine::Key> = presses.iter().filter_map(menu_key).collect();
+        let mut keys: Vec<shrine::Key> = presses.iter().filter_map(menu_key).collect();
+        // A cutscene takes the keys while it plays (they skip it).
+        if self.run_scene(c, &keys) { (keys, presses) = (Vec::new(), Vec::new()); }
+        // Menus click as they are moved through, taken and backed out of.
+        let in_menu = matches!(self.mode, Mode::Front(_) | Mode::Sanctum(_) | Mode::Meet(_) | Mode::Map) || self.prologue.as_ref().is_some_and(|p| p.still());
+        if in_menu {
+            for k in &keys {
+                let s = match k { shrine::Key::Use => Sfx::UiConfirm, shrine::Key::Back => Sfx::UiBack, _ => Sfx::UiMove };
+                self.audio.play(c, s);
+            }
+        }
+        // The music follows what the game is doing; a fade to black keeps what was playing, and
+        // the fall lets it die away.
+        let tune = match &self.mode {
+            _ if self.scene.as_ref().is_some_and(|s| s.tune().is_some()) => self.scene.as_ref().and_then(Cutscene::tune),
+            Mode::Out(_) | Mode::Cut(_) | Mode::Scene(_) => None,
+            Mode::Dying(_) => Some(None),
+            Mode::Front(_) => Some(Some(Tune::Title)),
+            Mode::Kneel(_) | Mode::Sanctum(_) | Mode::Rise(_) => Some(Some(Tune::Shrine)),
+            Mode::Side(a) if a.why == Why::Boss => Some(Some(Tune::Boss)),
+            _ if self.prologue.is_some() => Some(Some(Tune::Dark)),
+            _ => Some(Some(Tune::of_scene(self.world.here().scene))),
+        };
+        if let Some(t) = tune { self.audio.music(c, t); }
         let pressed_e = presses.iter().any(|p| matches!(p, Press::Key(k, _) if is(k, &["e"], None)));
         let pressed_t = presses.iter().any(|p| matches!(p, Press::Key(k, _) if is(k, &["t"], None)));
         let pressed_m = presses.iter().any(|p| matches!(p, Press::Key(k, _) if is(k, &["m"], None)));
+        // H shows or hides the controls, F3 the developer's numbers, anywhere past the title.
+        if !matches!(self.mode, Mode::Front(_)) {
+            let was = (self.show_help, self.show_dev);
+            if presses.iter().any(|p| matches!(p, Press::Key(k, _) if is(k, &["h"], None))) { self.show_help = !self.show_help; }
+            if presses.iter().any(|p| matches!(p, Press::Key(k, _) if is(k, &[], Some(NamedKey::F3)))) { self.show_dev = !self.show_dev; }
+            if (self.show_help, self.show_dev) != was { write_settings(&self.saves, (self.show_help, self.show_dev)); }
+        }
         let mut notes = Vec::new();
 
         // What each mode does with this tick, and what it becomes.
@@ -1922,10 +2720,12 @@ impl QuartzPlugin for Pilgrimage {
                 let slots = self.slots.clone();
                 let chosen = keys.iter().fold(None, |got, k| got.or(f.press(*k, &slots)));
                 match chosen {
-                    Some(Begin::New(slot, calling)) => {
+                    Some(Begin::New(slot, calling, first)) => {
                         (self.slot, self.calling, self.played, self.kept) = (Some(slot), Some(calling), 0.0, None);
                         self.fade.1 = 1.0;
-                        Mode::Out(Next::Start)
+                        // The opening's places got ready while the screen goes dark.
+                        if let Some(pf) = c.get_plugin_mut::<PathForgePlugin>() { pf.warm(&Cutscene::opening().stops()); }
+                        Mode::Out(Next::Opening(first))
                     }
                     Some(Begin::Continue(slot)) => { (self.slot, self.kept) = (Some(slot), None); self.fade.1 = 1.0; Mode::Out(Next::Resume) }
                     Some(Begin::Forget(slot)) => {
@@ -1956,6 +2756,8 @@ impl QuartzPlugin for Pilgrimage {
                     None => Mode::Front(f),
                 }
             }
+            // The prologue keeps the road to itself: no rests, turns, maps or pauses (Esc leaves it).
+            Mode::Play if self.prologue.is_some() => Mode::Play,
             Mode::Play if self.fight.hero.dead => { self.banner.1 = 0; Mode::Dying(0) }
             Mode::Play if pressed_e && self.world.can_rest(&self.fight, ahead) => Mode::Kneel(0),
             Mode::Play if pressed_e && self.world.can_meet_smith(&self.fight, ahead) => Mode::Meet(Meeting::smith()),
@@ -1980,7 +2782,8 @@ impl QuartzPlugin for Pilgrimage {
                 let boss = self.world.boss_due(&self.fight, ahead).unwrap_or(&atlas::BELL_WARDEN);
                 let mut side = SideFight::boss(h.stats, h.hp, h.stamina, h.flasks, boss.breed, self.world.scale());
                 (side.hero.arrows, side.hero.charges, side.hero.bulwark) = (h.arrows, h.charges, h.bulwark);
-                notes.push(Note::Arrived(boss.name()));
+                // Its entrance names it.
+                self.scene = Some(Cutscene::entrance(boss.name(), boss.mini));
                 Mode::Side(Box::new(Arena { side, t: 0, done: 0, why: Why::Boss }))
             }
             Mode::Play if ambush.is_some() => {
@@ -2042,34 +2845,57 @@ impl QuartzPlugin for Pilgrimage {
                 }
             }
             Mode::Out(Next::Start) => {
-                // A pilgrimage begun: whole, at the first shrine, getting up off the ground, at
-                // the levels everyone starts with.
-                self.world = World::new(walked);
-                self.fight = Fight::new(self.world.foes());
-                self.fight.hero.stats = crate::fight::Stats::default();
-                // The calling's own: what the other hand holds, and where its levels lean.
-                if let Some(c) = self.calling {
-                    if let Some(name) = c.offhand() {
-                        let i = crate::gear::find(name);
-                        self.world.gear.gain(i);
-                        self.world.gear.wear(1, Some(i));
-                    }
-                    let (st, [m, d, f]) = (&mut self.fight.hero.stats, c.leaning());
-                    (st.might, st.dexterity, st.focus) = (st.might + m, st.dexterity + d, st.focus + f);
+                // A pilgrimage begun at the first shrine, getting up off the ground; from the
+                // prologue's road, once the walk is back at the first.
+                self.set_out(walked);
+                if stop_now.as_deref() != Some(world::START) {
+                    self.world.warping = Some(world::START.into());
+                    Self::send(c, Go::Warp(world::START.into()));
+                    Mode::Cut(After::Wake)
+                } else {
+                    notes.push(Note::Arrived(self.world.here().title));
+                    self.fade.1 = 0.0;
+                    Mode::Wake(0)
                 }
-                self.fight.hero.stats.kit = self.world.gear.kit();
-                self.fight.hero = crate::fight::Hero::with(self.fight.hero.stats);
-                notes.push(Note::Arrived(self.world.here().title));
-                self.fade.1 = 0.0;
-                Mode::Wake(0)
             }
+            // Before a first pilgrimage, its opening; then the prologue or the road.
+            Mode::Out(Next::Opening(first)) => { self.scene = Some(Cutscene::opening()); Mode::Scene(Then::Begin(first)) }
+            Mode::Scene(then) if self.scene.is_some() => Mode::Scene(then),
+            Mode::Scene(Then::Begin(first)) => { self.fade.1 = 1.0; Mode::Out(if first { Next::Prologue } else { Next::Start }) }
+            Mode::Scene(Then::Conclude) => {
+                // The pilgrimage's end: the world begun again, waking at the first shrine.
+                let (go, note) = self.world.conclude();
+                notes.push(note);
+                Self::send(c, go);
+                self.fade.1 = 1.0;
+                Mode::Cut(After::Wake)
+            }
+            Mode::Out(Next::Prologue) => {
+                self.set_out(walked);
+                Self::send(c, Go::Warp(prologue::STOP.into()));
+                Mode::Cut(After::Prologue)
+            }
+            Mode::Cut(After::Prologue) if stop_now.as_deref() == Some(prologue::STOP) => {
+                self.fight.enemies.clear();
+                let h = &mut self.fight.hero;
+                (h.lane, h.x) = (0, 0.0);
+                let hand = h.stats.kit.ranged.is_some() || h.stats.kit.spell_cast().is_some();
+                self.prologue = Some(Prologue::new(ahead, hand));
+                self.fade.1 = 0.0;
+                Mode::Play
+            }
+            Mode::Cut(After::Prologue) => Mode::Cut(After::Prologue),
             Mode::Out(Next::Respawn) => { let go = self.world.died(ahead); Self::send(c, go); Mode::Cut(After::Wake) }
             Mode::Out(Next::Sanctum) => {
                 notes.extend(self.world.rest(&mut self.fight));
+                // The shrine rested at kept at once, not at the next autosave: a window closed
+                // straight after a rest wakes the pilgrimage here.
+                self.keep();
                 Self::send(c, Go::Warp(world::SANCTUM.into()));
                 Mode::Cut(After::Sanctum)
             }
-            Mode::Out(Next::Road) => { let go = self.world.leave_rest(); Self::send(c, go); Mode::Cut(After::Rise) }
+            // (Kept at once too: the fire may have sent the hero to wake at another shrine.)
+            Mode::Out(Next::Road) => { let go = self.world.leave_rest(); self.keep(); Self::send(c, go); Mode::Cut(After::Rise) }
             Mode::Cut(After::Sanctum) if stop_now.as_deref() == Some(world::SANCTUM) => {
                 let h = &mut self.fight.hero;
                 (h.lane, h.x) = (0, 0.0);
@@ -2104,24 +2930,33 @@ impl QuartzPlugin for Pilgrimage {
             Mode::Rise(t) => Mode::Rise(t + 1),
             Mode::Wake(t) if t >= WAKE_T => Mode::Play,
             Mode::Wake(t) => Mode::Wake(t + 1),
+            // A memory cannot kill: the bout begins again.
+            Mode::Side(a) if a.side.hero.dead && a.why == Why::Prologue => {
+                if let Some(p) = &mut self.prologue { p.word = ("Again: watch its marks, and roll or guard as they fill.".into(), 240); }
+                let mut again = self.prologue_bout();
+                again.t = ARENA_IN;
+                Mode::Side(again)
+            }
             Mode::Side(a) if a.side.hero.dead => {
                 Self::swing(c, "home");
                 let h = &mut self.fight.hero;
                 (h.hp, h.dead) = (0.0, true);
                 Mode::Dying(0)
             }
-            Mode::Side(a) if a.side.won() && a.done >= if a.why == Why::Boss { ARENA_OUT } else { AMBUSH_OUT } => {
+            Mode::Side(a) if a.side.won() && a.done >= if a.why == Why::Boss { ARENA_OUT } else { AMBUSH_OUT } && self.scene.is_none() => {
                 match a.why {
                     Why::Boss => notes.extend(self.world.boss_felled()),
                     Why::Ambush(k) => {
                         let fallen = a.side.foes.iter().filter_map(|f| f.breed.kind).collect();
                         notes.extend(self.world.ambush_cleared(k, fallen));
                     }
+                    Why::Prologue => if let Some(p) = &mut self.prologue { p.begin(Lesson::End, &mut self.fight, ahead) },
                 }
                 Self::swing(c, "home");
                 let h = &mut self.fight.hero;
                 (h.hp, h.stamina, h.flasks, h.arrows, h.charges, h.bulwark) = (a.side.hero.hp, a.side.hero.stamina, a.side.hero.flasks, a.side.hero.arrows, a.side.hero.charges, a.side.hero.bulwark);
-                Mode::Play
+                // The last boss down: out of the white, the pilgrimage's end.
+                if a.why == Why::Boss && self.world.here().id == atlas::FINALE { self.scene = Some(Cutscene::ending()); Mode::Scene(Then::Conclude) } else { Mode::Play }
             }
             Mode::Side(a) => Mode::Side(a),
             Mode::Meet(mut m) => {
@@ -2138,11 +2973,14 @@ impl QuartzPlugin for Pilgrimage {
         // The fight runs on game time (slower in slow motion, not at all in a hitstop), and only
         // on the road: playing, or falling.
         let fighting = matches!(self.mode, Mode::Play | Mode::Dying(_));
+        // A prologue card (or its question of leaving) holds the road and the fight still.
+        let still = self.prologue.as_ref().is_some_and(|p| p.still());
         let mut events = Vec::new();
         let mut ran = 0;
         let mut input = Input::default();
         if fighting {
-            input = self.input(c, if self.mode == Mode::Play { &presses } else { &[] });
+            input = self.input(c, if self.mode == Mode::Play && !still { &presses } else { &[] });
+            if still { input = Input::default(); }
             self.owed += dt / Canvas::TICK;
             let mut first = true;
             while self.owed >= 1.0 {
@@ -2154,7 +2992,7 @@ impl QuartzPlugin for Pilgrimage {
                 events.extend(self.fight.tick(&i, ahead));
             }
         } else if matches!(self.mode, Mode::Side(_)) {
-            let bi = self.side_input(c, &presses);
+            let bi = if self.scene.is_some() { SideInput::default() } else { self.side_input(c, &presses) };
             self.owed += dt / Canvas::TICK;
             let mut first = true;
             while self.owed >= 1.0 {
@@ -2164,9 +3002,15 @@ impl QuartzPlugin for Pilgrimage {
                 if first { self.side_pending = SideInput::default(); }
                 first = false;
                 let Mode::Side(a) = &mut self.mode else { break };
-                // Nothing moves while the camera swings round.
+                // Nothing moves while the camera swings round, or while the prologue asks to leave.
                 if a.t < ARENA_IN { a.t += 1; continue; }
-                if a.side.won() { a.done += 1; }
+                // A boss's entrance holds the yard still.
+                if still || self.scene.as_ref().is_some_and(|s| s.freeze) { continue; }
+                if a.side.won() {
+                    a.done += 1;
+                    // The Archangel falls: slow, white, and the pilgrimage's end.
+                    if a.done == 1 && a.why == Why::Boss && self.world.here().id == atlas::FINALE && self.scene.is_none() { self.scene = Some(Cutscene::fall()); }
+                }
                 events.extend(a.side.tick(&i));
             }
             // The bars and the HUD read the road fight's hero.
@@ -2181,12 +3025,42 @@ impl QuartzPlugin for Pilgrimage {
         events.append(&mut self.staged);
         // At a fork the walk waits at the signpost for a side to be picked.
         let held = self.world.holds_at_fork(c.get_plugin::<PathForgePlugin>().and_then(|p| p.state().choose_within), self.fight.hero.lane);
-        let speed = if self.mode != Mode::Play || held { 0.0 } else { self.fight.speed(&input, ahead) };
+        let speed = if self.mode != Mode::Play || held || still { 0.0 } else { self.fight.speed(&input, ahead) };
+        // A way held: no further on at the place's end (back is still free).
+        let speed = if speed > 0.0 && self.world.held_at_end(&self.fight, ahead) { 0.0 } else { speed };
+        // A cutscene on the road walks it at its own pace.
+        let speed = self.scene.as_ref().filter(|s| s.owns_road).map_or(speed, Cutscene::walk);
         if let Some(pf) = c.get_plugin_mut::<PathForgePlugin>() { pf.set_speed(speed); }
         self.last_speed = speed;
+        self.stride = (self.stride + speed / 60.0 / if speed >= crate::fight::RUN { RUN_STRIDE } else { WALK_STRIDE }).rem_euclid(1.0);
+        // The prologue's lesson, judged on what the fight just did.
+        let lesson_was = self.prologue.as_ref().map(|p| p.lesson);
+        if let Some(p) = self.prologue.as_mut().filter(|_| matches!(self.mode, Mode::Play | Mode::Side(_))) {
+            let road = if matches!(self.mode, Mode::Play) { &events[..] } else { &[] };
+            match p.tick(&mut self.fight, ahead, road, &keys, self.last_speed >= crate::fight::RUN) {
+                Some(Step::Side) => {
+                    Self::swing(c, SIDE_VIEW);
+                    self.fight.enemies.clear();
+                    self.mode = Mode::Side(self.prologue_bout());
+                }
+                Some(Step::Done) => {
+                    if matches!(self.mode, Mode::Side(_)) { Self::swing(c, "home"); }
+                    self.prologue = None;
+                    self.fade.1 = 1.0;
+                    self.mode = Mode::Out(Next::Start);
+                }
+                None => {}
+            }
+        }
+        // A lesson learned (not a card read): a chime.
+        if let (Some(was), Some(now)) = (lesson_was, self.prologue.as_ref().map(|p| p.lesson)) {
+            if was != now && !matches!(was, Lesson::Memory | Lesson::Pace | Lesson::Turn) { self.audio.play(c, Sfx::Lesson); }
+        }
         #[cfg(test)]
         self.log.extend(events.iter().map(|e| (self.ticks, *e)));
         self.show(c, &events);
+        self.audio.on_events(c, &events);
+        if self.mode == Mode::Play { self.audio.steps(c, walked, speed); }
         self.fx.tick(ran);
         // A follow-through runs on fight ticks, and gives way to whatever the hero does next.
         self.flourish = if self.fight.hero.act.is_some() || self.fight.hero.reeling > 0 { 0 } else { self.flourish.saturating_sub(ran) };
@@ -2197,7 +3071,7 @@ impl QuartzPlugin for Pilgrimage {
                 let events: Vec<Event> = events.iter().map(|e| match *e { Event::Burst { enemy, at } => Event::Burst { enemy, at: walked + ARENA_D as f64 + at }, e => e }).collect();
                 self.fx.on_events_at(&events, (0.0, ARENA_D + hs), fw, |i| a.side.foes.get(i).map(|f| (0.0, walked + (ARENA_D + f.s) as f64)));
             }
-            _ => self.fx.on_events(&events, &self.fight),
+            _ => self.fx.on_events(&events, &self.fight, ahead),
         }
         // Played time, and the pilgrimage kept as it goes.
         if !matches!(self.mode, Mode::Front(_)) { self.played += dt as f64; }
@@ -2208,15 +3082,39 @@ impl QuartzPlugin for Pilgrimage {
         let found = self.world.felled(fallen);
         self.dead_for = if let Mode::Dying(t) = self.mode { t } else { 0 };
         // The world follows the road everywhere but the sanctum (it is not a place).
-        if !self.at_rest() && !matches!(self.mode, Mode::Front(_)) {
+        let tutoring = self.prologue.is_some() || matches!(self.mode, Mode::Out(Next::Prologue) | Mode::Cut(After::Prologue));
+        // (Nor in a cutscene on its own: its cuts to other places are not the hero going there.)
+        if !self.at_rest() && !matches!(self.mode, Mode::Front(_) | Mode::Scene(_) | Mode::Out(Next::Opening(_))) && !tutoring {
             let Some(pf) = c.get_plugin::<PathForgePlugin>() else { return };
             let st = pf.state();
             let (stop, within) = (st.stop.clone(), st.choose_within);
             let (go, n) = self.world.tick(&mut self.fight, ahead, stop.as_deref(), within);
             notes.extend(n);
             if let Some(go) = go { Self::send(c, go); }
+            // The gates on the fork ahead's ways, once it is in view: a wall across the way with a
+            // gate (a key's) or a door (a shortcut's) in it, shut, or standing open once opened.
+            // Sent again for each new fork.
+            let gates = self.world.gates_ahead();
+            let want = self.world.signpost.map(|_| (stop.clone().unwrap_or_default(),
+                [quartz_path_forge::Branch::Left, quartz_path_forge::Branch::Right].map(|b| gates.iter().find(|g| g.0 == b).map(|&(_, keyed, open)| (keyed, open)))));
+            if want != self.bar_sent {
+                let bar = |g: Option<(bool, bool)>| g.map(|(k, open)| quartz_path_forge::Barrier {
+                    wall: true, sprite: crate::assets::path(if k { BARRIER_ART.0 } else { BARRIER_ART.1 }).to_string_lossy().into_owned(), height: 3.0,
+                    open, leaves: if k { BARRIER_LEAVES.0 } else { BARRIER_LEAVES.1 } });
+                if let (Some((_, [l, r])), Some(pf)) = (&want, c.get_plugin_mut::<PathForgePlugin>()) { pf.bar(bar(*l), bar(*r)); }
+                self.bar_sent = want;
+            }
         }
         notes.extend(found);
+        for n in &notes {
+            match n {
+                Note::Rose(_) => self.audio.play(c, Sfx::LevelUp),
+                Note::Recovered(_) => self.audio.play(c, Sfx::Coins),
+                Note::Found(_) | Note::Crafted(_) | Note::Forged(..) | Note::Wore(_) => self.audio.play(c, Sfx::Pickup),
+                Note::Vanquished(..) => self.audio.play_at(c, Sfx::Knell, 1.0, 0.8),
+                _ => {}
+            }
+        }
         if !notes.is_empty() { self.say(&notes); }
         self.banner.1 = self.banner.1.saturating_sub(1);
         self.draw_callout(c);
@@ -2226,8 +3124,10 @@ impl QuartzPlugin for Pilgrimage {
         self.fx.place(c, walked, &self.fight, blade);
         self.bars(c, walked);
         self.draw_panel(c);
+        self.draw_prompt(c, ahead);
         self.draw_map(c);
         if self.ticks % 15 == 1 || self.banner.1 > 0 || self.mode != Mode::Play || events.contains(&Event::Died) { self.hud(c, walked); }
+        self.draw_touch(c);
     }
 }
 

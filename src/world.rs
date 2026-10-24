@@ -9,7 +9,7 @@
 //! the walk's state and sends what `World` asks for.
 
 use crate::atlas::{self, Barred, Key, Place, FINALE};
-use crate::fight::{Archetype, Enemy, Fight, HERO_D};
+use crate::fight::{Ai, Archetype, Enemy, Fight, HERO_D};
 use quartz_path_forge::Branch;
 
 pub use crate::atlas::START;
@@ -22,6 +22,9 @@ pub const CURRENCY_TITLE: &str = "Echoes";
 pub const MOST_FOES: usize = 5;
 /// How near the shrine the hero must stand to rest, metres.
 pub const SHRINE_REACH: f32 = 3.0;
+/// Metres within which a living enemy, ahead or behind, keeps what wants a quiet moment (a cache
+/// taken, a boss stepping out, a side path left) from happening.
+const QUIET: f32 = 8.0;
 /// The journey's stop where the hero sits at rest: a clearing ringed by mist, the keeper on its
 /// left, the shrine in its middle, the smith (once met) on its right. Not a place on the road.
 pub const SANCTUM: &str = "sanctum";
@@ -78,6 +81,9 @@ pub enum Note {
     Opened(&'static str),
     /// Turned round on the road.
     Turned,
+    /// The way on is held until this kind of enemy (the place's keeper) is down; `true` for a
+    /// gauntlet, held until every one is.
+    Held(Archetype, bool),
     Recovered(u32),
     /// The smith raised the weapon or the armour to this.
     Forged(&'static str, u32),
@@ -125,6 +131,8 @@ pub struct World {
     pub chose: bool,
     /// Where the walk was when the branch was taken (the camera turns onto it from there).
     pub chose_at: Option<f64>,
+    /// The branch taken: the one leaned into, or the only one open whatever the lean.
+    pub took: Option<Branch>,
     /// Shards carried, for the smith.
     pub shards: u32,
     /// Whether the keeper has spoken her first words, and the smith been met on the road (he waits
@@ -165,6 +173,11 @@ pub struct World {
     lane: Option<String>,
     /// The next warp keeps the hero as they are (a detour, a turn), rather than whole again.
     keep_hero: bool,
+    /// The way held already told of in this stop.
+    held_told: bool,
+    /// Turned round partway along a place: its living enemies as they stood (by which of the
+    /// place's they are) and how far ahead of the hero, metres, to stand mirrored after the turn.
+    carry: Option<Vec<(usize, Enemy, f32)>>,
 }
 
 /// Where the hero left the road for a side path: the stop, metres in, its enemies as they were
@@ -176,10 +189,10 @@ impl World {
     pub fn new(walked: f64) -> World {
         World {
             at: START.into(), base: walked, sent: false, warping: None, warp_into: 0.0, checkpoint: START.into(), rested: Vec::new(), souls: 0, stain: None,
-            pilgrimages: 0, signpost: None, lean: None, chose: false, chose_at: None, shards: 0, met_keeper: false, met_smith: false, talks: [0, 0],
+            pilgrimages: 0, signpost: None, lean: None, chose: false, chose_at: None, took: None, shards: 0, met_keeper: false, met_smith: false, talks: [0, 0],
             gear: crate::gear::Loadout::starting(), fallen: [0; Archetype::ALL.len()], luck: 0, beaten: Vec::new(), keys: Vec::new(), remnants: Vec::new(), opened: Vec::new(),
             seen: vec![atlas::node(START)], slain: Vec::new(), spawned: Vec::new(), detour: None, explored: Vec::new(), taken: Vec::new(),
-            cleared: Vec::new(), told: false, lane: None, keep_hero: false,
+            cleared: Vec::new(), told: false, lane: None, keep_hero: false, held_told: false, carry: None,
         }
     }
 
@@ -212,7 +225,7 @@ impl World {
         let scale = self.scale();
         let flip = if self.forward() { 1 } else { -1 };
         self.spawned = (0..p.foes.len()).filter(|&i| !self.slain.contains(&(p.id, i))).collect();
-        self.spawned.iter().map(|&i| { let (k, ahead, lane) = p.foes[i]; Enemy::new(k, self.road_at(ahead), lane * flip).scaled(scale) }).collect()
+        self.spawned.iter().map(|&i| { let (k, ahead, lane) = p.foes[i]; Enemy::new(k, self.road_at(ahead), lane * flip).scaled(scale).unaware() }).collect()
     }
 
     /// Remember the fight's enemies that are down as down.
@@ -245,10 +258,12 @@ impl World {
         self.base = walked - into as f64;
         self.sent = false;
         self.told = false;
+        self.held_told = false;
         self.signpost = None;
         self.lean = None;
         self.chose = false;
         self.chose_at = None;
+        self.took = None;
         let p = self.here();
         if !self.seen.contains(&p.id) { self.seen.push(p.id); }
         let mut notes = vec![Note::Arrived(p.title)];
@@ -283,7 +298,7 @@ impl World {
 
     /// Whether the hero can turn back from the side path now: at its end, every enemy down.
     pub fn can_come_back(&self, fight: &Fight, walked: f64) -> bool {
-        self.detour.is_some() && fight.enemies.iter().all(|e| !e.alive()) && walked - self.base >= self.here().length as f64 - 2.0
+        self.detour.is_some() && Self::quiet(fight, walked) && walked - self.base >= self.here().length as f64 - 2.0
     }
 
     /// Back up the side path to where the hero left the road.
@@ -310,7 +325,10 @@ impl World {
         let p = self.here();
         let into = ((walked - self.base) as f32).clamp(0.0, p.length);
         let to = atlas::turned(p.id, &from);
-        let back_into = if atlas::node(&to) == p.id { p.length - into } else { 0.0 };
+        let in_place = atlas::node(&to) == p.id;
+        let back_into = if in_place { p.length - into } else { 0.0 };
+        // Turned about where they stand: what was behind is ahead, as it was.
+        self.carry = in_place.then(|| fight.enemies.iter().zip(&self.spawned).filter(|(e, _)| e.alive()).map(|(e, &i)| (i, e.clone(), e.gap(walked))).collect());
         self.keep_hero = true;
         self.warping = Some(to.clone());
         self.warp_into = back_into;
@@ -344,11 +362,42 @@ impl World {
     /// Whether the place's boss has fallen this pilgrimage.
     pub fn boss_beaten(&self) -> bool { self.beaten.contains(&self.here().id) }
 
-    /// The boss here, if one steps out now: this place has one not yet beaten, every other enemy
-    /// here is down, and the hero has walked as far as it waits.
+    /// The pilgrimage done (the last boss beaten): the world begun again, stronger, and the walk
+    /// sent back to the first shrine.
+    pub fn conclude(&mut self) -> (Go, Note) {
+        self.sent = true;
+        self.begin_again();
+        self.warping = Some(START.into());
+        (Go::Warp(START.into()), Note::Pilgrimage(self.pilgrimages))
+    }
+
+    /// What holds the way on, if anything still does: the kind of the first keeper standing (for a
+    /// gauntlet, of any foe standing). Only walked as laid out.
+    pub fn held(&self, fight: &Fight) -> Option<Archetype> {
+        if !self.forward() || self.detour.is_some() { return None; }
+        let standing = fight.enemies.iter().zip(&self.spawned).filter(|(e, _)| e.alive());
+        match self.here().hold {
+            atlas::Hold::Free => None,
+            atlas::Hold::Clear => standing.map(|(e, _)| e.kind).next(),
+            atlas::Hold::Keepers(k) => standing.filter(|(_, i)| k.contains(i)).map(|(e, _)| e.kind).next(),
+        }
+    }
+
+    /// At the place's end with the way on held: the walk goes no further.
+    pub fn held_at_end(&self, fight: &Fight, walked: f64) -> bool {
+        walked - self.base >= self.here().length as f64 && self.held(fight).is_some()
+    }
+
+    /// No living enemy within `QUIET` metres, ahead or behind.
+    fn quiet(fight: &Fight, walked: f64) -> bool {
+        fight.enemies.iter().all(|e| !e.alive() || e.gap(walked).abs() > QUIET)
+    }
+
+    /// The boss here, if one steps out now: this place has one not yet beaten, no enemy is on the
+    /// hero (one run past may still be coming), and the hero has walked as far as it waits.
     pub fn boss_due(&self, fight: &Fight, walked: f64) -> Option<&'static atlas::Boss> {
         let (at, boss) = self.here().boss?;
-        (!self.boss_beaten() && fight.enemies.iter().all(|e| !e.alive()) && walked - self.base >= self.along(at) as f64).then_some(boss)
+        (!self.boss_beaten() && Self::quiet(fight, walked) && walked - self.base >= self.along(at) as f64).then_some(boss)
     }
 
     /// The boss fell: its souls, what it leaves, and the road open again.
@@ -413,7 +462,7 @@ impl World {
     pub fn can_rest(&self, fight: &Fight, walked: f64) -> bool {
         let Some(s) = self.shrine() else { return false };
         let near = (s - Self::standing(walked)).abs() <= SHRINE_REACH as f64;
-        near && !fight.hero.dead && fight.enemies.iter().all(|e| !e.alive() || e.gap(walked) > 8.0)
+        near && !fight.hero.dead && Self::quiet(fight, walked)
     }
 
     /// Rest at the shrine: whole again, the world's enemies back, death wakes here, and the
@@ -500,10 +549,21 @@ impl World {
 
     /// Back on the road from a save: to the shrine last rested at, as after a death, with nothing
     /// lost on the way.
-    pub fn resume(&mut self) -> Go {
-        self.warping = Some(self.checkpoint.clone());
-        self.warp_into = 0.0;
-        Go::Warp(self.checkpoint.clone())
+    pub fn resume(&mut self) -> Go { self.wake() }
+
+    /// Off to the shrine last rested at, the hero standing where they stood to rest: as far short
+    /// of it as a place walked its own way starts (a shrine rested at walking the place backwards
+    /// is near its far end, not where the walk comes in).
+    fn wake(&mut self) -> Go {
+        let cp = self.checkpoint.clone();
+        let into = atlas::place_of(atlas::node(&cp)).map_or(0.0, |p| {
+            let m = p.shrine.unwrap_or(0.0);
+            let fwd = atlas::came_from(&cp).is_none_or(|f| atlas::forward(p.id, f));
+            if fwd { 0.0 } else { (p.length - 2.0 * m).max(0.0) }
+        });
+        self.warping = Some(cp.clone());
+        self.warp_into = into;
+        if into > 0.0 { Go::WarpAt(cp, into) } else { Go::Warp(cp) }
     }
 
     /// The shrines to travel to, by place title (one a place, whichever way it was rested in).
@@ -528,16 +588,11 @@ impl World {
     /// Whether the hero stands by the smith with no enemy close.
     pub fn can_meet_smith(&self, fight: &Fight, walked: f64) -> bool {
         let Some(s) = self.smith_at() else { return false };
-        (s - Self::standing(walked)).abs() <= SHRINE_REACH as f64 && !fight.hero.dead
-            && fight.enemies.iter().all(|e| !e.alive() || e.gap(walked) > 8.0)
+        (s - Self::standing(walked)).abs() <= SHRINE_REACH as f64 && !fight.hero.dead && Self::quiet(fight, walked)
     }
 
     /// Up from rest: back to the shrine's place (its enemies there again, as resting brings them).
-    pub fn leave_rest(&mut self) -> Go {
-        self.warping = Some(self.checkpoint.clone());
-        self.warp_into = 0.0;
-        Go::Warp(self.checkpoint.clone())
-    }
+    pub fn leave_rest(&mut self) -> Go { self.wake() }
 
     /// Spend souls on one level of `which` (0 vigor, 1 endurance, 2 might, 3 dexterity, 4 focus);
     /// the new level.
@@ -597,20 +652,40 @@ impl World {
         self.stain = (self.souls > 0).then(|| Stain { stop: self.here().id.into(), at, souls: self.souls });
         self.souls = 0;
         self.slain.clear();
-        self.warping = Some(self.checkpoint.clone());
-        self.warp_into = 0.0;
-        Go::Warp(self.checkpoint.clone())
+        self.wake()
     }
 
     /// Where the signpost stands across the road, metres: in the middle until a branch is taken;
     /// as the camera turns onto it, everything past the junction swings the other way, the island
     /// and its signpost with it.
-    pub fn signpost_x(&self, walked: f64) -> f32 {
-        let (Some(at), Some(b)) = (self.chose_at, self.lean) else { return 0.0 };
+    pub fn signpost_x(&self, walked: f64) -> f32 { self.past_junction_x(walked, SIGNPOST_PAST) }
+
+    /// How far across the road a thing `past` metres beyond the junction has swung, metres: the
+    /// way the branch TAKEN turns (the only open one is taken whichever side the hero leans to).
+    pub fn past_junction_x(&self, walked: f64, past: f32) -> f32 {
+        let (Some(at), Some(b)) = (self.chose_at, self.took) else { return 0.0 };
         let t = ((walked - at) as f32 / STEER_M).clamp(0.0, 1.0);
         let steer = t * t * (3.0 - 2.0 * t);
         let side = match b { Branch::Left => -1.0, Branch::Right => 1.0 };
-        -side * steer * FORK_SLOPE * SIGNPOST_PAST
+        -side * steer * FORK_SLOPE * past
+    }
+
+    /// The fork ahead's barred ways, once it is in view: which branch, and whether a key opens it
+    /// (else it opens only from its far side). For the barrier stood across its mouth.
+    pub fn barred_branches(&self) -> Vec<(Branch, bool)> {
+        self.gates_ahead().into_iter().filter(|g| !g.2).map(|(b, keyed, _)| (b, keyed)).collect()
+    }
+
+    /// Every gate on the fork ahead's ways, once it is in view, barred or opened: which branch,
+    /// whether it is a key's gate (else a shortcut's door), and whether it stands open. An opened
+    /// one still stands, its door swung back, so the way reads the same before and after.
+    pub fn gates_ahead(&self) -> Vec<(Branch, bool, bool)> {
+        if self.signpost.is_none() { return Vec::new(); }
+        [Branch::Left, Branch::Right].into_iter().filter_map(|b| {
+            let l = self.branch(b)?;
+            let keyed = l.through.into_iter().chain([l.road]).find_map(|(a, c)| atlas::gated(a, c))?;
+            Some((b, keyed, self.barred_to(&l).is_none()))
+        }).collect()
     }
 
     /// Whether the walk waits at the fork for the hero to pick a side (still in the middle lane at
@@ -718,6 +793,20 @@ impl World {
             let (foes, n) = self.arrive(&w, walked, into, level);
             fight.enemies = foes;
             if !std::mem::take(&mut self.keep_hero) { fight.hero = crate::fight::Hero::with(fight.hero.stats); }
+            if let Some(carry) = self.carry.take() {
+                // Seen the other way: left is right, behind is ahead.
+                fight.hero.lane = -fight.hero.lane;
+                fight.hero.x = -fight.hero.x;
+                for (k, &i) in self.spawned.iter().enumerate() {
+                    let Some((_, e, gap)) = carry.iter().find(|c| c.0 == i) else { continue };
+                    let mut e = e.clone();
+                    e.s = walked + (HERO_D - gap) as f64;
+                    (e.lane, e.drift) = (-e.lane, -e.drift);
+                    if let Some(idle) = e.idle.as_mut() { (idle.to, idle.facing) = (-idle.to, -idle.facing); }
+                    if matches!(e.ai, Ai::Attack { .. }) { e.ai = Ai::Wait(20); }
+                    fight.enemies[k] = e;
+                }
+            }
             // Back from a side path: where the hero left the road, its dead still dead.
             if let Some(d) = self.detour.take_if(|d| d.from == w) {
                 self.base = walked - d.at;
@@ -738,9 +827,10 @@ impl World {
             fight.enemies = foes;
             return (None, n);
         }
-        // The souls left here, fetched by walking over them.
+        // The souls left here, fetched by walking over them (not by waking past them: those
+        // behind the shrine are fetched by turning back for them).
         if let Some(s) = self.stain_at() {
-            if Self::standing(walked) >= s {
+            if (0.0..=1.0).contains(&(Self::standing(walked) - s)) {
                 let n = self.stain.take().map_or(0, |s| s.souls);
                 self.souls += n;
                 notes.push(Note::Recovered(n));
@@ -753,6 +843,11 @@ impl World {
                 self.signpost = Some(walked + (left + STEER_M + SIGNPOST_PAST) as f64);
                 let title = |b| self.branch(b).map_or("", |l| Self::shown(&l));
                 notes.push(Note::Fork(title(Branch::Left), title(Branch::Right)));
+                // A barred way is told as soon as it is seen, not only once leaned into: with
+                // one way shut the walk takes the other, and the hero should know why.
+                for b in [Branch::Left, Branch::Right] {
+                    if let Some((to, why)) = self.branch(b).and_then(|l| self.barred_to(&l)) { notes.push(Self::barred_note(to, why)); }
+                }
             }
             if self.chose { return (None, notes); }
             let lean = match fight.hero.lane { l if l < 0 => Some(Branch::Left), l if l > 0 => Some(Branch::Right), _ => None };
@@ -771,6 +866,7 @@ impl World {
             if let Some(b) = pick {
                 self.chose = true;
                 self.chose_at = Some(walked);
+                self.took = Some(b);
                 // Onto the middle of the branch while the camera turns onto it.
                 fight.hero.lane = 0;
                 if let Some(l) = self.branch(b) { notes.extend(self.pass(&l)); }
@@ -778,10 +874,12 @@ impl World {
             }
             return (None, notes);
         }
-        let clear = fight.enemies.iter().all(|e| !e.alive());
-        // What was left at the place's end, taken by walking up to it.
+        // Clear once nothing alive stands ahead: walking on, no enemy is ever passed, but one
+        // left behind by turning back never comes after the hero, and waiting on it made the
+        // road endless.
+        // What was left at the place's end, taken by walking up to it with no enemy on the hero.
         if let (Some(c), false, false) = (self.cache_at(), self.cache_taken(), self.trapped()) {
-            if clear && Self::standing(walked) >= c - 1.0 {
+            if Self::quiet(fight, walked) && Self::standing(walked) >= c - 1.0 {
                 notes.extend(self.open_cache());
             }
         }
@@ -789,13 +887,18 @@ impl World {
         if self.detour.is_some() { return (None, notes); }
         let far = walked - self.base >= self.here().length as f64;
         let barred = self.here().boss.is_some() && !self.boss_beaten();
-        if self.sent || !clear || !far || barred { return (None, notes); }
+        // Held: the walk stops at the end (`held_at_end`) and the hero is told what holds it,
+        // while whatever they ran past catches up.
+        if let Some(kind) = self.held(fight).filter(|_| far && !self.sent) {
+            if !std::mem::replace(&mut self.held_told, true) { notes.push(Note::Held(kind, self.here().hold == atlas::Hold::Clear)); }
+            return (None, notes);
+        }
+        if self.sent || !far || barred { return (None, notes); }
         // The last boss beaten: the pilgrimage is done.
         if self.here().id == FINALE {
-            self.sent = true;
-            self.begin_again();
-            notes.push(Note::Pilgrimage(self.pilgrimages));
-            return (Some(Go::Warp(START.into())), notes);
+            let (go, note) = self.conclude();
+            notes.push(note);
+            return (Some(go), notes);
         }
         match self.ahead().as_slice() {
             // One road on: walked, unless it is barred; then the hero is told and turns back.
@@ -845,13 +948,82 @@ mod tests {
         for p in atlas::PLACES { assert!(p.foes.len() <= MOST_FOES && p.foes.iter().all(|f| f.1 < p.length), "{}", p.id); }
     }
 
+    /// Turned back at the very start, the road's enemies all lie behind: the trunk is walked
+    /// back into the lane before it, not walked forever waiting on them.
+    #[test]
+    fn turning_back_at_the_start_leaves_the_roads_enemies_behind_and_walks_on() {
+        let mut w = World::new(0.0);
+        let mut f = Fight::new(w.foes());
+        let Some(Go::WarpAt(to, into)) = w.turn(&f, 2.0) else { panic!("no turn") };
+        assert_eq!((to.as_str(), into), ("road@^", 62.0));
+        w.tick(&mut f, 2.0, Some("road@^"), None);
+        assert_eq!(f.enemies.len(), 4);
+        assert!(f.enemies.iter().all(|e| e.alive() && e.gap(2.0) < -2.0), "all behind");
+        assert_eq!(w.tick(&mut f, 3.0, Some("road@^"), None).0, None, "not before its end");
+        assert_eq!(w.tick(&mut f, 4.5, Some("road@^"), None).0, Some(Go::Next));
+        let (_, notes) = w.tick(&mut f, 10.0, Some("warrens_lane@road"), None);
+        assert_eq!(notes[0], Note::Arrived("Stilt Lane"));
+        assert_eq!(f.enemies.iter().map(|e| e.kind).collect::<Vec<_>>(), vec![Archetype::Wretch, Archetype::Husk]);
+        assert!(f.enemies.iter().all(|e| e.gap(10.0) > 5.0), "ahead");
+    }
+
+    /// The road's shieldbearer keeps the fork: the rest can be run past, but the walk stops at the
+    /// end, told why, until it falls. Walked back, nothing is held.
+    #[test]
+    fn a_kept_way_holds_until_its_keeper_falls_and_the_rest_can_be_run_past() {
+        let mut w = World::new(0.0);
+        let mut f = Fight::new(w.foes());
+        assert_eq!(f.enemies[3].kind, Archetype::Shieldbearer);
+        for e in &mut f.enemies[..3] { e.ai = Ai::Dead; }
+        let (go, notes) = w.tick(&mut f, 64.0, Some(START), None);
+        assert_eq!((go, notes), (None, vec![Note::Held(Archetype::Shieldbearer, false)]));
+        assert!(w.held_at_end(&f, 64.0) && !w.held_at_end(&f, 60.0));
+        assert_eq!(w.tick(&mut f, 64.5, Some(START), None), (None, vec![]), "told once");
+        // Its keeper down and the others standing: on.
+        let mut v = World::new(0.0);
+        let mut g = Fight::new(v.foes());
+        g.enemies[3].ai = Ai::Dead;
+        assert_eq!(v.tick(&mut g, 66.0, Some(START), None).0, Some(Go::Next));
+        // Walked back the trunk, the same keeper holds nothing.
+        let mut b = World::new(0.0);
+        let f = Fight::new(b.foes());
+        b.turn(&f, 2.0);
+        let mut f = f;
+        b.tick(&mut f, 2.0, Some("road@^"), None);
+        assert!(b.held(&f).is_none() && f.enemies[3].alive());
+    }
+
+    /// Turned round partway along, the place's enemies stay where they were and as they were:
+    /// the one run past is ahead now, still hurt and still after the hero.
+    #[test]
+    fn turning_round_keeps_the_enemies_where_they_stood() {
+        let mut w = World::new(0.0);
+        let mut f = Fight::new(w.foes());
+        let husk = &mut f.enemies[0];
+        (husk.hp, husk.idle, husk.lane) = (10.0, None, 1);
+        let was = f.enemies[0].gap(20.0);
+        assert!(was < -5.0, "run past: {was}");
+        f.hero.lane = -1;
+        let Some(Go::WarpAt(to, into)) = w.turn(&f, 20.0) else { panic!("no turn") };
+        assert_eq!((to.as_str(), into), ("road@^", 44.0));
+        w.tick(&mut f, 20.5, Some("road@^"), None);
+        let husk = &f.enemies[0];
+        assert!((husk.gap(20.5) + was).abs() < 1e-4, "as far ahead as it was behind: {}", husk.gap(20.5));
+        assert_eq!((husk.hp, husk.idle, husk.lane, f.hero.lane), (10.0, None, -1, 1), "as it was, seen the other way");
+        // The ones never reached are behind the hero now.
+        assert!(f.enemies[1..].iter().all(|e| e.gap(20.5) < 0.0));
+    }
+
     #[test]
     fn a_cleared_place_walks_on_and_a_fork_goes_the_way_the_hero_stands() {
         let mut w = World::new(0.0);
         let mut f = Fight::new(w.foes());
         assert_eq!(f.enemies.len(), 4);
-        // Not while enemies stand, nor before the place is walked.
+        // Not while an enemy stands ahead (no walk passes one), nor before the place is walked.
+        let last = f.enemies[3].s;
+        f.enemies[3].s = 75.0 + HERO_D as f64;
         assert_eq!(w.tick(&mut f, 70.0, Some(START), None).0, None);
+        f.enemies[3].s = last;
         fell(&mut f);
         assert_eq!(w.tick(&mut f, 30.0, Some(START), None).0, None);
         assert_eq!(w.tick(&mut f, 64.0, Some(START), None).0, Some(Go::Next));
@@ -907,6 +1079,33 @@ mod tests {
         assert_eq!(w.tick(&mut f, 319.0, Some("vale@vale_edge"), None).1, vec![]);
         assert_eq!(w.tick(&mut f, 320.0, Some("vale@vale_edge"), None).1, vec![Note::Recovered(70)]);
         assert_eq!((w.souls, w.stain.is_none()), (70, true));
+    }
+
+    #[test]
+    fn waking_stands_the_hero_by_the_shrine_rested_at_whichever_way_it_was_walked() {
+        let mut w = World::new(0.0);
+        let mut f = Fight::new(w.foes());
+        // Walked in its own way, the shrine is where the walk comes in.
+        w.rest(&mut f);
+        assert_eq!(w.leave_rest(), Go::Warp(START.into()));
+        w.tick(&mut f, 10.0, Some(START), None);
+        assert!(w.can_rest(&f, 10.0));
+        // Turned round and rested walking back: the shrine is near the walk's far end, and the
+        // hero wakes as far short of it, rising and after a fall alike.
+        let Some(Go::WarpAt(to, _)) = w.turn(&f, 12.0) else { panic!("no turn") };
+        w.tick(&mut f, 13.0, Some(&to), None);
+        assert!(w.can_rest(&f, 13.0));
+        w.rest(&mut f);
+        let len = w.here().length;
+        assert_eq!(w.leave_rest(), Go::WarpAt(to.clone(), len - 3.0));
+        w.tick(&mut f, 100.0, Some(&to), None);
+        assert!(w.can_rest(&f, 100.0), "woke {} m from it", w.shrine().unwrap() - World::standing(100.0));
+        assert_eq!(w.died(100.0), Go::WarpAt(to.clone(), len - 3.0));
+        // Souls left behind the waking place stay there until the hero turns back for them.
+        w.stain = Some(Stain { stop: "road".into(), at: len - 1.0, souls: 40 });
+        w.tick(&mut f, 200.0, Some(&to), None);
+        assert!(w.can_rest(&f, 200.0));
+        assert!(!w.tick(&mut f, 200.5, Some(&to), None).1.contains(&Note::Recovered(40)));
     }
 
     #[test]
@@ -995,11 +1194,22 @@ mod tests {
         f.hero.lane = if mill == Branch::Left { -1 } else { 1 };
         let (_, notes) = w.tick(&mut f, 158.0, Some("vale@vale_edge"), Some(8.0));
         assert!(notes.contains(&Note::Barred("The Drowned Mill", None)), "{notes:?}");
+        assert_eq!(w.barred_branches(), vec![(mill, false)], "a barrier stands across the shut way's mouth");
+        assert_eq!(w.gates_ahead(), vec![(mill, false, false)]);
+        // Opened from the mill's side, its door still stands there, open, and the way is free.
+        let mut o = w.clone();
+        o.opened.push("drowned_mill");
+        assert_eq!((o.gates_ahead(), o.barred_branches()), (vec![(mill, false, true)], vec![]));
         // The walk waits at the last moment, and the open way is taken there.
         assert!(w.holds_at_fork(Some(1.2), f.hero.lane));
         let gate = if mill == Branch::Left { Branch::Right } else { Branch::Left };
         assert_eq!(w.tick(&mut f, 164.8, Some("vale@vale_edge"), Some(1.2)).0, Some(Go::Choose(gate)));
         assert!(!w.holds_at_fork(Some(1.2), f.hero.lane), "taken: walk on");
+        // Leaning the shut way, the open one is taken; the island swings the way the walk turns,
+        // not the way the hero leaned (it stood in the middle of the road taken).
+        assert_eq!(w.took, Some(gate));
+        let x = w.signpost_x(164.8 + STEER_M as f64);
+        assert!(if gate == Branch::Right { x < -1.0 } else { x > 1.0 }, "{x}");
     }
 
     #[test]
@@ -1042,7 +1252,12 @@ mod tests {
         w.tick(&mut f, 130.0, Some("hollow"), None);
         assert_eq!((w.at.as_str(), f.hero.hp), ("hollow", 40.0));
         assert!(f.enemies.iter().all(|e| e.alive()) && w.side_path_at(&f, 130.0, &mouth).is_none());
-        assert!(!w.can_come_back(&f, 154.0), "not with the hollow's dead standing");
+        // Not with one of its dead on the hero; one run past and left far behind does not stop it.
+        let kept = f.enemies[1].s;
+        f.enemies[1].s = 154.0 + (crate::fight::HERO_D - 3.0) as f64;
+        assert!(!w.can_come_back(&f, 154.0), "not with the hollow's dead on the hero");
+        f.enemies[1].s = kept;
+        assert!(w.can_come_back(&f, 154.0), "run past");
         fell(&mut f);
         let (go, notes) = w.tick(&mut f, 152.0, Some("hollow"), None);
         assert_eq!(go, None, "a side path leads nowhere");

@@ -22,6 +22,8 @@ const VERSION: u64 = 1;
 pub fn dir() -> PathBuf {
     if let Some(d) = std::env::var_os("HOLLOW_ROAD_SAVES") { return PathBuf::from(d); }
     let home = || std::env::var_os("HOME").map(PathBuf::from).unwrap_or_else(|| PathBuf::from("."));
+    // Android: the app's own folder, which the platform layer makes the working directory.
+    if cfg!(target_os = "android") { return std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")).join("profiles"); }
     let base = if cfg!(target_os = "macos") {
         home().join("Library/Application Support")
     } else if cfg!(windows) {

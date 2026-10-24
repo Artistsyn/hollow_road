@@ -245,17 +245,17 @@
   "sky": {
     "enabled": true,
     "top": [
-      70,
-      90,
-      130
+      8,
+      10,
+      22
     ],
     "horizon": [
-      180,
-      170,
-      160
+      40,
+      34,
+      46
     ],
     "sun": {
-      "enabled": true,
+      "enabled": false,
       "pos": [
         0.25,
         0.45
@@ -271,10 +271,10 @@
     },
     "moon": {
       "body": {
-        "enabled": false,
+        "enabled": true,
         "pos": [
-          0.25,
-          0.3
+          0.62,
+          0.16
         ],
         "radius": 0.06,
         "color": [
@@ -283,7 +283,7 @@
           255
         ],
         "emits_light": true,
-        "intensity": 0.35
+        "intensity": 0.3
       },
       "phase": 0.0,
       "opacity": 0.9,
@@ -292,8 +292,8 @@
       "seed": 0
     },
     "stars": {
-      "enabled": false,
-      "count": 140,
+      "enabled": true,
+      "count": 120,
       "size": 1.0,
       "twinkle": 0.5,
       "seed": 0
@@ -321,11 +321,11 @@
       "count": 10,
       "drift": 1.0,
       "scale": 1.0,
-      "opacity": 0.6,
+      "opacity": 0.4,
       "tint": [
-        170,
-        170,
-        180
+        52,
+        54,
+        70
       ],
       "variation": 0.55,
       "shade": 0.55,
@@ -562,26 +562,26 @@
     }
   },
   "light": {
-    "ambient": 0.45,
+    "ambient": 0.34,
     "ambient_color": [
-      190,
-      200,
-      225
+      130,
+      140,
+      180
     ],
     "void_color": [
-      150,
-      150,
-      160
+      20,
+      20,
+      28
     ],
     "fog": {
       "enabled": true,
       "color": [
-        150,
-        150,
-        160
+        22,
+        22,
+        30
       ],
-      "distance": 45.0,
-      "match_sky": true
+      "distance": 32.0,
+      "match_sky": false
     },
     "bands": 0
   },
@@ -991,7 +991,7 @@
       ],
       "objects_only": true
     },
-    "paint": 2.0,
+    "paint": 0.0,
     "grade": "",
     "grade_strength": 1.0,
     "paper": 0.0,

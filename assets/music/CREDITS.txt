@@ -1,0 +1,9 @@
+Music in this folder - every track Creative Commons Zero (CC0, public domain), from OpenGameArt.org.
+Renamed for the game; the two FLAC files are lossless conversions of the original WAVs.
+
+title.ogg    "Dark Intro" by nikke                 https://opengameart.org/content/dark-intro
+road.mp3     "Dark Forest Theme" by cynicmusic      https://opengameart.org/content/dark-forest-theme
+dark.ogg     "Dungeon Ambience" by yd              https://opengameart.org/content/dungeon-ambience
+shrine.flac  "Echoes of the Past" by isaiah658      https://opengameart.org/content/echoes-of-the-past
+boss.flac    "Epic Boss Battle [Seamlessly Looping]" by Juhani Junkala (SubspaceAudio)
+                                                    https://opengameart.org/content/boss-battle-music

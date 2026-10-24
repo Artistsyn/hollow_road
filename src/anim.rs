@@ -88,10 +88,11 @@ pub struct Hold { pub grip: (f32, f32), pub angle: f32, pub over: bool, pub reac
 
 /// Where a frame's free hand is, for an offhand to be strapped to: the fist in canvas pixels, the
 /// forearm's direction elbow to fist on screen (degrees, 0 = right, 90 = down), whether the arm is
-/// drawn over the body or behind it, whether the frame is side-on (`e_` clips) or from behind, and
-/// how far the whole figure is turned (a roll's tumble).
+/// drawn over the body or behind it, whether the frame is side-on (`e_` clips) or from behind,
+/// how far the whole figure is turned (a roll's tumble), and whether the figure is on the ground
+/// (getting up, knocked down, dying: the arm is flung out, not held before an upright body).
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct OffHold { pub fist: (f32, f32), pub angle: f32, pub over: bool, pub side: bool, pub spin: f32 }
+pub struct OffHold { pub fist: (f32, f32), pub angle: f32, pub over: bool, pub side: bool, pub spin: f32, pub lying: bool }
 
 /// A point track a built clip carries along with its frames (`side_roll`): weapon holds and
 /// offhand holds alike.
@@ -121,6 +122,10 @@ impl Track for OffHold {
 /// gripped in the fist, a kite shield rides the forearm).
 pub struct Shield { pub front: RgbaImage, pub back: RgbaImage, pub centre: (f32, f32), pub strap: f32 }
 
+/// How far ahead of the fist's middle a buckler's face sits, along the forearm (frame pixels):
+/// past the knuckles.
+const BUCKLER_AHEAD: f32 = 2.5;
+
 impl Shield {
     /// `<dir>/<name>_front.png` and `_back.png`, placed by `<dir>/offhand.txt` (`name cx cy strap`
     /// a line).
@@ -139,7 +144,8 @@ impl Shield {
     /// whole; raised before the body it faces the way the hero does and is seen edge-on, face
     /// forward. From behind the inside always shows, narrowed while the arm hangs (hung outside the
     /// cloak at the hero's left side, so drawn over it and out past the cloak) and whole when it is raised before them (and
-    /// behind them on screen, held across the left of the chest so its edge shows past the body).
+    /// behind them on screen, held across the left of the chest so its edge shows past the body,
+    /// or punched straight out ahead, where it shows whole on the fist over the shoulder).
     /// The arm hangs while the forearm is within 50 degrees of straight down. Returns the picture,
     /// its width, its lean, whether it is drawn over the body, and how far it sits left of the
     /// strap (pixels).
@@ -149,12 +155,26 @@ impl Shield {
         let lean = (hang * 0.35).clamp(-20.0, 20.0) + hold.spin;
         if hold.side {
             let wide = 1.0 - 0.55 * raised;
+            // Strapped along the forearm (a kite shield, a bulwark), the shield lies in the
+            // forearm's plane: raised before the body its inside faces the eye whole, behind the
+            // arm, which runs across it to the grip. Only a buckler, gripped in the fist, turns
+            // its face along the arm and is seen edge-on (`worn_on` puts it ahead of the fist).
+            if self.strap > 0.0 { return (&self.back, 1.0 - 0.15 * raised, lean, false, 0.0); }
             (if wide < 0.6 { &self.front } else { &self.back }, wide, lean, hold.over, 0.0)
         } else {
-            let wide = 0.6 + 0.4 * raised;
+            // From behind the body is between the eye and most of the shield: hanging, it is seen
+            // nearly edge-on against the thigh, a sliver out past the cloak; raised before the
+            // chest, only its rim shows past the left side. Either way the body hides the rest.
             let hanging = hang.abs() < 50.0;
-            let left = self.back.width() as f32 * wide * if hanging { 0.4 } else { 0.7 };
-            (&self.back, wide, lean, hold.over || hanging, left)
+            // A forearm driven straight up the screen is punched out ahead (a parry): the shield
+            // faces the blow, so its inside faces the eye whole, on the fist that grips it, over
+            // the shoulder rather than past the body's side.
+            let k = ((-hold.angle.to_radians().sin() - 0.75) / 0.2).clamp(0.0, 1.0);
+            let ahead = if hanging { 0.0 } else { k * k * (3.0 - 2.0 * k) };
+            let wide = if hanging { 0.42 } else { (0.55 + 0.35 * raised) * (1.0 - ahead) + ahead };
+            // On the ground an arm not hanging is flung out, not held across the chest: on the fist.
+            let left = if hold.lying && !hanging { 0.0 } else { self.back.width() as f32 * wide * if hanging { 0.3 } else { 0.8 * (1.0 - ahead) } };
+            (&self.back, wide, lean, hold.over && !hanging, left)
         }
     }
 
@@ -162,7 +182,12 @@ impl Shield {
     pub fn worn_on(&self, frame: &RgbaImage, hold: &OffHold) -> RgbaImage {
         let (img, wide, lean, over, left) = self.as_seen(hold);
         let (fs, fc) = hold.angle.to_radians().sin_cos();
-        let at = (hold.fist.0 - fc * self.strap - left, hold.fist.1 - fs * self.strap);
+        // A buckler seen edge-on is gripped in the fist, its face just ahead of the knuckles:
+        // drawn there and over the fist, the hand never shows past it.
+        let edge = hold.side && self.strap == 0.0 && wide < 0.6;
+        let ahead = if edge { BUCKLER_AHEAD } else { -self.strap };
+        let over = over || edge;
+        let at = (hold.fist.0 + fc * ahead - left, hold.fist.1 + fs * ahead);
         let (s, c) = lean.to_radians().sin_cos();
         let (iw, ih) = (img.width() as f32, img.height() as f32);
         let r = [(0.0, 0.0), (iw, 0.0), (0.0, ih), (iw, ih)].iter().map(|&(x, y): &(f32, f32)| (x - self.centre.0).hypot(y - self.centre.1)).fold(0.0, f32::max).ceil();
@@ -461,7 +486,8 @@ impl Sheet {
         let mut offs: HashMap<String, Vec<OffHold>> = off_tracks.into_iter().map(|(name, (t, (w, h)))| {
             let (ox, oy) = (((canvas.0 - w) / 2) as f32, ((canvas.1 - h) / 2) as f32);
             let side = name.starts_with("e_");
-            (name, t.into_iter().map(|(x, y, angle, over, _)| OffHold { fist: (ox + x * w as f32, oy + y * h as f32), angle, over, side, spin: 0.0 }).collect())
+            let lying = ["getup", "knockdown", "death"].iter().any(|n| name.ends_with(n));
+            (name, t.into_iter().map(|(x, y, angle, over, _)| OffHold { fist: (ox + x * w as f32, oy + y * h as f32), angle, over, side, spin: 0.0, lying }).collect())
         }).collect();
         for clip in clips.values_mut() {
             for f in clip.frames.iter_mut() {
@@ -475,7 +501,7 @@ impl Sheet {
             for f in clip.frames.iter().chain(&clip.mirrored) { quartz::set_pixel_art(f, true); }
         }
         // Stand and height from the first frame of the steadiest clip there is.
-        let reference = ["idle", "walk", "shamble", "light"].iter().find_map(|n| clips.get(*n)).or_else(|| clips.values().next())?.frames[0].clone();
+        let reference = ["idle", "one_walk", "walk", "shamble", "light"].iter().find_map(|n| clips.get(*n)).or_else(|| clips.values().next())?.frames[0].clone();
         let (top, bottom) = opaque_rows(&reference)?;
         let roll_keys = side_roll(&mut clips, &mut holds, &mut offs, (&reference, None, None), bottom, ["e_idle", "e_roll", "e_flip"], "roll_side")
             .or_else(|| spin_roll(&mut clips)).unwrap_or((0, 0));
@@ -615,9 +641,8 @@ fn side_roll(clips: &mut HashMap<String, Clip>, holds: &mut HashMap<String, Vec<
     let mut frames = vec![stand.0.clone(), side.clone()];
     let mut plan: Vec<(Option<(usize, usize)>, f32, f32)> = vec![(None, 0.0, 0.0), (Some((0, 0)), 0.0, 0.0)];
     for i in 2..5 { frames.push(grounded(&dip.frames[i])); plan.push((Some((1, i)), 0.0, drop_of(&dip.frames[i]) as f32)); }
+    // Straight from the crouch into the tuck: the flip's own dive (flat on the front) read as a fall.
     let start = frames.len();
-    frames.push(grounded(&flip.frames[1]));
-    plan.push((Some((2, 1)), 0.0, drop_of(&flip.frames[1]) as f32));
     for k in 0..6 {
         let spun = rotated(tuck, 60.0 * k as f32, pivot);
         plan.push((Some((2, 2)), 60.0 * k as f32, drop_of(&spun) as f32));
@@ -744,6 +769,20 @@ mod tests {
     }
 
     #[test]
+    fn from_behind_a_buckler_punched_out_ahead_shows_its_inside_whole_on_the_fist() {
+        let side = |c| RgbaImage::from_pixel(10, 10, image::Rgba(c));
+        let shield = Shield { front: side([255, 0, 0, 255]), back: side([0, 0, 255, 255]), centre: (5.0, 5.0), strap: 0.0 };
+        // Punched straight up the screen (a parry): the inside, full width, centred on the fist.
+        let punched = OffHold { fist: (20.0, 10.0), angle: -90.0, over: false, side: false, spin: 0.0, lying: false };
+        let (img, wide, _, _, left) = shield.as_seen(&punched);
+        assert_eq!(img.get_pixel(0, 0)[2], 255, "the inside faces the eye");
+        assert!(wide > 0.99 && left.abs() < 1e-3, "whole, on the fist: {wide} {left}");
+        // Held across the chest (a guard): its edge out past the body's left, as before.
+        let (_, wide, _, _, left) = shield.as_seen(&OffHold { angle: -30.0, ..punched });
+        assert!(wide < 0.95 && left > 3.0, "edge past the body: {wide} {left}");
+    }
+
+    #[test]
     fn a_bow_hangs_along_the_arm_strung_and_its_string_comes_back_to_the_drawing_hand() {
         // A stave down the right of a 4 by 9 picture, gripped at its middle; the tips at the left.
         let stave = image::Rgba([120, 80, 40, 255]);
@@ -751,7 +790,7 @@ mod tests {
         for y in 2..7 { image.put_pixel(3, y, stave); }
         let bow = Held { image, grip: (3.5, 4.5), scale: 1.0, follow: 1.0, bow: Some(Bow { tips: [(0.5, 0.5), (0.5, 8.5)], shaft: [90, 60, 30] }) };
         let frame = RgbaImage::new(32, 32);
-        let hang = OffHold { fist: (16.5, 16.5), angle: 90.0, over: true, side: true, spin: 0.0 };
+        let hang = OffHold { fist: (16.5, 16.5), angle: 90.0, over: true, side: true, spin: 0.0, lying: false };
         let carried = bow.gripped(&frame, &hang, None);
         assert_eq!(*carried.get_pixel(16, 16), stave, "the grip in the fist");
         assert_eq!(*carried.get_pixel(13, 16), STRING, "strung tip to tip");

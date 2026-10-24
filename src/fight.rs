@@ -561,11 +561,75 @@ pub struct Enemy {
     pub power: f32,
     /// Ticks left of a frost bolt's chill (`CHILL`).
     pub chill: u32,
+    /// How it passes the time before it has noticed the hero (None: alert, as one made for a
+    /// fight always is), and how far it stands off its lane's middle, metres (where its idling
+    /// took it; it eases back once it has noticed).
+    pub idle: Option<Idle>,
+    pub drift: f32,
+    /// Ticks it has stood beside the hero's lane, alert and near (it steps across at `CROSS_EVERY`).
+    pub cross: u32,
 }
+
+/// What an enemy on the road does before it notices the hero.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Way {
+    /// Wanders across the road and back, stopping now and then to look along it.
+    Pace,
+    /// Stands watch at the road's edge, looking along it now and then.
+    Watch,
+    /// Stands where it is, at attention.
+    Attention,
+}
+
+/// An unaware enemy's idling: its way, where across the road it is headed (metres off its lane's
+/// middle), ticks it will stand before moving or glancing again, which way it last faced across
+/// (-1 left, 1 right), and a number of its own that sets its timing apart from its fellows'.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Idle { pub way: Way, pub to: f32, pub wait: u32, pub facing: f32, pub seed: u32 }
+
+/// How fast an unaware enemy wanders, m/s, and how long it stands between wanders, ticks.
+const WANDER: f32 = 0.55;
+const LINGER: (u32, u32) = (70, 200);
+/// Ticks between noticing the hero and closing in: it turns to face them first.
+pub const NOTICE_BEAT: u32 = 30;
+/// Where the road's edge is, metres from its middle (a watcher stands just inside it).
+const VERGE: f32 = 2.3;
+/// An alert enemy the hero has got past gives chase at this much its closing pace: the quick
+/// kinds keep up with a walk, none with a run, so it is a stop (a fight, a drink, a way held)
+/// that lets them catch up.
+const CHASE: f32 = 1.8;
+/// Metres behind the hero past which a chaser gives up and goes back to idling where it is.
+pub const LEASH: f32 = 22.0;
+/// An alert enemy within this many metres of the hero, ahead or behind, steps across into the
+/// hero's lane a lane at a time, once every `CROSS_EVERY` ticks: slipping by takes a late step
+/// aside, or a run.
+const CROSS_NEAR: f32 = 5.0;
+const CROSS_EVERY: u32 = 40;
 
 impl Enemy {
     pub fn new(kind: Archetype, s: f64, lane: i32) -> Enemy {
-        Enemy { kind, s, lane, hp: kind.hp(), stance: kind.stance(), stance_wait: 0, ai: Ai::Wait(30), hurt: 0, top: kind.hp(), power: 1.0, chill: 0 }
+        Enemy { kind, s, lane, hp: kind.hp(), stance: kind.stance(), stance_wait: 0, ai: Ai::Wait(30), hurt: 0, top: kind.hp(), power: 1.0, chill: 0, idle: None, drift: 0.0, cross: 0 }
+    }
+
+    /// Alert and after the hero: behind them (got past) and not yet given up.
+    pub fn chasing(&self, walked: f64) -> bool {
+        self.alive() && self.idle.is_none() && self.kind.keep().is_none() && (-LEASH..-0.3).contains(&self.gap(walked))
+    }
+    /// Not yet aware of the hero: idling in its kind's way, timed by where it stands so a group
+    /// never moves as one. Watchers start at the road's edge on their lane's side.
+    pub fn unaware(mut self) -> Enemy {
+        let seed = ((self.s * 97.0) as i64 as u64).wrapping_mul(0x9E37_79B9).wrapping_add(self.lane as u64 * 7919) as u32;
+        let way = match self.kind { Archetype::Archer | Archetype::Hexer => Way::Watch, Archetype::Shieldbearer => Way::Attention, _ => Way::Pace };
+        let side = if self.lane != 0 { self.lane.signum() as f32 } else if seed % 2 == 0 { -1.0 } else { 1.0 };
+        let mid = self.lane as f32 * LANE_W;
+        let (to, drift) = match way {
+            Way::Watch => { let at = side * VERGE - mid; (at, at) }
+            Way::Pace => (((seed % 7) as f32 / 3.0 - 1.0) * 0.8, 0.0),
+            Way::Attention => (0.0, 0.0),
+        };
+        self.idle = Some(Idle { way, to, wait: seed % LINGER.1, facing: -side, seed });
+        self.drift = drift;
+        self
     }
     /// As strong as the region it is met in makes it: (health, attacks) times its kind's.
     pub fn scaled(mut self, (hp, power): (f32, f32)) -> Enemy {
@@ -597,6 +661,11 @@ impl Enemy {
         }
     }
 }
+
+/// An enemy after the hero from behind: its lane, metres back, and the blow it winds up (its
+/// kind, whether it can be parried, how far along 0..1).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Chaser { pub lane: i32, pub back: f32, pub blow: Option<(Kind, bool, f32)> }
 
 /// A patch of road an attack will strike: lanes (from, to), metres ahead (near, far).
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -705,6 +774,8 @@ pub enum Event {
     Deflected { enemy: usize },
     /// An enemy began an attack.
     WindsUp { enemy: usize, attack: &'static str },
+    /// An enemy idling on the road noticed the hero.
+    Noticed { enemy: usize },
     /// Enemy `enemy`'s attack stopped following the hero's lane: from here it lands where its
     /// warning lies (the moment its weapon glints).
     Commits { enemy: usize, kind: Kind, parry: bool },
@@ -907,9 +978,12 @@ impl Fight {
     }
 
     /// The nearest living enemy standing in the hero's way: ahead, close enough to block a step.
+    /// Only one in the lane the hero walks: one a lane over can be walked or run past (and steps
+    /// across to stop it, `CROSS_EVERY`).
     fn in_the_way(&self, walked: f64) -> Option<usize> {
+        let lane = self.hero.standing_lane();
         self.enemies.iter().enumerate()
-            .filter(|(_, e)| e.alive() && e.gap(walked) > -0.2)
+            .filter(|(_, e)| e.alive() && e.gap(walked) > -0.2 && { let (l0, l1) = e.lanes(); (l0..=l1).contains(&lane) })
             .min_by(|a, b| a.1.gap(walked).total_cmp(&b.1.gap(walked)))
             .map(|(i, _)| i)
     }
@@ -946,10 +1020,22 @@ impl Fight {
         }
     }
 
+    /// Every enemy after the hero from behind, nearest first: its lane, metres back, and the
+    /// blow it is winding up, if any (how it is met, and how far along).
+    pub fn chasers(&self, walked: f64) -> Vec<Chaser> {
+        let mut c: Vec<Chaser> = self.enemies.iter().filter(|e| e.chasing(walked)).map(|e| Chaser {
+            lane: e.lane, back: -e.gap(walked), blow: e.attack().filter(|(_, p, _)| *p != Phase::Recover).map(|(a, _, progress)| (a.kind, a.parry, progress)),
+        }).collect();
+        c.sort_by(|a, b| a.back.total_cmp(&b.back));
+        c
+    }
+
     /// Where every attack under way will strike.
     pub fn threats(&self, walked: f64) -> Vec<Threat> {
         let swung = self.enemies.iter().enumerate().filter_map(|(i, e)| {
             let (a, phase, progress) = e.attack()?;
+            // A blow from behind has no ground in view to warn on (`chasers`).
+            if e.gap(walked) < -0.3 { return None; }
             let d = e.ahead(walked);
             let d = match (e.ai, a.shot) {
                 // A rune: the patch it will open on.
@@ -1005,6 +1091,9 @@ impl Fight {
         h.bulwark.tick(h.guarding, calm);
         if h.free() {
             if let Some((m, _)) = h.buffer {
+                // A roll toward the road's edge, with no lane beyond, is a roll forward: the
+                // dodge still comes when it is asked for (dropped, it read as rolls not working).
+                let m = match m { Move::Step(dir) if !(-1..=1).contains(&(h.lane + dir)) => Move::Tumble, m => m };
                 let m = self.riposte_for(m, walked).unwrap_or(m);
                 let kit = self.hero.stats.kit;
                 let spec = match (m, kit.shot(m == Move::Cast)) { (Move::Loose | Move::Cast, Some(r)) => Move::loose_spec(r), _ => m.spec_for(kit.arms.class, kit.off.map(|o| o.guard)) };
@@ -1017,8 +1106,8 @@ impl Fight {
                     h.buffer = None;
                 } else if (m == Move::Loose && !h.can_loose()) || (m == Move::Cast && !h.can_cast()) {
                     h.buffer = None;
-                } else if matches!(m, Move::Step(dir) | Move::Lane(dir) if !(-1..=1).contains(&(h.lane + dir))) {
-                    // No rolling off the road's edge.
+                } else if matches!(m, Move::Lane(dir) if !(-1..=1).contains(&(h.lane + dir))) {
+                    // No stepping off the road's edge.
                     h.buffer = None;
                 } else {
                     h.buffer = None;
@@ -1171,6 +1260,47 @@ impl Fight {
         } else if e.stance_wait > 0 { e.stance_wait -= 1; } else { e.stance = (e.stance + 13.0 / 60.0).min(e.kind.stance()); }
         let gap = e.gap(walked);
         let (pace, notice) = e.kind.pace();
+        // Noticed: back onto its lane's middle, from wherever its idling took it.
+        if e.idle.is_none() && e.drift != 0.0 { e.drift = if e.drift.abs() < 0.02 { 0.0 } else { e.drift * 0.88 }; }
+        if let Some(idle) = e.idle {
+            if gap <= notice && gap > -0.5 {
+                // It sees the hero: into the lane nearest where it stands, turning to face them
+                // for a beat before it closes in.
+                let x = e.lane as f32 * LANE_W + e.drift;
+                e.lane = (x / LANE_W).round().clamp(-1.0, 1.0) as i32;
+                e.drift = x - e.lane as f32 * LANE_W;
+                e.idle = None;
+                e.ai = Ai::Wait(NOTICE_BEAT);
+                out.push(Event::Noticed { enemy: i });
+                return;
+            }
+            let mut idle = idle;
+            if idle.wait > 0 { idle.wait -= 1; }
+            match idle.way {
+                Way::Pace if idle.wait == 0 => {
+                    let step = WANDER / 60.0;
+                    if (idle.to - e.drift).abs() <= step {
+                        // There: stand a while, then somewhere else across the road.
+                        e.drift = idle.to;
+                        let (lo, hi) = LINGER;
+                        let (wait, pick) = (lo + self.roll(hi - lo), self.roll(1000));
+                        let e = &mut self.enemies[i];
+                        let mid = e.lane as f32 * LANE_W;
+                        idle.wait = wait;
+                        idle.to = (pick as f32 / 1000.0 * 2.0 - 1.0) * (VERGE - 0.4) - mid;
+                        e.idle = Some(idle);
+                        return;
+                    }
+                    idle.facing = (idle.to - e.drift).signum();
+                    e.drift += step * idle.facing;
+                }
+                // A glance along the road one way, then the other, now and then.
+                Way::Watch if idle.wait == 0 => { idle.facing = -idle.facing; idle.wait = LINGER.0 + idle.seed % LINGER.1; }
+                _ => {}
+            }
+            self.enemies[i].idle = Some(idle);
+            return;
+        }
         match e.ai {
             Ai::Dead => {}
             Ai::Staggered(n) => {
@@ -1182,21 +1312,41 @@ impl Fight {
             Ai::Wait(n) => {
                 let reach = e.kind.attacks().iter().map(|a| a.reach).fold(f32::MAX, f32::min);
                 let far = e.kind.attacks().iter().filter(|a| !a.follow).map(|a| a.reach).fold(0.0, f32::max);
+                let behind = gap < -0.3;
                 match e.kind.keep() {
+                    // Left far behind: it gives up, and idles where it stands.
+                    _ if gap < -LEASH => { *e = e.clone().unaware(); e.ai = Ai::Wait(0); return; }
                     // A ranged kind holds its gap: in while too far, back (slower) while too near.
-                    Some(k) if gap <= notice => {
+                    Some(k) if gap <= notice && !behind => {
                         if gap > k + 0.5 { e.s -= (pace / 60.0) as f64; } else if gap < k - 1.0 && gap > 0.6 { e.s += (pace * 0.75 / 60.0) as f64; }
                     }
                     Some(_) => {}
+                    // Got past: after the hero at a jog, to just inside its reach behind them.
+                    None if behind => if -gap > reach - 0.4 { e.s += (pace * CHASE / 60.0) as f64; },
                     // Closes to just inside its shortest reach, never through the hero.
                     None => if gap <= notice && gap > reach - 0.4 { e.s -= (pace / 60.0) as f64; },
                 }
+                // Near and a lane off: across toward the hero, easing over from where it stood.
+                let target = self.hero.lane;
+                if gap.abs() <= CROSS_NEAR && e.lane != target && e.kind.keep().is_none() {
+                    e.cross += 1;
+                    if e.cross >= CROSS_EVERY {
+                        let step = (target - e.lane).signum();
+                        e.lane += step;
+                        e.drift -= step as f32 * LANE_W;
+                        e.cross = 0;
+                    }
+                } else { e.cross = 0; }
                 if n > 0 { e.ai = Ai::Wait(n - 1); return; }
-                if gap > far + 0.2 || gap < -0.3 { return; }
-                // What reaches from here: from afar only its long attacks.
+                if gap > far + 0.2 || (behind && (e.kind.keep().is_some() || -gap > reach + 0.2)) { return; }
+                // What reaches from here: from afar only its long attacks; from behind only a blow.
                 let openers: Vec<usize> = (0..e_attacks(self.enemies[i].kind) as usize)
                     // Nothing loosed or cast from closer than 3 m: up close a ranged kind fights hand to hand.
-                    .filter(|&k| { let a = self.enemies[i].kind.attacks()[k]; !a.follow && gap <= a.reach + 0.2 && (gap > 3.0 || (a.shot.is_none() && !a.area)) }).collect();
+                    .filter(|&k| {
+                        let a = self.enemies[i].kind.attacks()[k];
+                        let close = a.shot.is_none() && !a.area;
+                        !a.follow && if behind { close && -gap <= a.reach + 0.2 } else { gap <= a.reach + 0.2 && (gap > 3.0 || close) }
+                    }).collect();
                 if openers.is_empty() { return; }
                 let pick = openers[self.roll(openers.len() as u32) as usize];
                 let side = if self.roll(2) == 0 { -1 } else { 1 };
@@ -1232,9 +1382,9 @@ impl Fight {
                         landed = true;
                         out.push(Event::Burst { enemy: i, at: aim });
                         if ((walked + HERO_D as f64) - aim).abs() <= AREA_HALF as f64 { self.strike_hero(i, a, (l0, l1), out); }
-                    } else if (-0.3..=a.reach).contains(&gap) {
+                    } else if (-a.reach..=a.reach).contains(&gap) {
                         landed = true;
-                        self.strike_hero(i, a, (l0, l1), out);
+                        self.strike_hero_from(i, a, (l0, l1), gap < -0.3, out);
                     }
                 }
                 if !matches!(self.enemies[i].ai, Ai::Attack { .. }) { return; }
@@ -1330,7 +1480,11 @@ impl Fight {
     }
 
     /// Enemy `i`'s attack `a`, live now over lanes `lanes`: dodged, parried, blocked or taken.
-    fn strike_hero(&mut self, i: usize, a: Attack, lanes: (i32, i32), out: &mut Vec<Event>) {
+    fn strike_hero(&mut self, i: usize, a: Attack, lanes: (i32, i32), out: &mut Vec<Event>) { self.strike_hero_from(i, a, lanes, false, out) }
+
+    /// `strike_hero`, `behind` the hero (a chaser caught up): no guard or parry faces it, only a
+    /// roll slips it.
+    fn strike_hero_from(&mut self, i: usize, a: Attack, lanes: (i32, i32), behind: bool, out: &mut Vec<Event>) {
         let a = Attack { damage: a.damage * self.enemies[i].power, ..a };
         let h = &mut self.hero;
         let covers = |l: i32| (lanes.0..=lanes.1).contains(&l);
@@ -1344,7 +1498,7 @@ impl Fight {
             }
             return;
         }
-        if let Some(x) = h.act.filter(|x| x.mv == Move::Parry) {
+        if let Some(x) = h.act.filter(|x| x.mv == Move::Parry && !behind) {
             // A parrying shield keeps it live a few ticks into the recovery.
             let f = x.spec.frames;
             let live = x.phase() == Phase::Active || (x.phase() == Phase::Recover && x.t < f.0 + f.1 + h.stats.kit.parry);
@@ -1370,7 +1524,7 @@ impl Fight {
                 }
             }
         }
-        if h.guarding && a.kind != Kind::Unblockable { return self.block(i, a, out); }
+        if h.guarding && !behind && a.kind != Kind::Unblockable { return self.block(i, a, out); }
         let h = &mut self.hero;
         let damage = a.damage * h.stats.taken();
         h.hp -= damage;
@@ -1490,6 +1644,33 @@ mod tests {
     fn of(kind: Archetype, gap: f32, lane: i32) -> Enemy { Enemy::new(kind, (HERO_D + gap) as f64, lane) }
 
     #[test]
+    fn an_unaware_enemy_idles_until_it_notices_the_hero_then_turns_into_a_lane_before_it_strikes() {
+        // Far up the road: it wanders across it and never swings.
+        let mut f = Fight::new(vec![husk(20.0, 0).unaware(), Enemy::new(Archetype::Archer, (HERO_D + 30.0) as f64, 1).unaware()]);
+        let mut across = (f32::MAX, f32::MIN);
+        let ev = run(&mut f, 1_200, |_, _| idle(), |f, _| { across = (across.0.min(f.enemies[0].drift), across.1.max(f.enemies[0].drift)); false });
+        assert!(across.1 - across.0 > 0.5, "it wandered across the road: {across:?}");
+        assert!(!ev.iter().any(|e| matches!(e, Event::WindsUp { .. } | Event::Noticed { .. })), "it neither noticed nor swung");
+        assert!(f.enemies[0].gap(0.0) > 19.0, "it did not come for the hero unaware");
+        // The watcher stands at the road's edge on its own side.
+        let w = &f.enemies[1];
+        assert_eq!(w.idle.map(|i| i.way), Some(Way::Watch));
+        assert!((w.lane as f32 * LANE_W + w.drift - VERGE).abs() < 0.01, "at the edge: {}", w.drift);
+        // Within sight: it notices, takes the lane nearest where it stands, and only swings after
+        // its beat of turning to face the hero.
+        let mut f = Fight::new(vec![Enemy { drift: 1.0, ..husk(2.0, 0).unaware() }]);
+        let ev = f.tick(&idle(), 0.0);
+        assert!(ev.contains(&Event::Noticed { enemy: 0 }));
+        assert_eq!((f.enemies[0].lane, f.enemies[0].idle), (1, None), "into the lane it stood nearest");
+        let mut first_swing = None;
+        for t in 0..400 {
+            if f.tick(&idle(), 0.0).iter().any(|e| matches!(e, Event::WindsUp { .. })) { first_swing = Some(t); break; }
+        }
+        assert!(first_swing.is_some_and(|t| t + 1 >= NOTICE_BEAT), "no blow before the beat: {first_swing:?}");
+        assert_eq!(f.enemies[0].drift, 0.0, "back on its lane's middle by then");
+    }
+
+    #[test]
     fn a_lancer_strikes_from_beyond_the_heros_reach() {
         let thrust = Archetype::Lancer.attacks()[0];
         assert!(thrust.reach > Move::Light.spec().reach + 1.0);
@@ -1540,10 +1721,32 @@ mod tests {
         let gap = f.enemies[0].gap(w);
         assert!((ENGAGE - 0.05..=ENGAGE).contains(&gap), "stopped {gap} m from it");
         assert_eq!(f.speed(&Input { back: true, ..idle() }, w), -BACK);
-        // An enemy in another lane still stands in the road.
+        // An alert enemy a lane over steps across to stop the walk.
         let mut g = Fight::new(vec![dummy(20.0, 1)]);
         let gw = walk_up(&mut g, 0.0);
-        assert!(g.enemies[0].gap(gw) <= ENGAGE);
+        assert!(g.enemies[0].gap(gw) <= ENGAGE && g.enemies[0].lane == 0, "{:?}", g.enemies[0]);
+    }
+
+    #[test]
+    fn an_enemy_a_lane_over_can_be_walked_past_and_comes_after_the_hero_who_stops() {
+        // An archer keeps to its lane: walked straight past.
+        let mut f = Fight::new(vec![Enemy { ai: Ai::Wait(u32::MAX), ..of(Archetype::Archer, 6.0, 1) }]);
+        let go = Input { forward: true, ..idle() };
+        let mut walked = 0.0;
+        for _ in 0..400 { walked += (f.speed(&go, walked) / 60.0) as f64; f.tick(&go, walked); }
+        assert!(f.enemies[0].gap(walked) < -5.0, "walked past: {}", f.enemies[0].gap(walked));
+        // A husk got past comes after the hero once they stop, and its blow lands though they
+        // guard (nothing faces behind them).
+        let mut g = Fight::new(vec![husk(-3.0, 0)]);
+        let guard = Input { guard: true, ..idle() };
+        let ev = run(&mut g, 600, |_, _| guard, |_, ev| ev.iter().any(|e| matches!(e, Event::Struck { .. } | Event::Staggered { .. } | Event::Blocked { .. })));
+        assert!(g.enemies[0].chasing(0.0) && g.enemies[0].gap(0.0) > -2.9, "it closed in: {}", g.enemies[0].gap(0.0));
+        assert!(g.hero.hp < HP && !ev.iter().any(|e| matches!(e, Event::Blocked { .. })), "{ev:?}");
+        assert!(g.threats(0.0).is_empty() && g.chasers(0.0).len() == 1, "warned of behind, not on the ground ahead");
+        // Left far behind, it gives up and idles where it stands.
+        let mut h = Fight::new(vec![husk(-(LEASH + 1.0), 0)]);
+        h.tick(&idle(), 0.0);
+        assert!(h.enemies[0].idle.is_some() && h.chasers(0.0).is_empty());
     }
 
     #[test]
@@ -1861,11 +2064,16 @@ mod tests {
         let st = g.hero.stamina;
         g.tick(&Input { lane: -1, ..idle() }, 0.0);
         assert!(g.hero.lane == -1 && g.hero.stamina >= st, "{} {st}", g.hero.stamina);
-        // No roll off the road: the press is dropped and nothing is spent.
+        // No roll off the road: toward the edge it is a roll forward, the dodge all the same.
         for _ in 0..40 { f.tick(&idle(), 0.0); }
         let st = f.hero.stamina;
         f.tick(&Input { step: 1, ..idle() }, 0.0);
-        assert_eq!((f.hero.lane, f.hero.act, f.hero.stamina >= st), (1, None, true));
+        let a = f.hero.act.unwrap();
+        assert_eq!((f.hero.lane, a.mv, a.invulnerable(), f.hero.stamina < st), (1, Move::Tumble, true, true));
+        // A plain step off the edge is dropped.
+        for _ in 0..60 { f.tick(&idle(), 0.0); }
+        f.tick(&Input { lane: 1, ..idle() }, 0.0);
+        assert_eq!((f.hero.lane, f.hero.act), (1, None));
     }
 
     #[test]

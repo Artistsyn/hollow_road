@@ -18,6 +18,9 @@ Needs a Mac with Apple Silicon (M1 or later) and macOS 11 or newer. Nothing else
      Warden       a tall bulwark: blocks fill a ward; a block at the last moment bursts it
      Bloodrunner  a bow whose arrows cost health
      Frostweaver  a frost focus (a catalyst) whose spell charges are filled by fighting up close
+   then whether to play the prologue first: a short remembered fight on a moonlit road that
+   teaches walking, strikes, guarding, rolling and parrying with their timing, a flask, and a
+   side-on bout. Nothing of the story is lost by skipping it, and Esc leaves it at any time.
 
 CONTROLS (keyboard and mouse)
   On the road     W / S walk     tap W twice and hold it to run
@@ -29,8 +32,9 @@ CONTROLS (keyboard and mouse)
                   E rest / talk / use
                   T turn back (the way back meets every fork you passed)
                   M map     Esc pause / back out of a menu
+                  H show or hide these controls on screen (hidden at first)
   Side-on fights  A / D move     tap A or D twice and hold it to run
-                  Shift + A / D roll     W jump (same attacks)
+                  Shift + A / D roll     W or Space jump (same attacks)
   Spells          cast with C through a catalyst held in the other hand (no shield then);
                   a catalyst casts its own spell, or one found and attuned in the Spell
                   place at a shrine. Two blows up close fill a charge.
@@ -42,6 +46,21 @@ CONTROLS (keyboard and mouse)
                   letter grades; short of a weapon's needs it hits weakly, short of a
                   spell's it cannot be cast. Crossbows hit the same whatever your levels.
   Warning colours over an enemy:  gold = parry it,  orange = roll or block,  purple = roll
+
+THE ROAD
+  Enemies idle until they notice you. You need not fight them all: one in another lane can be
+  walked or run past (it steps across to stop you, so step aside late, or run). Once past, an
+  alert enemy comes after you; nothing faces behind you, so a blow from there is only dodged
+  by a roll, and a glow rising from the bottom of the screen shows who is closing and what is
+  coming, in its warning colour. They give up if you get far enough ahead.
+  Some ways on are held: a keeper (or, in a gauntlet, every enemy) must fall before the road
+  goes on, and whatever you ran past will catch up with you there.
+  A way you cannot take yet is shut across its mouth: a chained gate wants a key, a barred door
+  opens only from its far side (a shortcut). Once opened it stands open, and you walk through.
+  T turns you round where you stand; everything stays where it was.
+  Cutscenes (the opening of a new pilgrimage, each boss's entrance, the end) can be skipped
+  with Esc or E.
+  Sound and music: see assets/sfx/CREDITS.txt and assets/music/CREDITS.txt (all free/CC0).
 
 SAVES
   Your progress is kept automatically, every few seconds, in up to five slots. Carrying a
