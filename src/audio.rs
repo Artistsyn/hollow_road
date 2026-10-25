@@ -41,7 +41,7 @@ impl Sfx {
             Sfx::Glint => (takes!["glint_0.ogg", "glint_1.ogg", "glint_2.ogg"], 0.3),
             Sfx::Felled => (takes!["felled.ogg"], 0.6),
             Sfx::Knell => (takes!["knell.ogg"], 0.55),
-            Sfx::Twang => (takes!["bow_twang.wav"], 0.45),
+            Sfx::Twang => (takes!["bow_0.wav", "bow_1.wav", "bow_2.wav"], 0.34),
             Sfx::Frost => (takes!["cast_frost.wav"], 0.4),
             Sfx::FlaskOpen => (takes!["flask_open.ogg"], 0.4),
             Sfx::Glug => (takes!["glug.wav"], 0.35),

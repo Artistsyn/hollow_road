@@ -63,17 +63,27 @@ def swing(seconds, f_from, f_to, q, rng, body=0.0):
     return out
 
 
-def twang(seconds, freq, rng):
-    """A plucked bowstring (Karplus-Strong), with the click of the release."""
-    n, period = int(seconds * RATE), int(RATE / freq)
-    buf = [rng.uniform(-1, 1) for _ in range(period)]
+def bow(freq, rng):
+    """An arrow loosed: the string snapping home, low and quickly damped (Karplus-Strong with a
+    soft pluck and a dull loop), the limbs' thump, and the arrow's short whoosh away. No long
+    ring and no bright click: it is heard every shot."""
+    n, period = int(0.34 * RATE), int(RATE / freq)
+    # A soft pluck: smoothed noise, so the string starts mellow rather than buzzing.
+    raw = [rng.uniform(-1, 1) for _ in range(period)]
+    buf = [(raw[i - 1] + 2 * raw[i] + raw[(i + 1) % period]) / 4 for i in range(period)]
+    bp, lp = BandPass(1.1), 0.0
     out = []
     for i in range(n):
+        t = i / RATE
         s = buf[i % period]
-        nxt = buf[(i + 1) % period]
-        buf[i % period] = 0.996 * 0.5 * (s + nxt)
-        click = rng.uniform(-1, 1) * math.exp(-i / (RATE * 0.004))
-        out.append(s * 0.8 + click * 0.6)
+        buf[i % period] = 0.982 * (0.42 * s + 0.58 * buf[(i + 1) % period])
+        string = s * math.exp(-t / 0.07)
+        thump = math.sin(2 * math.pi * (78 * t - 40 * t * t)) * math.exp(-t / 0.03)
+        u = t / 0.2
+        whoosh = bp.run(rng.uniform(-1, 1), 1500 * (0.4 ** min(u, 1.0))) * (math.sin(math.pi * min(u, 1.0)) ** 2 if u < 1 else 0.0)
+        x = 0.9 * string + 0.8 * thump + 0.35 * whoosh
+        lp += 0.35 * (x - lp)  # take the edge off
+        out.append(lp)
     return out
 
 
@@ -113,7 +123,12 @@ def main():
     rng = random.Random(7)
     write("swing_light", swing(0.17, 2600, 650, 1.6, rng), 0.8)
     write("swing_heavy", swing(0.3, 1500, 260, 1.2, rng, body=0.6), 0.9)
-    write("bow_twang", twang(0.5, 98, rng), 0.8)
+    bow_rng = random.Random(11)
+    for k, f in enumerate([132, 124, 141]):
+        write(f"bow_{k}", bow(f, bow_rng), 0.8)
+    # The draws the old bowstring took here, so the sounds after it keep their noise.
+    for _ in range(int(RATE / 98) + int(0.5 * RATE)):
+        rng.uniform(-1, 1)
     write("glug", glug(rng), 0.7)
     write("cast_frost", frost(rng), 0.7)
     print("wrote", ", ".join(sorted(p.name for p in OUT.glob("*.wav"))))

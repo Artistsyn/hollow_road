@@ -3,5 +3,5 @@ Sound effects in this folder
 *.ogg  Kenney (www.kenney.nl): "RPG Audio", "Impact Sounds" and "Interface Sounds" packs,
        licensed Creative Commons Zero (CC0): public domain, no attribution required (credited
        here anyway, with thanks). Renamed for the game.
-*.wav  Synthesized for Hollow Road by tools/sfx_synth.py (swings, the bowstring, the flask, the
+*.wav  Synthesized for Hollow Road by tools/sfx_synth.py (swings, the bow, the flask, the
        frost bolt).
