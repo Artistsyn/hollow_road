@@ -25,6 +25,10 @@ pub const SHRINE_REACH: f32 = 3.0;
 /// Metres within which a living enemy, ahead or behind, keeps what wants a quiet moment (a cache
 /// taken, a boss stepping out, a side path left) from happening.
 const QUIET: f32 = 8.0;
+/// The veil hangs this far (metres, as the place is laid out) past where its boss waits;
+/// E reaches it from this far short of that.
+pub const VEIL_AHEAD: f32 = 0.7;
+const VEIL_REACH: f32 = 0.6;
 /// The journey's stop where the hero sits at rest: a clearing ringed by mist, the keeper on its
 /// left, the shrine in its middle, the smith (once met) on its right. Not a place on the road.
 pub const SANCTUM: &str = "sanctum";
@@ -111,6 +115,9 @@ pub struct World {
     /// The stop the hero is in, and the walk's metres when they arrived.
     pub at: String,
     pub base: f64,
+    /// Metres into the stop, as walked, where the hero came in: a boss or an ambush waits only
+    /// past this (turned round short of one, it is behind them, not just passed).
+    entered: f32,
     /// `Next` sent from this stop (wait for the arrival).
     pub sent: bool,
     /// A warp sent and not yet seen in the walk's state, and how far into that stop it lands.
@@ -149,6 +156,8 @@ pub struct World {
     pub luck: u32,
     /// Places whose boss has fallen, this pilgrimage.
     pub beaten: Vec<&'static str>,
+    /// Places whose boss has been faced at least once (its entrance plays only the first time).
+    pub faced: Vec<&'static str>,
     /// Key items held, and shortcuts opened (by the place they open from).
     pub keys: Vec<Key>,
     /// Bosses' remnants carried, for the smith to forge (kept from one pilgrimage to the next).
@@ -188,9 +197,9 @@ pub struct Detour { pub from: String, pub at: f64, pub foes: Vec<Enemy>, pub sid
 impl World {
     pub fn new(walked: f64) -> World {
         World {
-            at: START.into(), base: walked, sent: false, warping: None, warp_into: 0.0, checkpoint: START.into(), rested: Vec::new(), souls: 0, stain: None,
+            at: START.into(), base: walked, entered: 0.0, sent: false, warping: None, warp_into: 0.0, checkpoint: START.into(), rested: Vec::new(), souls: 0, stain: None,
             pilgrimages: 0, signpost: None, lean: None, chose: false, chose_at: None, took: None, shards: 0, met_keeper: false, met_smith: false, talks: [0, 0],
-            gear: crate::gear::Loadout::starting(), fallen: [0; Archetype::ALL.len()], luck: 0, beaten: Vec::new(), keys: Vec::new(), remnants: Vec::new(), opened: Vec::new(),
+            gear: crate::gear::Loadout::starting(), fallen: [0; Archetype::ALL.len()], luck: 0, beaten: Vec::new(), faced: Vec::new(), keys: Vec::new(), remnants: Vec::new(), opened: Vec::new(),
             seen: vec![atlas::node(START)], slain: Vec::new(), spawned: Vec::new(), detour: None, explored: Vec::new(), taken: Vec::new(),
             cleared: Vec::new(), told: false, lane: None, keep_hero: false, held_told: false, carry: None,
         }
@@ -256,6 +265,7 @@ impl World {
         let first = self.seen.is_empty();
         self.at = stop.to_owned();
         self.base = walked - into as f64;
+        self.entered = into;
         self.sent = false;
         self.told = false;
         self.held_told = false;
@@ -393,11 +403,44 @@ impl World {
         fight.enemies.iter().all(|e| !e.alive() || e.gap(walked).abs() > QUIET)
     }
 
+    /// Where the veil hangs across the road (road metres), while this place's boss stands:
+    /// `VEIL_AHEAD` past the metre where the boss waits, so a hero held at that metre faces it.
+    /// Turned round past it, it hangs behind them, still there.
+    pub fn veil(&self) -> Option<f64> {
+        let (at, _) = self.here().boss?;
+        (!self.boss_beaten()).then(|| self.road_at(at + VEIL_AHEAD))
+    }
+
+    /// Whether the walk is held at the veil: the boss here stands, the hero came in short of
+    /// it, and has walked up to it. Back is still free.
+    pub fn held_at_veil(&self, walked: f64) -> bool {
+        let Some((at, _)) = self.here().boss else { return false };
+        let mark = self.along(at);
+        !self.boss_beaten() && self.entered < mark && walked - self.base >= mark as f64
+    }
+
+    /// Whether E steps through the veil: held at it (or a step short of it), nothing on the hero.
+    pub fn at_veil(&self, fight: &Fight, walked: f64) -> bool {
+        let Some((at, _)) = self.here().boss else { return false };
+        let mark = self.along(at);
+        !self.boss_beaten() && !fight.hero.dead && self.warping.is_none() && Self::quiet(fight, walked)
+            && self.entered < mark && walked - self.base >= (mark - VEIL_REACH) as f64
+    }
+
+    /// Whether this place's boss has been faced before; facing it now marks it so.
+    pub fn face_boss(&mut self) -> bool {
+        let id = self.here().id;
+        let before = self.faced.contains(&id);
+        if !before { self.faced.push(id); }
+        before
+    }
+
     /// The boss here, if one steps out now: this place has one not yet beaten, no enemy is on the
     /// hero (one run past may still be coming), and the hero has walked as far as it waits.
     pub fn boss_due(&self, fight: &Fight, walked: f64) -> Option<&'static atlas::Boss> {
         let (at, boss) = self.here().boss?;
-        (!self.boss_beaten() && Self::quiet(fight, walked) && walked - self.base >= self.along(at) as f64).then_some(boss)
+        let mark = self.along(at);
+        (!self.boss_beaten() && Self::quiet(fight, walked) && self.entered < mark && walked - self.base >= mark as f64).then_some(boss)
     }
 
     /// The boss fell: its souls, what it leaves, and the road open again.
@@ -435,7 +478,7 @@ impl World {
         if fight.enemies.iter().any(|e| e.alive() && e.gap(walked).abs() < 8.0) { return None; }
         let into = walked - self.base;
         self.here().ambushes.iter().enumerate()
-            .find(|&(k, a)| !self.beaten_ambush(k) && into >= self.along(a.at) as f64 && (!a.chest || (!self.cache_taken() && fight.enemies.iter().all(|e| !e.alive()))))
+            .find(|&(k, a)| !self.beaten_ambush(k) && self.entered < self.along(a.at) && into >= self.along(a.at) as f64 && (!a.chest || (!self.cache_taken() && fight.enemies.iter().all(|e| !e.alive()))))
             .map(|(k, _)| k)
     }
 
@@ -494,7 +537,7 @@ impl World {
                 "worn": self.gear.worn.iter().map(|w| w.map(item)).collect::<Vec<_>>(),
             },
             "fallen": fallen, "luck": self.luck,
-            "beaten": self.beaten, "keys": self.keys.iter().map(|k| k.name()).collect::<Vec<_>>(), "remnants": self.remnants,
+            "beaten": self.beaten, "faced": self.faced, "keys": self.keys.iter().map(|k| k.name()).collect::<Vec<_>>(), "remnants": self.remnants,
             "opened": self.opened, "seen": self.seen, "explored": self.explored, "taken": self.taken,
             "cleared": self.cleared.iter().map(|(p, i)| json!([p, i])).collect::<Vec<_>>(),
         })
@@ -533,6 +576,7 @@ impl World {
         for k in Archetype::ALL { w.fallen[k as usize] = v["fallen"][format!("{k:?}")].as_u64().unwrap_or(0) as u32; }
         w.luck = num("luck");
         w.beaten = names("beaten");
+        w.faced = names("faced");
         w.keys = strs(&v["keys"]).iter().filter_map(|n| Key::ALL.into_iter().find(|k| k.name() == n)).collect();
         w.remnants = names("remnants");
         w.opened = names("opened");
@@ -810,6 +854,7 @@ impl World {
             // Back from a side path: where the hero left the road, its dead still dead.
             if let Some(d) = self.detour.take_if(|d| d.from == w) {
                 self.base = walked - d.at;
+                self.entered = d.at as f32;
                 fight.enemies = d.foes.into_iter().map(|mut e| { e.s += self.base; e }).collect();
                 return (None, vec![Note::Arrived(self.here().title)]);
             }
@@ -1210,6 +1255,29 @@ mod tests {
         assert_eq!(w.took, Some(gate));
         let x = w.signpost_x(164.8 + STEER_M as f64);
         assert!(if gate == Branch::Right { x < -1.0 } else { x > 1.0 }, "{x}");
+    }
+
+    #[test]
+    fn turned_round_short_of_a_boss_it_stays_behind_until_walked_back_to() {
+        let mut w = World::new(0.0);
+        let mut f = Fight::new(Vec::new());
+        w.tick(&mut f, 100.0, Some("chief_hold@ridge_camp"), None);
+        fell(&mut f);
+        let mark = (0..400).map(|k| 100.0 + k as f64 * 0.25).find(|&m| w.boss_due(&f, m).is_some()).expect("the chief steps out somewhere");
+        // Turned two metres short of him: walking away, he does not step out, near or far.
+        let at = mark - 2.0;
+        let Some(Go::WarpAt(to, into)) = w.turn(&f, at) else { panic!("could not turn") };
+        w.tick(&mut f, at, Some(&to), None);
+        assert!(w.warping.is_none() && (w.base + into as f64 - at).abs() < 1e-3, "arrived turned at {into}");
+        fell(&mut f);
+        for k in 0..120 { assert!(w.boss_due(&f, at + k as f64 * 0.25).is_none(), "stepped out {} m on, walking away", k as f64 * 0.25); }
+        // Turned again, back toward him: he steps out where he waits.
+        let back = at + 10.0;
+        let Some(Go::WarpAt(to, _)) = w.turn(&f, back) else { panic!("could not turn back") };
+        w.tick(&mut f, back, Some(&to), None);
+        fell(&mut f);
+        assert!(w.boss_due(&f, back + 1.0).is_none());
+        assert!(w.boss_due(&f, back + 12.5).is_some(), "walked back to him");
     }
 
     #[test]

@@ -4,6 +4,7 @@
 //! comes back slower. Pieces come off the dead (`World::felled`); the smith's +levels apply to
 //! whatever weapon and armour are worn.
 
+use crate::arts::WeaponArt;
 use crate::fight::Archetype;
 
 /// Where a piece goes.
@@ -63,6 +64,8 @@ pub struct Kit {
     pub opener: f32,
     /// A bulwark's ward (`fight::Bulwark`): how fast blocks fill it; 0, a shield with none.
     pub ward: f32,
+    /// The weapon's art (Q: `fight::Move::Art`), a smith-forged weapon's own.
+    pub art: Option<crate::arts::WeaponArt>,
 }
 
 /// How much a level of an attribute raises a weapon's damage, by the weapon's letter for it.
@@ -218,7 +221,7 @@ pub const BUCKLER: Off = Off { guard: Guard::Buckler, art: "pilgrim_buckler" };
 
 impl Default for Kit {
     fn default() -> Kit {
-        Kit { damage: 1.0, taken: 1.0, poise: 0.0, guard: 1.0, chip: 1.0, parry: 0, roll: 1.0, strike: 1.0, regen: 1.0, heal: 1.0, hp: 0.0, stamina: 0.0, souls: 1.0, load: 0.0, arms: SWORD, off: Some(BUCKLER), leech: 0.0, opener: 1.0, ranged: None, shooting: UNSCALED, catalyst: None, spell: None, ward: 0.0 }
+        Kit { damage: 1.0, taken: 1.0, poise: 0.0, guard: 1.0, chip: 1.0, parry: 0, roll: 1.0, strike: 1.0, regen: 1.0, heal: 1.0, hp: 0.0, stamina: 0.0, souls: 1.0, load: 0.0, arms: SWORD, off: Some(BUCKLER), leech: 0.0, opener: 1.0, ranged: None, shooting: UNSCALED, catalyst: None, spell: None, ward: 0.0, art: None }
     }
 }
 
@@ -300,15 +303,15 @@ pub const ITEMS: &[Item] = &[
     weapon("Rimed Sabre", 3.5, Arms { base: 1.0, needs: [0, 2, 5], scales: [No, D, B], class: Class::Sword, art: "rimed_sabre" }, "cold-forged, runs on focus", |_| {}),
     weapon("Executioner's Greatsword", 9.0, Arms { base: 1.0, needs: [8, 2, 0], scales: [B, D, No], class: Class::Greatsword, art: "executioner_greatsword" }, "both hands; its heavy sweeps the lanes beside", |_| {}),
     // Forged by the smith from what the region bosses leave (`RECIPES`), each with a way of its
-    // own. (Drawn with the nearest weapon's art until each has its own.)
-    weapon("Bell-Hammer", 10.0, Arms { base: 1.15, needs: [10, 0, 0], scales: [A, No, No], class: Class::Greatsword, art: "executioner_greatsword" }, "rings the stunned: +40% to the open, +12 poise", |k| { k.opener *= 1.4; k.poise += 12.0; }),
-    weapon("Drowned Wail", 3.5, Arms { base: 1.1, needs: [0, 3, 8], scales: [No, D, A], class: Class::Sword, art: "rimed_sabre" }, "drinks: 6% of each strike back as health", |k| k.leech += 0.06),
-    weapon("Chieftain's Cleaver", 7.0, Arms { base: 1.15, needs: [8, 3, 0], scales: [A, D, No], class: Class::Axe, art: "husk_cleaver" }, "+10% damage, +8 poise", |k| { k.damage *= 1.1; k.poise += 8.0; }),
-    weapon("Gavel of Sentence", 8.0, Arms { base: 1.15, needs: [9, 0, 3], scales: [B, No, C], class: Class::Axe, art: "husk_cleaver" }, "judges the fallen: +60% to the open", |k| k.opener *= 1.6),
-    weapon("Reaper's Glaive", 5.0, Arms { base: 1.15, needs: [3, 8, 4], scales: [D, A, D], class: Class::Spear, art: "lancer_spear" }, "reaps: 8% of each strike back as health", |k| k.leech += 0.08),
-    weapon("Lance of Light", 3.0, Arms { base: 1.2, needs: [0, 7, 9], scales: [No, C, A], class: Class::Thrust, art: "duelist_rapier" }, "weightless: strikes cost 25% less stamina", |k| k.strike *= 0.75),
-    weapon("Stoneheart Greatsword", 14.0, Arms { base: 1.25, needs: [15, 2, 0], scales: [S, No, No], class: Class::Ultra, art: "gravewarden_slab" }, "stone: -10% damage taken, +20 poise", |k| { k.taken *= 0.9; k.poise += 20.0; }),
-    weapon("Feather of the Fallen Light", 3.0, Arms { base: 1.25, needs: [7, 7, 7], scales: [C, C, C], class: Class::Sword, art: "wayfarer_sword" }, "+15% damage, 5% back as health, +25% to the open", |k| { k.damage *= 1.15; k.leech += 0.05; k.opener *= 1.25; }),
+    // own and an art (Q, `arts::WeaponArt`) echoing the boss it came from.
+    weapon("Bell-Hammer", 10.0, Arms { base: 1.15, needs: [10, 0, 0], scales: [A, No, No], class: Class::Greatsword, art: "bell_hammer" }, "rings the stunned: +40% to the open, +12 poise. Art (Q), Toll: a slam that rings through all near, throwing them off balance", |k| { k.opener *= 1.4; k.poise += 12.0; k.art = Some(WeaponArt::Toll); }),
+    weapon("Drowned Wail", 3.5, Arms { base: 1.1, needs: [0, 3, 8], scales: [No, D, A], class: Class::Sword, art: "drowned_wail" }, "drinks: 6% of each strike back as health. Art (Q), Wail: a scream that breaks every windup in reach, drinks from all it catches and drops arrows", |k| { k.leech += 0.06; k.art = Some(WeaponArt::Wail); }),
+    weapon("Chieftain's Cleaver", 7.0, Arms { base: 1.15, needs: [8, 3, 0], scales: [A, D, No], class: Class::Axe, art: "chieftains_cleaver" }, "+10% damage, +8 poise. Art (Q), Hatchet: thrown down the lane, bites the first foe and comes back, biting again", |k| { k.damage *= 1.1; k.poise += 8.0; k.art = Some(WeaponArt::Hatchet); }),
+    weapon("Gavel of Sentence", 8.0, Arms { base: 1.15, needs: [9, 0, 3], scales: [B, No, C], class: Class::Axe, art: "gavel_of_sentence" }, "judges the fallen: +60% to the open. Art (Q), Sentence: marks the foe ahead; a moment later a blow no guard turns falls on it", |k| { k.opener *= 1.6; k.art = Some(WeaponArt::Sentence); }),
+    weapon("Reaper's Glaive", 5.0, Arms { base: 1.15, needs: [3, 8, 4], scales: [D, A, D], class: Class::Spear, art: "reapers_glaive" }, "reaps: 8% of each strike back as health. Art (Q), Reap: a sweep across every lane that drinks from all it cuts", |k| { k.leech += 0.08; k.art = Some(WeaponArt::Reap); }),
+    weapon("Lance of Light", 3.0, Arms { base: 1.2, needs: [0, 7, 9], scales: [No, C, A], class: Class::Thrust, art: "lance_of_light" }, "weightless: strikes cost 25% less stamina. Art (Q), Light Lance: a dash down the lane, untouchable, piercing what it meets", |k| { k.strike *= 0.75; k.art = Some(WeaponArt::Lance); }),
+    weapon("Stoneheart Greatsword", 14.0, Arms { base: 1.25, needs: [15, 2, 0], scales: [S, No, No], class: Class::Ultra, art: "stoneheart_greatsword" }, "stone: -10% damage taken, +20 poise. Art (Q), Stone Skin: ten seconds of stone (no blow staggers you, 30% less gets through) and a stomp that throws back what is near", |k| { k.taken *= 0.9; k.poise += 20.0; k.art = Some(WeaponArt::StoneSkin); }),
+    weapon("Feather of the Fallen Light", 3.0, Arms { base: 1.25, needs: [7, 7, 7], scales: [C, C, C], class: Class::Sword, art: "feather_of_the_fallen_light" }, "+15% damage, 5% back as health, +25% to the open. Art (Q), Wingbeat: a gust throws everything ahead back, then a dive strikes down on the nearest", |k| { k.damage *= 1.15; k.leech += 0.05; k.opener *= 1.25; k.art = Some(WeaponArt::Wingbeat); }),
     // Left where it was laid down (`atlas::Place::loot`).
     weapon("Gravewarden's Slab", 18.0, Arms { base: 1.0, needs: [16, 0, 0], scales: [A, No, No], class: Class::Ultra, art: "gravewarden_slab" }, "both hands; every swing sweeps the lanes beside and rides out a flinch", |_| {}),
     // In the other hand instead of a shield (F: a ranged attack; a catalyst, C: a spell): no
@@ -418,6 +421,20 @@ impl Loadout {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn each_forged_weapon_has_its_own_art_and_says_what_it_does() {
+        let mut seen = Vec::new();
+        for i in ITEMS.iter() {
+            let mut k = Kit::default();
+            (i.apply)(&mut k);
+            let Some(a) = k.art else { continue };
+            assert!(i.text.contains(&format!("Art (Q), {}: {}", a.name(), a.text())), "{}: {}", i.name, i.text);
+            assert!(!seen.contains(&a), "{a:?} twice");
+            seen.push(a);
+        }
+        assert_eq!(seen.len(), WeaponArt::ALL.len());
+    }
 
     #[test]
     fn the_starting_kit_changes_nothing_and_a_piece_changes_what_it_says() {

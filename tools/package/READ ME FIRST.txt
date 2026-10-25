@@ -29,9 +29,10 @@ CONTROLS (keyboard and mouse)
                   Left click strike     Shift + left click heavy
                   Right click guard     Shift + right click parry
                   R drink     F ranged attack (bow, crossbow)     C cast a spell
+                  Q weapon art (a weapon forged from a boss's remnant)
                   E rest / talk / use
                   T turn back (the way back meets every fork you passed)
-                  M map     Esc pause / back out of a menu
+                  M map     Esc pause / back out of a menu (Q also backs out of a menu)
                   H show or hide these controls on screen (hidden at first)
   Side-on fights  A / D move     tap A or D twice and hold it to run
                   Shift + A / D roll     W or Space jump (same attacks)
@@ -41,6 +42,11 @@ CONTROLS (keyboard and mouse)
                   Frost Bolt chills what it hits for four seconds: a third slower, and its
                   stance stays cracked
   Blood weapons   blood bows and crossbows (F) are drawn from your own health
+  Weapon arts     each weapon the smith forges from a boss's remnant has an art of its own (Q;
+                  ART on a touch screen), such as the Bell-Hammer's Toll, a slam that throws
+                  everything near off balance, or the Chieftain's Cleaver thrown and caught
+                  again. Arts are paid from the blue meter under your stamina, which fills
+                  as you land blows, parry, and slip or block a blow at the last moment.
   Scaling         weapons, bows, catalysts and spells need levels (! in the shrine's list
                   marks one you lack) and grow with Might, Dexterity and Focus by their
                   letter grades; short of a weapon's needs it hits weakly, short of a

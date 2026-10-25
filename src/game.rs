@@ -61,8 +61,11 @@ const AMBUSH_OUT: u32 = 80;
 /// Degrees the camera turns to look down a side path, and ticks it looks before the walk goes.
 const PEEK_YAW: f32 = 38.0;
 const PEEK_T: u32 = 60;
-const BOSS_HELP: &str = "A/D move   A A / D D (held) run   Shift+A/D roll   W / Space jump   LMB strike   Shift+LMB heavy   RMB guard   Shift+RMB parry   R drink   F ranged attack   C cast      gold parry  ·  orange roll or block  ·  purple roll  ·  a blow held high: wait for it  ·  a dodged leap leaves it open";
-const AMBUSH_HELP: &str = "A/D move   A A / D D (held) run   Shift+A/D roll   W / Space jump   LMB strike   Shift+LMB heavy (cuts through all in reach)   RMB guard   Shift+RMB parry   R drink   F ranged attack   C cast      jump a low sweep  ·  step off a rune  ·  roll through a lunge or pounce";
+/// Ticks stepping through the veil, and the pace of it (m/s): through it and a little on.
+const CROSS_T: u32 = 54;
+const CROSS_SPEED: f32 = 1.4;
+const BOSS_HELP: &str = "A/D move   A A / D D (held) run   Shift+A/D roll   W / Space jump   LMB strike   Shift+LMB heavy   RMB guard   Shift+RMB parry   R drink   F ranged attack   C cast   Q weapon art      gold parry  ·  orange roll or block  ·  purple roll  ·  a blow held high: wait for it  ·  a dodged leap leaves it open";
+const AMBUSH_HELP: &str = "A/D move   A A / D D (held) run   Shift+A/D roll   W / Space jump   LMB strike   Shift+LMB heavy (cuts through all in reach)   RMB guard   Shift+RMB parry   R drink   F ranged attack   C cast   Q weapon art      jump a low sweep  ·  step off a rune  ·  roll through a lunge or pounce";
 /// A spot on the canvas: top-left and size.
 type Rect = ((f32, f32), (f32, f32));
 
@@ -113,6 +116,12 @@ const BARRIER_LEAVES: ([f32; 4], [f32; 4]) = ([0.11, 0.1, 0.89, 0.9], [0.16, 0.1
 const VISIBILITY_FLOOR: f32 = 0.15;
 /// The souls left where the hero fell.
 const STAIN: &str = "stain";
+/// The veil before a standing boss (`veil_picture`), and how tall it hangs, metres.
+const VEIL: &str = "veil";
+const VEIL_H: f32 = 4.2;
+/// Ring blows' fronts as they roll (`crest_picture`): two to a ring, two rings at once.
+const WAVES: usize = 4;
+fn wave_id(i: usize) -> String { format!("wave_{i}") }
 const CHEST: &str = "chest";
 /// The keeper and the smith, in the sanctum (and the smith by the road until met).
 const KEEPER: &str = "keeper";
@@ -179,8 +188,10 @@ const STATION_D: f32 = HERO_D + 2.6;
 /// Where the hero stands before a station, across.
 const BEFORE_X: f32 = 0.7;
 /// Bars: (id, x, y, width, height, colour) along the top left; the enemy's along the top middle.
-/// Under the stamina, a bulwark's ward: dim gold while it fills, bright once it can burst.
-const BARS: [(&str, f32, f32, f32, f32, [u8; 4]); 10] = [
+/// Under the stamina, a bulwark's ward: dim gold while it fills, bright once it can burst; under
+/// that (or in its place), a forged weapon's art meter: dusk blue while it fills, pale once the
+/// art is paid for.
+const BARS: [(&str, f32, f32, f32, f32, [u8; 4]); 13] = [
     ("bar_hp_back", 60.0, 140.0, 900.0, 34.0, [30, 20, 22, 200]),
     ("bar_hp", 60.0, 140.0, 900.0, 34.0, [176, 36, 40, 255]),
     ("bar_st_back", 60.0, 186.0, 700.0, 22.0, [20, 26, 22, 200]),
@@ -188,6 +199,9 @@ const BARS: [(&str, f32, f32, f32, f32, [u8; 4]); 10] = [
     ("bar_ward_back", 60.0, 218.0, 500.0, 16.0, [24, 22, 16, 200]),
     ("bar_ward", 60.0, 218.0, 500.0, 16.0, [150, 132, 84, 255]),
     ("bar_ward_ready", 60.0, 218.0, 500.0, 16.0, [255, 236, 170, 255]),
+    ("bar_art_back", 60.0, 218.0, 500.0, 16.0, [16, 18, 30, 200]),
+    ("bar_art", 60.0, 218.0, 500.0, 16.0, [92, 108, 196, 255]),
+    ("bar_art_ready", 60.0, 218.0, 500.0, 16.0, [190, 210, 255, 255]),
     // The foe's, top right, mirroring the hero's, its name over it (`FOE_NAME`).
     ("bar_foe_back", 2580.0, 140.0, 1200.0, 26.0, [30, 20, 22, 200]),
     ("bar_foe", 2580.0, 140.0, 1200.0, 26.0, [150, 40, 44, 255]),
@@ -197,6 +211,22 @@ const BARS: [(&str, f32, f32, f32, f32, [u8; 4]); 10] = [
 fn enemy_id(i: usize) -> String { format!("enemy_{i}") }
 /// A shot in flight: a side-on foe's (one at a time each), or an arrow or hex down the road.
 fn shot_id(i: usize) -> String { format!("shot_{i}") }
+
+/// The colour a weapon art flashes and calls in.
+pub(crate) fn art_rgb(art: crate::arts::WeaponArt) -> (u8, u8, u8) {
+    use crate::arts::WeaponArt;
+    match art {
+        WeaponArt::Toll => (255, 214, 140), WeaponArt::Wail => (120, 220, 190), WeaponArt::Hatchet => (236, 160, 110),
+        WeaponArt::Sentence => (255, 214, 110), WeaponArt::Reap => (190, 140, 255), WeaponArt::Lance => (255, 240, 170),
+        WeaponArt::StoneSkin => (210, 200, 190), WeaponArt::Wingbeat => (255, 236, 200),
+    }
+}
+
+/// The thrown Hatchet as drawn: the cleaver's own picture, a quarter turn each few ticks.
+fn hatchet_picture(s: &Sheet, age: u32) -> Option<Arc<RgbaImage>> {
+    let w = s.weapons.get("chieftains_cleaver")?;
+    Some(Arc::new(match (age / 3) % 4 { 0 => w.image.clone(), 1 => image::imageops::rotate90(&w.image), 2 => image::imageops::rotate180(&w.image), _ => image::imageops::rotate270(&w.image) }))
+}
 /// Shots that can be drawn at once: an archer's second arrow can be in the air with its first.
 const SHOTS: usize = 2 * world::MOST_FOES;
 
@@ -253,6 +283,211 @@ fn orb_picture(body: [u8; 3], rgb: [u8; 3], age: u32) -> Arc<RgbaImage> {
             else { (halo, 0.0) };
         image::Rgba([col[0] as u8, col[1] as u8, col[2] as u8, (a * 255.0) as u8])
     }))
+}
+
+/// The veil across the road before a standing boss, `ticks` into its loop: a black shroud come
+/// out of nothing overhead, its folds stirring as if something breathes beyond it, a crimson glow
+/// beating behind it like a heart, flecks of ash drifting up off its frayed hem, the wrong way.
+/// Now and then a hand far too large presses into it from the other side, and slowly withdraws.
+/// `part` (0 to 1) is a hero stepping through: it burns open from the middle, a ragged tear with
+/// an ember edge, and what is left of it thins to nothing. The still loop and the hand are made
+/// once, a frame every four ticks.
+fn veil_picture(ticks: u32, part: f32) -> Arc<RgbaImage> {
+    const W: u32 = 320;
+    const H: u32 = 224;
+    const LOOP: u32 = 128;
+    // The hand comes once every `PRESS_EVERY` ticks, `PRESS_AT` into it, for `PRESS_T` ticks (each
+    // a whole number of loops, so the folds it presses into are the loop's own).
+    const PRESS_EVERY: u32 = LOOP * 4;
+    const PRESS_AT: u32 = LOOP;
+    const PRESS_T: u32 = 64;
+    fn make(t: u32, part: f32, press: f32) -> RgbaImage {
+        use std::f32::consts::{PI, TAU};
+        let hash = |i: u32, k: u32| { let mut h = i.wrapping_mul(0x9E37_79B9) ^ k.wrapping_mul(0x85EB_CA6B); h ^= h >> 15; h = h.wrapping_mul(0x2C1B_3C6D); h ^= h >> 13; (h & 0xFFFF) as f32 / 65535.0 };
+        let p = (t % LOOP) as f32 / LOOP as f32;
+        // Two beats, close together, and a long quiet.
+        let beat = (-((p - 0.05) / 0.04).powi(2)).exp() + 0.65 * (-((p - 0.2) / 0.04).powi(2)).exp();
+        let thin = (1.0 - part).max(0.0).powf(0.8);
+        let aspect = W as f32 / H as f32;
+        // The hand: a palm and four fingers spread, pressing in (`press` 0 to 1, in and back out).
+        let push = (PI * press).sin().powi(2);
+        let hand = |u: f32, v: f32| -> f32 {
+            if push <= 0.0 { return 0.0; }
+            let (x, y) = ((u - 0.3) * aspect / 0.2, (v - 0.42) / 0.2);
+            if !(-1.6..1.4).contains(&x) || !(-1.6..1.2).contains(&y) { return 0.0; }
+            // A finger: soft round about the segment from (ax, ay) to (bx, by).
+            let finger = |ax: f32, ay: f32, bx: f32, by: f32, r: f32| {
+                let (dx, dy) = (bx - ax, by - ay);
+                let k = (((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy)).clamp(0.0, 1.0);
+                let d = (x - ax - k * dx).hypot(y - ay - k * dy) / r;
+                (-d * d).exp()
+            };
+            let palm = (-((x / 0.44).powi(2) + ((y - 0.28) / 0.4).powi(2)).powi(2)).exp();
+            let mut b = palm;
+            for (fx, len, lean) in [(-0.3, 0.62f32, -0.22f32), (-0.1, 0.78, -0.07), (0.1, 0.74, 0.07), (0.29, 0.56, 0.2)] {
+                b = b.max(finger(fx, -0.02, fx + lean * len, -0.02 - len, 0.1));
+            }
+            b.max(finger(-0.36, 0.42, -0.78, 0.05, 0.11)) * push
+        };
+        // Where it burns open: a tear down the middle, widest at the hero's height, ragged.
+        // Value noise along a line, for edges that do not repeat.
+        let noise = |x: f32, k: u32| { let (i, f) = (x.floor(), x - x.floor()); let f = f * f * (3.0 - 2.0 * f); let n = |i: f32| hash(i as i32 as u32, k); n(i) * (1.0 - f) + n(i + 1.0) * f };
+        let tear = |u: f32, v: f32| -> f32 {
+            if part <= 0.0 { return -1.0; }
+            let side = if u < 0.5 { 7 } else { 11 };
+            let ragged = 0.05 * (noise(v * 9.0 + 3.0 * part, side) - 0.5) + 0.03 * (noise(v * 23.0, side + 1) - 0.5) + 0.014 * (noise(v * 61.0 - 9.0 * part, side + 2) - 0.5);
+            let open = part.powf(1.1) * 0.85 * (1.0 - ((v - 0.62) / 0.75).powi(2)).max(0.0).sqrt();
+            open + ragged * part.min(0.3) / 0.3 - (u - 0.5).abs()
+        };
+        let mut img = RgbaImage::from_fn(W, H, |x, y| {
+            let (u, v) = (x as f32 / (W - 1) as f32, y as f32 / (H - 1) as f32);
+            let edge = (u / 0.07).min((1.0 - u) / 0.07).clamp(0.0, 1.0);
+            // Out of nothing overhead; frayed at the hem, a shadow on the ground beneath.
+            let top = (v / 0.38).clamp(0.0, 1.0).powf(1.6);
+            let hem_at = 0.9 + 0.03 * (u * 37.0 + (TAU * p).sin()).sin() + 0.025 * (u * 97.0).sin();
+            let hem = if v < hem_at { 1.0 } else { 0.25 * (1.0 - (v - hem_at) / (1.0 - hem_at + 1e-3)).max(0.0) };
+            // Folds, swaying most low down, as cloth does.
+            let uu = u + 0.018 * v.powf(1.5) * (TAU * p + u * 3.0).sin();
+            // Uneven folds, not a row of pleats.
+            let warp = 1.6 * (uu * TAU * 1.3 + 0.7).sin() + 0.6 * (uu * TAU * 2.9).sin();
+            let mut fold = 0.5 + 0.3 * (uu * TAU * 4.0 + warp + 0.8 * (TAU * p).sin()).sin() + 0.2 * (uu * TAU * 9.0 + 0.5 * warp - TAU * 2.0 * p).sin();
+            // Pressed from beyond: the folds pulled smooth over it, lit on the upper left.
+            let (b, lit) = { let b = hand(u, v); let d = 0.012; (b, (hand(u - d, v - d) - hand(u + d, v + d)) * 6.0) };
+            fold = fold * (1.0 - b) + 0.5 * b;
+            let (gx, gy) = ((u - 0.5) / 0.26, (v - 0.72) / 0.32);
+            let glow = (-(gx * gx + gy * gy)).exp() * (0.2 + 0.8 * beat);
+            // Deep in the troughs, a dull sheen on the ridges.
+            let mut a = (0.86 - 0.1 * fold + 0.08 * b) * top * edge * hem * thin;
+            let sheen = fold.powi(2);
+            let mut rgb = [6.0 + 20.0 * sheen, 4.0 + 17.0 * sheen, 9.0 + 23.0 * sheen];
+            for (c, g) in rgb.iter_mut().zip([132.0, 14.0, 30.0]) { *c += g * glow * (1.0 - 0.7 * b); }
+            if b > 0.0 {
+                // Cloth drawn tight over it: a dull sheen where it faces up and left, shadow below.
+                let l = lit.clamp(-1.0, 1.0);
+                for (c, h) in rgb.iter_mut().zip([62.0, 56.0, 74.0]) { *c += h * l.max(0.0) * b.sqrt(); *c *= 1.0 - 0.6 * (-l).max(0.0); }
+            }
+            // The tear, its edge burning.
+            let o = tear(u, v);
+            if o > 0.0 { a = 0.0; }
+            else if o > -0.06 {
+                // Charred toward the edge, and at the very edge burning, flickering along it.
+                let char = 1.0 + o / 0.06;
+                for c in rgb.iter_mut() { *c *= 1.0 - 0.8 * char; }
+                a = a.max(0.85 * char * top * hem);
+                if o > -0.012 {
+                    let k = (1.0 + o / 0.012) * (0.7 + 0.3 * noise(v * 40.0 + t as f32 * 0.4, 5));
+                    for (c, e) in rgb.iter_mut().zip([255.0, 120.0, 46.0]) { *c = *c * (1.0 - k) + e * k; }
+                    a = a.max(k * top * hem);
+                }
+            }
+            if a <= 0.004 { return image::Rgba([0, 0, 0, 0]); }
+            image::Rgba([rgb[0].min(255.0) as u8, rgb[1].min(255.0) as u8, rgb[2].min(255.0) as u8, (a.min(1.0) * 255.0) as u8])
+        });
+        // Ash off the hem, drifting up, the wrong way; a few embers. Each rises a whole number of
+        // times its height in a loop, so the loop has no seam.
+        for i in 0..420u32 {
+            let ember = hash(i, 3) < 0.07;
+            let u0 = hash(i, 1);
+            let rise = ((hash(i, 2) + p * (1.0 + (hash(i, 4) * 2.0).floor())) % 1.0).powf(0.9);
+            let mut px = u0 * (W - 1) as f32 + 3.0 * (TAU * (p * 2.0 + hash(i, 5))).sin();
+            let mut py = (0.95 - 0.8 * rise) * (H - 1) as f32;
+            if part > 0.0 {
+                let (dx, dy) = (px - 0.5 * W as f32, py - 0.62 * H as f32);
+                let len = dx.hypot(dy).max(1.0);
+                let push = part.powf(1.5) * (90.0 + 60.0 * hash(i, 6));
+                px += dx / len * push;
+                py += dy / len * push - 30.0 * part * hash(i, 7);
+            }
+            let edge = (u0 / 0.08).min((1.0 - u0) / 0.08).clamp(0.0, 1.0);
+            let lit = (rise / 0.15).min(1.0) * (1.0 - rise).powf(0.7) * edge * (0.6 + 0.4 * (TAU * (p * 3.0 + hash(i, 8))).sin()) * (1.0 - 0.6 * part);
+            if lit <= 0.03 { continue; }
+            let rgb = if ember { [255.0, 70.0, 50.0] } else { [176.0, 166.0, 190.0] };
+            let size = if hash(i, 9) < 0.12 { 2 } else { 1 };
+            for oy in 0..size { for ox in 0..size {
+                let (x, y) = (px as i32 + ox, py as i32 + oy);
+                if x < 0 || y < 0 || x >= W as i32 || y >= H as i32 { continue; }
+                let q = img.get_pixel_mut(x as u32, y as u32);
+                let a = (lit * 230.0) as u8;
+                if a > q.0[3] || lit > 0.5 { q.0 = [(rgb[0] * lit + q.0[0] as f32 * (1.0 - lit)) as u8, (rgb[1] * lit + q.0[1] as f32 * (1.0 - lit)) as u8, (rgb[2] * lit + q.0[2] as f32 * (1.0 - lit)) as u8, a.max(q.0[3])]; }
+            }}
+        }
+        // Sparks off the burning edge, rising.
+        if part > 0.0 {
+            for i in 0..90u32 {
+                let v = 0.15 + 0.8 * hash(i, 20);
+                let (mut lo, mut hi) = (0.0f32, 0.5f32);
+                let left = hash(i, 21) < 0.5;
+                for _ in 0..12 { let m = 0.5 * (lo + hi); let u = if left { 0.5 - m } else { 0.5 + m }; if tear(u, v) > 0.0 { lo = m } else { hi = m } }
+                let u = if left { 0.5 - lo } else { 0.5 + lo };
+                let age = (hash(i, 22) + t as f32 * 0.03) % 1.0;
+                let (px, py) = (u * (W - 1) as f32 + (if left { -1.0 } else { 1.0 }) * 6.0 * age, v * (H - 1) as f32 - 26.0 * age);
+                let k = (1.0 - age) * (1.0 - 0.5 * part);
+                let (x, y) = (px as i32, py as i32);
+                if k > 0.05 && x >= 0 && y >= 0 && x < W as i32 && y < H as i32 {
+                    img.put_pixel(x as u32, y as u32, image::Rgba([255, (150.0 + 80.0 * k) as u8, (60.0 * k) as u8, (255.0 * k) as u8]));
+                }
+            }
+        }
+        img
+    }
+    if part > 0.0 { return Arc::new(make(ticks, part, 0.0)); }
+    static STILL: std::sync::OnceLock<Vec<Arc<RgbaImage>>> = std::sync::OnceLock::new();
+    static PRESS: std::sync::OnceLock<Vec<Arc<RgbaImage>>> = std::sync::OnceLock::new();
+    let cycle = ticks % PRESS_EVERY;
+    if (PRESS_AT..PRESS_AT + PRESS_T).contains(&cycle) {
+        let frames = PRESS.get_or_init(|| (0..PRESS_T / 4).map(|k| Arc::new(make(k * 4, 0.0, (k * 4 + 2) as f32 / PRESS_T as f32))).collect());
+        return frames[((cycle - PRESS_AT) / 4) as usize].clone();
+    }
+    let frames = STILL.get_or_init(|| (0..LOOP / 4).map(|k| Arc::new(make(k * 4, 0.0, 0.0))).collect());
+    frames[((ticks % LOOP) / 4) as usize].clone()
+}
+
+/// A ring blow's front rolling along the ground, travelling right (mirrored going left): a crest
+/// of light leaning into its way, brightest at its leading face, a smear of it trailing low, the
+/// ground under it lit, and sparks thrown up off it. `ticks` runs its flicker (eight frames, made
+/// once for each colour and way).
+fn crest_picture(ticks: u32, rgb: [u8; 3], mirror: bool) -> Arc<RgbaImage> {
+    const W: u32 = 128;
+    const H: u32 = 80;
+    static MADE: std::sync::Mutex<Option<std::collections::HashMap<(u32, [u8; 3], bool), Arc<RgbaImage>>>> = std::sync::Mutex::new(None);
+    let frame = (ticks / 3) % 8;
+    let mut made = MADE.lock().unwrap();
+    made.get_or_insert_with(Default::default).entry((frame, rgb, mirror)).or_insert_with(|| {
+        let hash = |i: u32, k: u32| { let mut h = i.wrapping_mul(0x9E37_79B9) ^ k.wrapping_mul(0x85EB_CA6B); h ^= h >> 15; h = h.wrapping_mul(0x2C1B_3C6D); h ^= h >> 13; (h & 0xFFFF) as f32 / 65535.0 };
+        let t = frame as f32;
+        let body = [rgb[0] as f32, rgb[1] as f32, rgb[2] as f32];
+        const PEAK: f32 = 0.74;
+        let mut img = RgbaImage::from_fn(W, H, |x, y| {
+            let (u, v) = (x as f32 / (W - 1) as f32, 1.0 - y as f32 / (H - 1) as f32);
+            // The wave's height along it: steep at its leading face, a long slope behind.
+            let wob = 0.035 * (t * 0.8 * std::f32::consts::TAU / 8.0 * 2.0 + u * 23.0).sin();
+            let crest = 0.82 * if u > PEAK { (-((u - PEAK) / 0.09).powi(2)).exp() } else { (-((u - PEAK) / 0.34).powi(2)).exp() } + wob * (u < PEAK) as u8 as f32;
+            let tail = (u / 0.12).clamp(0.0, 1.0);
+            // Its skin brightest, a glow standing off it, and the ground lit under it.
+            let skin = (-(((crest - v) / 0.05).powi(2))).exp();
+            let halo = if v > crest { 0.55 * (-((v - crest) / 0.09).powi(2)).exp() } else { 0.0 };
+            let fill = if v <= crest { 0.28 + 0.2 * (u * 41.0 - t * 2.4).sin().max(0.0) } else { 0.0 };
+            let ground = 0.8 * (-(v / 0.06).powi(2)).exp() * crest.max(0.15);
+            let face = (-((u - (PEAK + 0.05)) / 0.05).powi(2)).exp() * (v <= crest + 0.05) as u8 as f32;
+            let a = ((skin * 0.95 + halo + fill + ground + face * 0.6) * tail).min(1.0);
+            if a < 0.01 { return image::Rgba([0, 0, 0, 0]); }
+            let hot = (skin * 0.8 + face).min(1.0);
+            let col = |c: f32| (c + (255.0 - c) * hot) as u8;
+            image::Rgba([col(body[0]), col(body[1]), col(body[2]), (a * 240.0) as u8])
+        });
+        // Sparks thrown up and back off the crest.
+        for i in 0..40u32 {
+            let life = ((t + 8.0 * hash(i, 1)) % 8.0) / 8.0;
+            let (u, v) = (0.45 + 0.4 * hash(i, 2) - 0.3 * life, 0.15 + 0.55 * hash(i, 3) + 0.4 * life);
+            let (x, y) = ((u * (W - 1) as f32) as i32, ((1.0 - v) * (H - 1) as f32) as i32);
+            if x < 0 || y < 0 || x >= W as i32 || y >= H as i32 { continue; }
+            let a = ((1.0 - life) * 255.0) as u8;
+            let q = img.get_pixel_mut(x as u32, y as u32);
+            if a > q.0[3] { q.0 = [255, 244, 220, a]; }
+        }
+        let img = if mirror { image::imageops::flip_horizontal(&img) } else { img };
+        Arc::new(img)
+    }).clone()
 }
 
 /// A rune's circle on the ground: violet, drawn in as its wind-up runs out, washed when it goes
@@ -368,7 +603,8 @@ pub fn setup(canvas: &mut Canvas) {
     let mut world = World::new(0.0);
     for i in 0..world::MOST_FOES { canvas.add_game_object(enemy_id(i), sprite(&enemy_id(i), 10)); }
     for i in 0..SHOTS { canvas.add_game_object(shot_id(i), sprite(&shot_id(i), 45)); }
-    for id in [SHRINE, SIGNPOST, STAIN, KEEPER, SMITH, CHEST] { canvas.add_game_object(id.to_owned(), sprite(id, 5)); }
+    for i in 0..WAVES { canvas.add_game_object(wave_id(i), sprite(&wave_id(i), 44)); }
+    for id in [SHRINE, SIGNPOST, STAIN, KEEPER, SMITH, CHEST, VEIL] { canvas.add_game_object(id.to_owned(), sprite(id, 5)); }
     // The slash in front of the hero, so behind them (60) and over every enemy (50 and under);
     // the hit bursts over everything on the road. A burst's object is a clear picture that only
     // carries its effect.
@@ -547,6 +783,8 @@ pub(crate) enum Mode {
     Side(Box<Arena>),
     /// Turning to look down a side path (-1 left, 1 right), `t` ticks in, before walking down it.
     Peek(u32, i8),
+    /// Stepping through the veil before a standing boss, `t` ticks in (`CROSS_T`), then its fight.
+    Cross(u32),
     /// The world map open, the road standing still.
     Map,
     /// A cutscene on its own over the road (`Pilgrimage::scene`), and what follows it.
@@ -644,7 +882,7 @@ pub struct Pilgrimage {
     /// Each kind's sheet; a kind without one yet borrows the husk's.
     enemy_sheets: Vec<(Archetype, Sheet)>,
     font: Option<Arc<Font>>,
-    ticks: u64,
+    pub(crate) ticks: u64,
     /// Road frames shown in the last second, and the frame last seen (to count new ones).
     frames: (u32, u32),
     last_frame: Option<Arc<RgbaImage>>,
@@ -662,9 +900,10 @@ pub struct Pilgrimage {
     /// Sprite frames lit by the road's light, and the shadows last painted with the frame they
     /// were painted for (`place` works from `&self`).
     relit: RefCell<Relighter>,
-    /// Foes' frames frosted over while a frost bolt's chill holds them, by the frame (kept beside
-    /// it, so its address is not reused while it is a key).
-    frosted: RefCell<std::collections::HashMap<usize, (Arc<RgbaImage>, Arc<RgbaImage>)>>,
+    /// Frames frosted over while a frost bolt's chill holds a foe, or turned to stone while Stone
+    /// Skin holds the hero, by the frame and which (kept beside it, so its address is not reused
+    /// while it is a key).
+    frosted: RefCell<std::collections::HashMap<(usize, bool), (Arc<RgbaImage>, Arc<RgbaImage>)>>,
     last_shadows: RefCell<(Vec<Shadow>, Vec<Cast>, Option<Arc<RgbaImage>>)>,
     /// Traces each sprite frame's outline from its pixels once, for the shadow it casts.
     tracer: RefCell<TerrainCollisionPlugin>,
@@ -846,6 +1085,10 @@ pub fn armed_sheet(name: &str) -> Option<Sheet> {
             s.arm(a.art, a.class.family(), &w);
         }
     }
+    // The hand the Hatchet has left (`in_hand`): the axe's clips with nothing in them.
+    let empty = crate::anim::Weapon { image: image::RgbaImage::new(1, 1), grip: (0.0, 0.0), tip: (1.0, 0.0) };
+    s.arm(EMPTY_HAND, crate::gear::Class::Axe.slug(), &empty);
+    s.arm(EMPTY_HAND, crate::gear::Class::Axe.family(), &empty);
     // The offhands, drawn on when worn (`Sheet::dress`).
     let dir = crate::assets::path("pixellab/offhand");
     for o in crate::gear::ITEMS.iter().filter_map(|i| i.off) {
@@ -857,6 +1100,14 @@ pub fn armed_sheet(name: &str) -> Option<Sheet> {
         if let Some(g) = crate::anim::Held::load(&dir, art) { s.helds.insert(art.to_owned(), std::sync::Arc::new(g)); }
     }
     Some(s)
+}
+
+/// The art name of an empty weapon hand (`armed_sheet`).
+const EMPTY_HAND: &str = "empty_hand";
+
+/// `kit` as drawn: with the weapon hand empty while its Hatchet is thrown.
+fn in_hand(kit: &crate::gear::Kit, thrown: bool) -> crate::gear::Kit {
+    if thrown { crate::gear::Kit { arms: crate::gear::Arms { art: EMPTY_HAND, ..kit.arms }, ..*kit } } else { *kit }
 }
 
 /// What `kit` has in the other hand to be drawn: the shield, else the bow or focus.
@@ -1015,10 +1266,16 @@ impl Pilgrimage {
     }
 
     /// A chilled foe's frame: paled toward ice, its shading kept, its edge rimed. Made once a frame.
-    fn frosted(&self, img: Arc<RgbaImage>) -> Arc<RgbaImage> {
+    fn frosted(&self, img: Arc<RgbaImage>) -> Arc<RgbaImage> { self.tinted(img, false) }
+
+    /// The hero's frame under Stone Skin: granite grey, its shading kept, flecked, its edge a dark
+    /// seam. Made once a frame.
+    fn stoned(&self, img: Arc<RgbaImage>) -> Arc<RgbaImage> { self.tinted(img, true) }
+
+    fn tinted(&self, img: Arc<RgbaImage>, stone: bool) -> Arc<RgbaImage> {
         let mut made = self.frosted.borrow_mut();
         if made.len() > 256 { made.clear(); }
-        made.entry(Arc::as_ptr(&img) as usize).or_insert_with(|| {
+        made.entry((Arc::as_ptr(&img) as usize, stone)).or_insert_with(|| {
             let mut out = (*img).clone();
             let (w, h) = out.dimensions();
             let solid = |x: i64, y: i64| x >= 0 && y >= 0 && x < w as i64 && y < h as i64 && img.get_pixel(x as u32, y as u32).0[3] > 40;
@@ -1029,8 +1286,14 @@ impl Pilgrimage {
                 let (x, y) = (x as i64, y as i64);
                 // Rime where the figure meets the air.
                 let edge = !(solid(x - 1, y) && solid(x + 1, y) && solid(x, y - 1) && solid(x, y + 1));
-                let ice = if edge { [225.0, 245.0, 255.0] } else { [0.55 * l + 60.0, 0.75 * l + 70.0, 0.85 * l + 110.0] };
-                let k = if edge { 0.8 } else { 0.55 };
+                // Granite: a fleck from the pixel's place, so it stays put on the figure.
+                let fleck = (((x * 73_856_093) ^ (y * 19_349_663)) & 15) as f32 - 7.5;
+                let (ice, k) = match (stone, edge) {
+                    (false, true) => ([225.0, 245.0, 255.0], 0.8),
+                    (false, false) => ([0.55 * l + 60.0, 0.75 * l + 70.0, 0.85 * l + 110.0], 0.55),
+                    (true, true) => ([58.0, 55.0, 52.0], 0.75),
+                    (true, false) => ([0.8 * l + 34.0 + fleck * 2.0, 0.78 * l + 32.0 + fleck * 2.0, 0.74 * l + 30.0 + fleck * 2.0], 0.72),
+                };
                 let mix = |c: u8, i: f32| (c as f32 * (1.0 - k) + i.min(255.0) * k) as u8;
                 p.0 = [mix(r, ice[0]), mix(g, ice[1]), mix(b, ice[2]), a];
             }
@@ -1061,6 +1324,7 @@ impl Pilgrimage {
                     if is(k, &["r"], None) { p.flask = true; }
                     if is(k, &["f"], None) { p.loose = true; }
                     if is(k, &["c"], None) { p.cast = true; }
+                    if is(k, &["q"], None) { p.art = true; }
                 }
                 Press::Mouse(MouseButton::Left, false) => p.light = true,
                 Press::Mouse(MouseButton::Left, true) => p.heavy = true,
@@ -1071,7 +1335,7 @@ impl Pilgrimage {
                     use crate::touch::Tap;
                     match t {
                         Tap::Light => p.light = true, Tap::Heavy => p.heavy = true, Tap::Parry => p.parry = true,
-                        Tap::Flask => p.flask = true, Tap::Loose => p.loose = true, Tap::Cast => p.cast = true,
+                        Tap::Flask => p.flask = true, Tap::Loose => p.loose = true, Tap::Cast => p.cast = true, Tap::Art => p.art = true,
                         Tap::Roll if th.left => p.step = -1,
                         Tap::Roll if th.right => p.step = 1,
                         Tap::Roll if th.up => p.tumble = true,
@@ -1115,6 +1379,31 @@ impl Pilgrimage {
                 }
                 // A last-moment block on a bulwark: a beat held, and if the ward goes, a white-gold
                 // flash and a heavy shake as it bursts into the attacker.
+                Event::Art { art } => {
+                    use crate::arts::WeaponArt;
+                    let big = matches!(art, WeaponArt::Toll | WeaponArt::StoneSkin | WeaponArt::Reap | WeaponArt::Wingbeat);
+                    c.hitstop(if big { 8 } else { 4 });
+                    c.run(Action::CameraShake { intensity: if big { 40.0 } else { 18.0 }, duration: 0.25 });
+                    c.run(Action::CameraZoomPunch { amount: if big { 0.05 } else { 0.025 }, duration: 0.3 });
+                    let (r, g, b) = art_rgb(art);
+                    c.run(Action::CameraFlash { color: Color(r, g, b, 24), duration: 0.12 });
+                    self.call(&art.name().to_uppercase(), [r, g, b]);
+                }
+                // The bell rung on the stones: the yard jolts, a faint bronze flash.
+                Event::Rung { .. } => {
+                    c.run(Action::CameraShake { intensity: 42.0, duration: 0.4 });
+                    c.run(Action::CameraZoomPunch { amount: 0.025, duration: 0.3 });
+                    c.run(Action::CameraFlash { color: Color(255, 214, 160, 22), duration: 0.15 });
+                }
+                Event::Slam { heavy, .. } => c.run(Action::CameraShake { intensity: if heavy { 30.0 } else { 16.0 }, duration: 0.2 }),
+                Event::Sentenced { .. } => {
+                    c.hitstop(14);
+                    self.slow = (24, 0.5);
+                    c.run(Action::CameraShake { intensity: 54.0, duration: 0.35 });
+                    c.run(Action::CameraZoomPunch { amount: 0.06, duration: 0.35 });
+                    self.call("SENTENCED", [255, 214, 110]);
+                }
+                Event::Hit { mv: Move::Art, .. } => { c.hitstop(6); c.run(Action::CameraShake { intensity: 28.0, duration: 0.18 }); }
                 Event::PerfectBlock => {
                     c.hitstop(6);
                     self.slow = (18, 0.5);
@@ -1340,7 +1629,7 @@ impl Pilgrimage {
     /// as the camera sees them); standing still where a clip is missing.
     fn hero_frame(&self, s: &Sheet, walked: f64) -> Option<Arc<RgbaImage>> {
         // Standing is the first frame of the walk, with what is worn in hand.
-        let kit = &self.fight.hero.stats.kit;
+        let kit = &in_hand(&self.fight.hero.stats.kit, !self.fight.hatchets.is_empty());
         let stand = || ["walk", "light", "guard"].iter().find_map(|n| worn(s, kit, n)).map(|c| c.frames[0].clone());
         self.hero_clip_frame(s, walked).or_else(stand)
     }
@@ -1350,13 +1639,17 @@ impl Pilgrimage {
     fn dress_hero(&mut self) {
         let Some(s) = self.hero_sheet.as_mut() else { return };
         for kit in [self.world.gear.kit(), self.fight.hero.stats.kit] {
-            if let Some(o) = off_art(&kit) { s.dress(kit.arms.art, o); }
+            if let Some(o) = off_art(&kit) {
+                s.dress(kit.arms.art, o);
+                if kit.art == Some(crate::arts::WeaponArt::Hatchet) { s.dress(EMPTY_HAND, o); }
+            }
         }
     }
 
     fn hero_clip_frame(&self, s: &Sheet, walked: f64) -> Option<Arc<RgbaImage>> {
         let h = &self.fight.hero;
-        let clip = |n: &str| worn(s, &h.stats.kit, n);
+        let kit = in_hand(&h.stats.kit, !self.fight.hatchets.is_empty());
+        let clip = |n: &str| worn(s, &kit, n);
         let k = |t: u32, total: u32| t as f32 / total.max(1) as f32;
         let kneel = |k: f32| clip("rest").map(|c| c.at(k, false).clone());
         let fall = |k: f32| clip("death").map(|c| c.at(k, false).clone());
@@ -1390,8 +1683,8 @@ impl Pilgrimage {
             return match a.mv {
                 // The blow's frames, read off the contact sheet (tools/moveset PHASES): the light's blade is out
                 // on 5 and 6, the heavy comes down on 7 and 8, the buckler flashes on 3 to 5.
-                Move::Light => held(s, &h.stats.kit, "", "light").map(|c| phased(c, spec.frames, a.t, (5, 7), false)),
-                Move::Heavy | Move::Riposte => held(s, &h.stats.kit, "", "heavy").map(|c| phased(c, spec.frames, a.t, (7, 9), false)),
+                Move::Light => held(s, &kit, "", "light").map(|c| phased(c, spec.frames, a.t, (5, 7), false)),
+                Move::Heavy | Move::Riposte => held(s, &kit, "", "heavy").map(|c| phased(c, spec.frames, a.t, (7, 9), false)),
                 Move::Parry => clip("parry").map(|c| phased(c, spec.frames, a.t, (3, 6), false)),
                 // A roll backwards toward the camera: tucked from the wind-up, over through the
                 // live ticks, up in a crouch for the recovery. (Else the hop back.)
@@ -1410,8 +1703,12 @@ impl Pilgrimage {
                 Move::Flask => clip("drink").map(|c| c.at(k(a.t, w + b + r), false).clone()),
                 // The draw and the release, or the cast: its own clip, held at full draw until it
                 // looses; without one, the other hand raised as for a parry.
-                Move::Loose | Move::Cast => loosing(s, &h.stats.kit, "", a.mv == Move::Cast).map(|(c, keys)| phased(c, spec.frames, a.t, keys, false))
+                Move::Loose | Move::Cast => loosing(s, &kit, "", a.mv == Move::Cast).map(|(c, keys)| phased(c, spec.frames, a.t, keys, false))
                     .or_else(|| clip("parry").map(|c| phased(c, spec.frames, a.t, (3, 6), false))),
+                // A weapon art: the weapon's own swing (its light for a throw or a scream, else its
+                // heavy), stretched over the art's timing so the blow lands as it goes off.
+                Move::Art if kit.art.is_some_and(|a| a.light()) => held(s, &kit, "", "light").map(|c| phased(c, spec.frames, a.t, (5, 7), false)),
+                Move::Art => held(s, &kit, "", "heavy").map(|c| phased(c, spec.frames, a.t, (7, 9), false)),
             };
         }
         if h.reeling > 0 {
@@ -1458,7 +1755,7 @@ impl Pilgrimage {
                 // The flick goes out into nothing, then the half-caught blow tells.
                 Reel::Fumble => if k < 0.35 { clip("parry").map(|c| at(c, 0.62)) } else { hurt(0.25, 1.0, (k - 0.35) / 0.65) },
                 // The blade comes back off the shield: the light's swing, run backwards.
-                Reel::Bounce => held(s, &h.stats.kit, "", "light").map(|c| at(c, 0.62 * (1.0 - k))),
+                Reel::Bounce => held(s, &kit, "", "light").map(|c| at(c, 0.62 * (1.0 - k))),
             };
         }
         if self.flourish > 0 {
@@ -1591,7 +1888,10 @@ impl Pilgrimage {
         let shown = !matches!(self.mode, Mode::Scene(_)) || self.scene.as_ref().is_some_and(Cutscene::hero);
         let hero = match self.hero_sheet.as_ref().and_then(|s| Some((s, self.hero_frame(s, walked)?))) {
             _ if !shown => None,
-            Some((s, img)) => (!h.dead || s.clip("death").is_some()).then(|| sheet_at(s, hx, hd, art::HERO_METRES)).flatten().map(|r| (r, lit(r, img, hx, hd), 60)),
+            Some((s, img)) => {
+                let img = if h.stone > 0 && !h.dead { self.stoned(img) } else { img };
+                (!h.dead || s.clip("death").is_some()).then(|| sheet_at(s, hx, hd, art::HERO_METRES)).flatten().map(|r| (r, lit(r, img, hx, hd), 60))
+            }
             None => {
                 let img = &self.art.hero[pose];
                 (!h.dead).then(|| at(hx, HERO_D, art::HERO_METRES, img)).flatten().map(|r| (r, lit(r, img.clone(), hx, HERO_D), 60))
@@ -1682,6 +1982,15 @@ impl Pilgrimage {
                     }
                 }
             });
+            // The thrown Hatchet, spinning out and back.
+            let drawn = drawn.or_else(|| {
+                let t = self.fight.hatchets.get(i.checked_sub(self.fight.missiles.len() + self.fight.bolts.len())?).filter(|_| !hidden)?;
+                let d = (t.s - walked) as f32;
+                let layer = (50.0 - d * 2.0).round().clamp(1.0, 59.0) as i32;
+                let (px, py) = pf.project_on(c, t.x + SHOULDER, 1.2, d)?;
+                let size = 0.8 * pf.scale_on(c, d)?;
+                Some((((px - 0.5 * size, py - 0.5 * size), (size, size)), hatchet_picture(self.hero_sheet.as_ref()?, t.age)?, layer))
+            });
             placed.push((shot_id(i), drawn));
         }
         // The shrine on the right verge, the fork's signpost on the left, the souls on the road.
@@ -1740,6 +2049,19 @@ impl Pilgrimage {
             prop(img, Some(at), 1.1 * side, 0.95, &mut stands)
         });
         placed.push((CHEST.to_owned(), chest));
+        // The veil across the road before a standing boss, the walls' width (or the road's
+        // and its verges'); in front of the hero once they are stepping through it.
+        let veil = self.world.veil().filter(|_| !resting && !tutoring).and_then(|s| {
+            let d = (s - walked) as f32;
+            if !(0.3..=45.0).contains(&d) { return None; }
+            let half = pf.wall_x(d).map_or(4.6, |w| w.min(6.0));
+            let ((l, b), (r, _), (_, t)) = (pf.project_on(c, -half, 0.0, d)?, pf.project_on(c, half, 0.0, d)?, pf.project_on(c, 0.0, VEIL_H, d)?);
+            let part = if let Mode::Cross(t) = self.mode { t as f32 / CROSS_T as f32 } else { 0.0 };
+            let layer = if d > HERO_D - 0.1 { (50.0 - d * 2.0).round().clamp(1.0, 50.0) as i32 } else { 62 };
+            Some((((l.min(r), t), ((r - l).abs(), b - t)), veil_picture(self.ticks as u32, part), layer))
+        });
+        placed.push((VEIL.to_owned(), veil));
+        placed.extend((0..WAVES).map(|i| (wave_id(i), None)));
         self.relit.borrow_mut().trim();
         let shadow_img = self.shadows(c, pf, &stands, &seen.into_inner());
         Self::show_shadows(c, shadow_img);
@@ -1835,6 +2157,7 @@ impl Pilgrimage {
         let hd = ARENA_D + if a.t < ARENA_IN { (HERO_D - ARENA_D) + (h.s - (HERO_D - ARENA_D)) * k } else { h.s };
         let hero = self.hero_sheet.as_ref().and_then(|s| {
             let img = if a.t < ARENA_IN && k < 0.95 { worn(s, &h.stats.kit, "e_walk").map(|c| c.at((hd / 1.6).rem_euclid(1.0), dir < 0.0).clone())? } else { self.side_hero_frame(s, h, dir)? };
+            let img = if h.stone > 0 && !h.dead { self.stoned(img) } else { img };
             let r = sheet_at(s, hd, h.y, art::HERO_METRES)?;
             Some((r, lit(r, img, 0.0, hd), 60))
         });
@@ -1874,7 +2197,23 @@ impl Pilgrimage {
             };
             placed.push((enemy_id(i), drawn));
         }
-        for id in [SHRINE, SIGNPOST, STAIN, KEEPER, SMITH, CHEST] { placed.push((id.to_owned(), None)); }
+        for id in [SHRINE, SIGNPOST, STAIN, KEEPER, SMITH, CHEST, VEIL] { placed.push((id.to_owned(), None)); }
+        // Each ring blow's two fronts, rolling out along the ground, the crest's leading face on
+        // the front.
+        let fronts: Vec<(f32, f32, [u8; 3], f32)> = a.side.foes.iter().filter(|f| f.alive()).filter_map(|f| Some((f.ring()?, f.blow()?.0)))
+            .flat_map(|((at, r), b)| [-1.0f32, 1.0].map(|way| (at + way * r, way, warning_rgb(b.kind, b.parry), b.height.1))).collect();
+        for i in 0..WAVES {
+            let drawn = fronts.get(i).filter(|f| f.0.abs() < side::HALF + 0.3).and_then(|&(s, way, rgb, high)| {
+                let d = ARENA_D + s;
+                let (px, py) = pf.project_on(c, 0.0, 0.0, d)?;
+                let m = pf.scale_on(c, d)?;
+                let (w, ht) = (2.6 * m, (high + 0.75) * m);
+                let mirror = way * dir < 0.0;
+                let left = if mirror { px - 0.21 * w } else { px - 0.79 * w };
+                Some((((left, py - ht), (w, ht)), crest_picture(self.ticks as u32, rgb, mirror), 44))
+            });
+            placed.push((wave_id(i), drawn));
+        }
         // Shots in flight, at the middle of the height they fly at, pointing the way they go: an
         // archer's arrow, a hexer's hex, anyone else's streak.
         for i in 0..SHOTS {
@@ -1907,6 +2246,13 @@ impl Pilgrimage {
                 if b.dir * dir < 0.0 { img = Arc::new(image::imageops::flip_horizontal(&*img)); }
                 Some((((px - 0.5 * size.0, py - 0.5 * size.1), size), img, 46))
             });
+            let drawn = drawn.or_else(|| {
+                let t = a.side.hatchets.get(i.checked_sub(world::MOST_FOES + a.side.bolts.len())?)?;
+                let d = ARENA_D + t.s;
+                let (px, py) = pf.project_on(c, 0.0, 1.2, d)?;
+                let size = 0.8 * pf.scale_on(c, d)?;
+                Some((((px - 0.5 * size, py - 0.5 * size), (size, size)), hatchet_picture(self.hero_sheet.as_ref()?, t.age)?, 46))
+            });
             placed.push((shot_id(i), drawn));
         }
         self.relit.borrow_mut().trim();
@@ -1919,10 +2265,11 @@ impl Pilgrimage {
     /// The hero's side-on frame (the clips face right; mirrored when they face left on screen).
     fn side_hero_frame(&self, s: &Sheet, h: &side::SideHero, dir: f32) -> Option<Arc<RgbaImage>> {
         let mirror = h.facing * dir < 0.0;
-        let at = |n: &str, k: f32| worn(s, &h.stats.kit, n).map(|c| c.at(k.clamp(0.0, 0.999), mirror).clone());
+        let kit = in_hand(&h.stats.kit, matches!(&self.mode, Mode::Side(a) if !a.side.hatchets.is_empty()));
+        let at = |n: &str, k: f32| worn(s, &kit, n).map(|c| c.at(k.clamp(0.0, 0.999), mirror).clone());
         let total = |f: (u32, u32, u32)| (f.0 + f.1 + f.2).max(1) as f32;
         use side::Act;
-        let class = h.stats.kit.arms.class;
+        let class = kit.arms.class;
         if h.dead { return at("e_death", 1.0); }
         if h.reel == Reel::Down {
             // Down over the death's first frames, lying on its last, up again the same way back.
@@ -1933,13 +2280,15 @@ impl Pilgrimage {
         if h.reel != Reel::None { return at("e_hurt", 1.0 - h.reeling as f32 / h.reel.ticks().max(1) as f32); }
         match h.act {
             Some((Act::Roll(_), t)) => at("e_roll", t as f32 / side::ROLL_T as f32),
-            Some((Act::Light, t)) => held(s, &h.stats.kit, "e_", "light").map(|c| phased(c, Act::Light.frames(&h.stats.kit), t, (3, 5), mirror)),
-            Some((Act::Heavy, t)) => held(s, &h.stats.kit, "e_", "heavy").map(|c| phased(c, Act::Heavy.frames(&h.stats.kit), t, (5, 7), mirror)),
-            Some((Act::Parry, t)) => at("e_parry", t as f32 / total(Act::Parry.frames(&h.stats.kit))),
+            Some((Act::Light, t)) => held(s, &kit, "e_", "light").map(|c| phased(c, Act::Light.frames(&kit), t, (3, 5), mirror)),
+            Some((Act::Heavy, t)) => held(s, &kit, "e_", "heavy").map(|c| phased(c, Act::Heavy.frames(&kit), t, (5, 7), mirror)),
+            Some((Act::Parry, t)) => at("e_parry", t as f32 / total(Act::Parry.frames(&kit))),
             Some((Act::Flask, _)) => at("e_guard", 0.4),
             // Its own draw or cast where there is one; else the other hand raised as for a parry.
-            Some((a @ (Act::Loose | Act::Cast), t)) => loosing(s, &h.stats.kit, "e_", a == Act::Cast).map(|(c, keys)| phased(c, a.frames(&h.stats.kit), t, keys, mirror))
-                .or_else(|| at("e_parry", (t as f32 / total(a.frames(&h.stats.kit))).min(0.45))),
+            Some((a @ (Act::Loose | Act::Cast), t)) => loosing(s, &kit, "e_", a == Act::Cast).map(|(c, keys)| phased(c, a.frames(&kit), t, keys, mirror))
+                .or_else(|| at("e_parry", (t as f32 / total(a.frames(&kit))).min(0.45))),
+            Some((Act::Art, t)) if kit.art.is_some_and(|a| a.light()) => held(s, &kit, "e_", "light").map(|c| phased(c, Act::Art.frames(&kit), t, (3, 5), mirror)),
+            Some((Act::Art, t)) => held(s, &kit, "e_", "heavy").map(|c| phased(c, Act::Art.frames(&kit), t, (5, 7), mirror)),
             // Rising (sprung, knees coming up), tucked at the top, legs down for the landing.
             None if h.airborne() => at("e_jump", if h.y > 0.5 { 0.6 } else if h.rising() { 0.45 } else { 0.75 }),
             None if h.guarding => at("e_guard", 1.0),
@@ -1993,6 +2342,7 @@ impl Pilgrimage {
                     if is(k, &["r"], None) { p.flask = true; }
                     if is(k, &["f"], None) { p.loose = true; }
                     if is(k, &["c"], None) { p.cast = true; }
+                    if is(k, &["q"], None) { p.art = true; }
                 }
                 Press::Mouse(MouseButton::Left, false) => p.light = true,
                 Press::Mouse(MouseButton::Left, true) => p.heavy = true,
@@ -2002,7 +2352,7 @@ impl Pilgrimage {
                     use crate::touch::Tap;
                     match t {
                         Tap::Light => p.light = true, Tap::Heavy => p.heavy = true, Tap::Parry => p.parry = true,
-                        Tap::Flask => p.flask = true, Tap::Loose => p.loose = true, Tap::Cast => p.cast = true,
+                        Tap::Flask => p.flask = true, Tap::Loose => p.loose = true, Tap::Cast => p.cast = true, Tap::Art => p.art = true,
                         Tap::Roll => p.roll = true, Tap::Jump => p.jump = true,
                     }
                 }
@@ -2021,6 +2371,9 @@ impl Pilgrimage {
         let foe = self.fight.enemies.iter()
             .filter(|e| e.alive() && e.gap(walked) < 6.0 && e.gap(walked) > -0.5)
             .min_by(|a, b| a.gap(walked).total_cmp(&b.gap(walked)));
+        // The art meter sits under the ward when there is one, in its place when not.
+        let y = if h.stats.kit.ward > 0.0 { 242.0 } else { 218.0 };
+        for id in ["bar_art_back", "bar_art", "bar_art_ready"] { if let Some(o) = c.get_game_object_mut(id) { o.position.1 = y; } }
         let full = |id: &str| BARS.iter().find(|b| b.0 == id).map(|b| (b.3, b.4)).unwrap();
         let mut set = |id: &str, k: Option<f32>| {
             let (w, ht) = full(id);
@@ -2044,6 +2397,13 @@ impl Pilgrimage {
         set("bar_ward_back", bulwark.then_some(1.0));
         set("bar_ward", (bulwark && !ready).then_some(ward / crate::fight::WARD_MAX));
         set("bar_ward_ready", (bulwark && ready).then_some(ward / crate::fight::WARD_MAX));
+        // The art meter, only with a forged weapon in hand; under the ward when there is one.
+        let meter = match &self.mode { Mode::Side(a) => a.side.hero.art, _ => h.art };
+        let art = h.stats.kit.art;
+        let paid = art.is_some_and(|a| meter >= a.cost());
+        set("bar_art_back", art.map(|_| 1.0));
+        set("bar_art", art.filter(|_| !paid).map(|_| meter / crate::arts::ART_MAX));
+        set("bar_art_ready", art.filter(|_| paid).map(|_| meter / crate::arts::ART_MAX));
         let name = if let Mode::Side(a) = &self.mode {
             // The boss; in an ambush, the nearest still standing.
             let b = a.side.nearest().map(|i| &a.side.foes[i]);
@@ -2104,7 +2464,7 @@ impl Pilgrimage {
         let text = Text::new(vec![Span::new(line, 52.0 * s, Some(64.0 * s), font.clone(), Color(236, 228, 210, 255), 0.0)], Some(3600.0 * s), Align::Left, None);
         if let Some(o) = c.get_game_object_mut(HUD) { o.set_drawable(Box::new(text)); }
         let boss = matches!(self.mode, Mode::Side(_));
-        let help = if let Mode::Side(a) = &self.mode { if a.why == Why::Boss { BOSS_HELP } else { AMBUSH_HELP } } else { "W/S walk   W W (held) run   A/D change lane   Shift+W/A/S/D roll   LMB strike   Shift+LMB heavy   RMB guard   Shift+RMB parry   R drink   F ranged attack   C cast   E rest   T turn back   M map      warnings: gold parry  ·  orange roll or block  ·  purple roll" };
+        let help = if let Mode::Side(a) = &self.mode { if a.why == Why::Boss { BOSS_HELP } else { AMBUSH_HELP } } else { "W/S walk   W W (held) run   A/D change lane   Shift+W/A/S/D roll   LMB strike   Shift+LMB heavy   RMB guard   Shift+RMB parry   R drink   F ranged attack   C cast   Q weapon art   E rest   T turn back   M map      warnings: gold parry  ·  orange roll or block  ·  purple roll" };
         // The controls stay out of the way until asked for.
         let (help, size, a) = if self.show_help { (help, 40.0, 190) } else { ("H  show controls", 36.0, 120) };
         let help = Text::new(vec![Span::new(help.into(), size * s, Some(size * 1.25 * s), font.clone(), Color(236, 228, 210, a), 0.0)], Some(3720.0 * s), Align::Left, None);
@@ -2145,6 +2505,17 @@ impl Pilgrimage {
         if let Some(o) = c.get_game_object_mut(CALLOUT) { o.visible = true; o.set_drawable(Box::new(text)); }
     }
 
+    /// The boss at the gate begun: the camera swings round to the path's side, and the fight goes
+    /// on along it. The first time, its entrance names it; after, it is waiting.
+    fn begin_boss(&mut self, c: &mut Canvas, boss: &'static atlas::Boss) -> Mode {
+        Self::swing(c, SIDE_VIEW);
+        let h = &self.fight.hero;
+        let mut side = SideFight::boss(h.stats, h.hp, h.stamina, h.flasks, boss.breed, self.world.scale());
+        (side.hero.arrows, side.hero.charges, side.hero.bulwark, side.hero.art) = (h.arrows, h.charges, h.bulwark, h.art);
+        if !self.world.face_boss() { self.scene = Some(Cutscene::entrance(boss.name(), boss.mini)); }
+        Mode::Side(Box::new(Arena { side, t: 0, done: 0, why: Why::Boss }))
+    }
+
     /// What E would do where the hero stands now, on the road.
     fn prompt_line(&self, c: &Canvas, walked: f64) -> Option<&'static str> {
         if self.mode != Mode::Play || self.prologue.is_some() { return None; }
@@ -2154,6 +2525,7 @@ impl Pilgrimage {
         else if w.can_meet_smith(f, walked) { Some("Speak with the smith") }
         else if w.side_path_at(f, walked, &pf.state().side_paths).is_some() { Some("Turn down the side path") }
         else if w.can_come_back(f, walked) { Some("Go back to the road") }
+        else if w.at_veil(f, walked) { Some("Step through the veil") }
         else { None }
     }
 
@@ -2385,13 +2757,13 @@ impl Pilgrimage {
     fn touch_mode(&self) -> crate::touch::Ui {
         use crate::touch::Ui;
         if self.in_scene() { return Ui::Tap; }
-        let shots = |k: &crate::gear::Kit| (k.ranged.is_some(), k.spell_cast().is_some());
+        let shots = |k: &crate::gear::Kit| (k.ranged.is_some(), k.spell_cast().is_some(), k.art.is_some());
         match &self.mode {
             // The prologue's question of leaving is answered with a tap or BACK; its cards with a tap.
             Mode::Play | Mode::Side(_) if self.prologue.as_ref().is_some_and(|p| p.leaving) => Ui::Menu,
             Mode::Play if self.prologue.as_ref().is_some_and(|p| p.still()) => Ui::Tap,
-            Mode::Play => { let (ranged, cast) = shots(&self.fight.hero.stats.kit); Ui::Road { prompt: self.prompt.1 > 0.5, ranged, cast } }
-            Mode::Side(a) => { let (ranged, cast) = shots(&a.side.hero.stats.kit); Ui::Side { ranged, cast } }
+            Mode::Play => { let (ranged, cast, art) = shots(&self.fight.hero.stats.kit); Ui::Road { prompt: self.prompt.1 > 0.5, ranged, cast, art } }
+            Mode::Side(a) => { let (ranged, cast, art) = shots(&a.side.hero.stats.kit); Ui::Side { ranged, cast, art } }
             // The map has nothing to choose but closes with BACK.
             Mode::Map => Ui::Menu,
             // Words with no choices (the title) go on with a tap.
@@ -2420,6 +2792,8 @@ impl Pilgrimage {
         for o in out {
             match o {
                 Out::Tap(t) => presses.push(Press::Touch(t)),
+                // Pause and BACK are Esc: Q is the weapon art in a fight.
+                Out::Key('q') => presses.push(Press::Key(Key::Named(NamedKey::Escape), false)),
                 Out::Key(ch) => presses.push(key(ch)),
                 // A tap on a choice: up or down to it, then take it.
                 Out::Pick((_, y)) => {
@@ -2677,7 +3051,9 @@ impl QuartzPlugin for Pilgrimage {
         #[cfg(target_os = "android")]
         Self::pace_report(self.ticks, self.frames.1, pf.engine(), pf.render_ms());
         self.fade_step(c);
-        let mut keys: Vec<shrine::Key> = presses.iter().filter_map(menu_key).collect();
+        // In a fight Q is the weapon art: only Esc (and Backspace) pause.
+        let fighting = matches!(self.mode, Mode::Play | Mode::Side(_)) && !self.prologue.as_ref().is_some_and(|p| p.still() || p.leaving);
+        let mut keys: Vec<shrine::Key> = presses.iter().filter(|p| !(fighting && matches!(p, Press::Key(k, _) if is(k, &["q"], None)))).filter_map(menu_key).collect();
         // A cutscene takes the keys while it plays (they skip it).
         if self.run_scene(c, &keys) { (keys, presses) = (Vec::new(), Vec::new()); }
         // Menus click as they are moved through, taken and backed out of.
@@ -2762,6 +3138,18 @@ impl QuartzPlugin for Pilgrimage {
             Mode::Play if pressed_e && self.world.can_rest(&self.fight, ahead) => Mode::Kneel(0),
             Mode::Play if pressed_e && self.world.can_meet_smith(&self.fight, ahead) => Mode::Meet(Meeting::smith()),
             Mode::Play if pressed_e && self.world.can_come_back(&self.fight, ahead) => { self.fade.1 = 1.0; Mode::Out(Next::Back) }
+            Mode::Play if pressed_e && self.world.at_veil(&self.fight, ahead) => {
+                // A knell, the veil burns open, the world darkens; the hero walks on through it.
+                self.audio.play_at(c, Sfx::Knell, 1.0, 0.55);
+                self.audio.play_at(c, Sfx::Roll, 0.8, 0.6);
+                c.run(Action::CameraFlash { color: Color(18, 6, 22, 160), duration: 1.4 });
+                Mode::Cross(0)
+            }
+            Mode::Cross(t) if t >= CROSS_T => match self.world.boss_due(&self.fight, ahead) {
+                Some(boss) => self.begin_boss(c, boss),
+                None => Mode::Play,
+            },
+            Mode::Cross(t) => Mode::Cross(t + 1),
             Mode::Play if pressed_e && side_path.is_some() => {
                 // The camera turns to look down it, then the walk goes that way.
                 let side = side_path.unwrap_or(1.0);
@@ -2775,17 +3163,6 @@ impl QuartzPlugin for Pilgrimage {
             Mode::Map if pressed_m || keys.contains(&shrine::Key::Back) => Mode::Play,
             Mode::Map => Mode::Map,
             Mode::Play if pressed_t && self.world.can_turn(&self.fight, ahead) => { self.fade.1 = 1.0; Mode::Out(Next::Turn) }
-            Mode::Play if self.world.boss_due(&self.fight, ahead).is_some() => {
-                // The camera swings round to the path's side, and the fight goes on along it.
-                Self::swing(c, SIDE_VIEW);
-                let h = &self.fight.hero;
-                let boss = self.world.boss_due(&self.fight, ahead).unwrap_or(&atlas::BELL_WARDEN);
-                let mut side = SideFight::boss(h.stats, h.hp, h.stamina, h.flasks, boss.breed, self.world.scale());
-                (side.hero.arrows, side.hero.charges, side.hero.bulwark) = (h.arrows, h.charges, h.bulwark);
-                // Its entrance names it.
-                self.scene = Some(Cutscene::entrance(boss.name(), boss.mini));
-                Mode::Side(Box::new(Arena { side, t: 0, done: 0, why: Why::Boss }))
-            }
             Mode::Play if ambush.is_some() => {
                 // Foes spring out: the camera swings round, and they are fought along the road.
                 let k = ambush.unwrap_or(0);
@@ -2795,7 +3172,7 @@ impl QuartzPlugin for Pilgrimage {
                 let h = &self.fight.hero;
                 notes.push(Note::Ambushed(chest));
                 let mut side = SideFight::ambush(h.stats, h.hp, h.stamina, h.flasks, &at);
-                (side.hero.arrows, side.hero.charges, side.hero.bulwark) = (h.arrows, h.charges, h.bulwark);
+                (side.hero.arrows, side.hero.charges, side.hero.bulwark, side.hero.art) = (h.arrows, h.charges, h.bulwark, h.art);
                 let scale = self.world.scale();
                 side.foes = side.foes.into_iter().map(|f| f.scaled(scale)).collect();
                 Mode::Side(Box::new(Arena { side, t: 0, done: 0, why: Why::Ambush(k) }))
@@ -2955,6 +3332,7 @@ impl QuartzPlugin for Pilgrimage {
                 Self::swing(c, "home");
                 let h = &mut self.fight.hero;
                 (h.hp, h.stamina, h.flasks, h.arrows, h.charges, h.bulwark) = (a.side.hero.hp, a.side.hero.stamina, a.side.hero.flasks, a.side.hero.arrows, a.side.hero.charges, a.side.hero.bulwark);
+                h.art = a.side.hero.art;
                 // The last boss down: out of the white, the pilgrimage's end.
                 if a.why == Why::Boss && self.world.here().id == atlas::FINALE { self.scene = Some(Cutscene::ending()); Mode::Scene(Then::Conclude) } else { Mode::Play }
             }
@@ -3016,7 +3394,7 @@ impl QuartzPlugin for Pilgrimage {
             // The bars and the HUD read the road fight's hero.
             if let Mode::Side(a) = &self.mode {
                 let (h, s) = (&mut self.fight.hero, &a.side.hero);
-                (h.hp, h.stamina, h.flasks, h.arrows, h.charges) = (s.hp.max(0.0), s.stamina, s.flasks, s.arrows, s.charges);
+                (h.hp, h.stamina, h.flasks, h.arrows, h.charges, h.art) = (s.hp.max(0.0), s.stamina, s.flasks, s.arrows, s.charges, s.art);
             }
         } else {
             (self.owed, self.pending) = (0.0, Input::default());
@@ -3026,8 +3404,10 @@ impl QuartzPlugin for Pilgrimage {
         // At a fork the walk waits at the signpost for a side to be picked.
         let held = self.world.holds_at_fork(c.get_plugin::<PathForgePlugin>().and_then(|p| p.state().choose_within), self.fight.hero.lane);
         let speed = if self.mode != Mode::Play || held || still { 0.0 } else { self.fight.speed(&input, ahead) };
-        // A way held: no further on at the place's end (back is still free).
-        let speed = if speed > 0.0 && self.world.held_at_end(&self.fight, ahead) { 0.0 } else { speed };
+        // A way held: no further on at the place's end, nor through the veil before a
+        // standing boss (back is still free); stepping through it, at its own pace.
+        let speed = if speed > 0.0 && (self.world.held_at_end(&self.fight, ahead) || self.world.held_at_veil(ahead)) { 0.0 } else { speed };
+        let speed = if matches!(self.mode, Mode::Cross(_)) { CROSS_SPEED } else { speed };
         // A cutscene on the road walks it at its own pace.
         let speed = self.scene.as_ref().filter(|s| s.owns_road).map_or(speed, Cutscene::walk);
         if let Some(pf) = c.get_plugin_mut::<PathForgePlugin>() { pf.set_speed(speed); }
@@ -3060,7 +3440,7 @@ impl QuartzPlugin for Pilgrimage {
         self.log.extend(events.iter().map(|e| (self.ticks, *e)));
         self.show(c, &events);
         self.audio.on_events(c, &events);
-        if self.mode == Mode::Play { self.audio.steps(c, walked, speed); }
+        if matches!(self.mode, Mode::Play | Mode::Cross(_)) { self.audio.steps(c, walked, speed); }
         self.fx.tick(ran);
         // A follow-through runs on fight ticks, and gives way to whatever the hero does next.
         self.flourish = if self.fight.hero.act.is_some() || self.fight.hero.reeling > 0 { 0 } else { self.flourish.saturating_sub(ran) };
@@ -3068,7 +3448,9 @@ impl QuartzPlugin for Pilgrimage {
             Mode::Side(a) => {
                 let (hs, fw) = (a.side.hero.s, a.side.hero.facing);
                 // A rune goes off where the yard puts it, which is road metres past the arena's.
-                let events: Vec<Event> = events.iter().map(|e| match *e { Event::Burst { enemy, at } => Event::Burst { enemy, at: walked + ARENA_D as f64 + at }, e => e }).collect();
+                let events: Vec<Event> = events.iter().map(|e| match *e { Event::Burst { enemy, at } => Event::Burst { enemy, at: walked + ARENA_D as f64 + at },
+                        Event::Rung { enemy, at } => Event::Rung { enemy, at: walked + ARENA_D as f64 + at },
+                        Event::Slam { enemy, at, heavy } => Event::Slam { enemy, at: walked + ARENA_D as f64 + at, heavy }, e => e }).collect();
                 self.fx.on_events_at(&events, (0.0, ARENA_D + hs), fw, |i| a.side.foes.get(i).map(|f| (0.0, walked + (ARENA_D + f.s) as f64)));
             }
             _ => self.fx.on_events(&events, &self.fight, ahead),
@@ -3121,7 +3503,7 @@ impl QuartzPlugin for Pilgrimage {
         self.paint_marks(c, walked);
         self.place(c, walked);
         let blade = self.hero_blade(c);
-        self.fx.place(c, walked, &self.fight, blade);
+        self.fx.place(c, walked, &self.fight, blade, matches!(self.mode, Mode::Side(_)));
         self.bars(c, walked);
         self.draw_panel(c);
         self.draw_prompt(c, ahead);

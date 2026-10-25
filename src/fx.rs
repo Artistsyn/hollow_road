@@ -182,6 +182,7 @@ impl Fx {
             let b = match *e {
                 Event::Hit { enemy, mv } => on_enemy(enemy).map(|(x, at)| match mv {
                     Move::Heavy => burst(x, at, 1.15, 1.7, [255, 196, 128], ImpactSide::Dealt, 24),
+                    Move::Art => burst(x, at, 1.15, 1.8, [210, 200, 255], ImpactSide::Dealt, 26),
                     Move::Riposte => burst(x, at, 1.15, 1.9, [255, 150, 90], ImpactSide::Dealt, 32),
                     _ => burst(x, at, 1.15, 1.2, [255, 228, 184], ImpactSide::Dealt, 20),
                 }),
@@ -198,6 +199,19 @@ impl Fx {
                 // The hero's own: a flick off the string or the hand, and a shot caught on a shield.
                 Event::Shot(r) => Some(burst(hero_x + 0.25, At::Near(hd + fw * 0.6), 1.35, 0.6, if r == crate::gear::Ranged::Frost { [150, 210, 255] } else { [240, 230, 200] }, ImpactSide::Dealt, 10)),
                 Event::Glanced { enemy } => on_enemy(enemy).map(|(x, at)| burst(x - 0.2, at, 1.1, 0.8, [200, 222, 255], ImpactSide::Dealt, 12)),
+                // A weapon art going off: a wide blast in its colour round the hero (a scream or a
+                // slam fills the road about them); Sentence's blow, a gold strike on the marked.
+                Event::Art { art } => {
+                    use crate::arts::WeaponArt;
+                    let (r, g, b) = crate::game::art_rgb(art);
+                    let (y, metres) = match art { WeaponArt::Toll | WeaponArt::StoneSkin => (0.4, 3.4), WeaponArt::Wail | WeaponArt::Reap => (1.1, 3.8), WeaponArt::Wingbeat => (1.2, 3.0), _ => (1.2, 1.6) };
+                    Some(burst(hero_x, At::Near(hd + fw * 0.7), y, metres, [r, g, b], ImpactSide::Dealt, 34))
+                }
+                // The bell rung on the stones: a wide bronze blast low where the ring sets out; a
+                // boss's blow meeting the ground: dust and grit thrown up.
+                Event::Rung { at, .. } => Some(burst(0.0, At::Road(at), 0.35, 3.4, [255, 206, 150], ImpactSide::Dealt, 42)),
+                Event::Slam { at, heavy, .. } => Some(burst(0.0, At::Road(at), 0.2, if heavy { 2.4 } else { 1.6 }, [214, 196, 168], ImpactSide::Dealt, if heavy { 30 } else { 22 })),
+                Event::Sentenced { enemy } => on_enemy(enemy).map(|(x, at)| burst(x, at, 1.6, 2.8, [255, 214, 110], ImpactSide::Dealt, 40)),
                 Event::Parried { .. } => Some(burst(hero_x + 0.2, At::Near(hd + fw * 0.8), 1.25, 1.4, [255, 214, 110], ImpactSide::Dealt, 26)),
                 // A bulwark's last-moment block rings white on the shield; its ward bursting is a
                 // wide white-gold blast on the attacker, as big as the ward was full.
@@ -299,11 +313,13 @@ impl Fx {
 
     /// Put the slash and the bursts where the road drawn now says they are.
     /// `blade`: the hero's weapon as drawn at the blow, which a thrust's streak runs along.
-    pub fn place(&self, c: &mut Canvas, walked: f64, fight: &Fight, blade: Option<Blade>) {
+    /// `yard`: the camera turned side-on, where the whole arena is in view, either side of its
+    /// middle (on the road, nothing behind the camera is drawn).
+    pub fn place(&self, c: &mut Canvas, walked: f64, fight: &Fight, blade: Option<Blade>, yard: bool) {
         let Some(pf) = c.get_plugin::<PathForgePlugin>() else { return };
         // Centred on a point `y` metres up: its top-left and size, in canvas units.
         let around = |x: f32, y: f32, d: f32, (w, h): (f32, f32)| -> Option<Spot> {
-            if d < 0.5 { return None; }
+            if d < 0.5 && !yard { return None; }
             let (cx, cy) = pf.project_on(c, x, y, d)?;
             let ppm = pf.scale_on(c, d)?;
             Some(((cx - 0.5 * w * ppm, cy - 0.5 * h * ppm), (w * ppm, h * ppm)))

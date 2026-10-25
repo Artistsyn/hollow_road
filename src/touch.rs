@@ -20,9 +20,9 @@ use quartz::TouchPhase;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Ui {
     /// On the road: the stick and the fight's buttons, `Use` when there is something to use.
-    Road { prompt: bool, ranged: bool, cast: bool },
+    Road { prompt: bool, ranged: bool, cast: bool, art: bool },
     /// The side-on fight.
-    Side { ranged: bool, cast: bool },
+    Side { ranged: bool, cast: bool, art: bool },
     /// A menu or words to read: a tap picks, `Back` goes back.
     Menu,
     /// A cutscene, or the title: a tap goes on.
@@ -33,16 +33,16 @@ pub enum Ui {
 
 /// The buttons.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum Btn { Light, Heavy, Roll, Guard, Parry, Flask, Loose, Cast, Jump, Use, Turn, Map, Pause, Back }
+pub enum Btn { Light, Heavy, Roll, Guard, Parry, Flask, Loose, Cast, Art, Jump, Use, Turn, Map, Pause, Back }
 
 impl Btn {
-    pub const ALL: [Btn; 14] = [Btn::Light, Btn::Heavy, Btn::Roll, Btn::Guard, Btn::Parry, Btn::Flask, Btn::Loose, Btn::Cast, Btn::Jump, Btn::Use, Btn::Turn, Btn::Map, Btn::Pause, Btn::Back];
+    pub const ALL: [Btn; 15] = [Btn::Light, Btn::Heavy, Btn::Roll, Btn::Guard, Btn::Parry, Btn::Flask, Btn::Loose, Btn::Cast, Btn::Art, Btn::Jump, Btn::Use, Btn::Turn, Btn::Map, Btn::Pause, Btn::Back];
 
     /// What is written on it.
     pub fn label(self) -> &'static str {
         match self {
             Btn::Light => "STRIKE", Btn::Heavy => "HEAVY", Btn::Roll => "ROLL", Btn::Guard => "GUARD", Btn::Parry => "PARRY",
-            Btn::Flask => "FLASK", Btn::Loose => "SHOOT", Btn::Cast => "CAST", Btn::Jump => "JUMP", Btn::Use => "USE",
+            Btn::Flask => "FLASK", Btn::Loose => "SHOOT", Btn::Cast => "CAST", Btn::Art => "ART", Btn::Jump => "JUMP", Btn::Use => "USE",
             Btn::Turn => "TURN", Btn::Map => "MAP", Btn::Pause => "II", Btn::Back => "BACK",
         }
     }
@@ -54,7 +54,7 @@ pub struct Button { pub btn: Btn, pub at: (f32, f32), pub r: f32 }
 
 /// What a press is, for the game's input.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Tap { Light, Heavy, Roll, Parry, Flask, Loose, Cast, Jump }
+pub enum Tap { Light, Heavy, Roll, Parry, Flask, Loose, Cast, Art, Jump }
 
 /// What the fingers did this tick, as the game takes it.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -62,7 +62,7 @@ pub enum Out {
     /// A fighting press.
     Tap(Tap),
     /// A key, as if typed: a way when the stick is pushed onto it ('w', 'a', 's', 'd'), `e` to use,
-    /// `m` for the map, `t` to turn, `q` to pause or go back.
+    /// `m` for the map, `t` to turn, `q` to pause or go back (given to the game as Esc).
     Key(char),
     /// A tap in a menu, where (the game finds the choice under it).
     Pick((f32, f32)),
@@ -97,7 +97,7 @@ pub fn layout(ui: Ui) -> Vec<Button> {
     // Below the foe's bar and name (top right, game.rs `bar_foe`), not over them.
     let top = [b(Btn::Pause, 3700.0, 330.0, 95.0)];
     let mut v: Vec<Button> = match ui {
-        Ui::Road { ranged, cast, .. } | Ui::Side { ranged, cast } => {
+        Ui::Road { ranged, cast, art, .. } | Ui::Side { ranged, cast, art } => {
             let side = matches!(ui, Ui::Side { .. });
             let mut v = vec![
                 b(Btn::Light, 3420.0, 1760.0, 210.0),
@@ -110,6 +110,7 @@ pub fn layout(ui: Ui) -> Vec<Button> {
             if side { v.push(b(Btn::Jump, 3700.0, 1060.0, 120.0)); }
             if ranged { v.push(b(Btn::Loose, 2650.0, 1690.0, 105.0)); }
             if cast { v.push(b(Btn::Cast, 3030.0, 1290.0, 105.0)); }
+            if art { v.push(b(Btn::Art, 2700.0, 1380.0, 110.0)); }
             if let Ui::Road { prompt, .. } = ui {
                 // The prompt plate itself (game.rs PROMPT_Y, low in the middle) is the button.
 if prompt { v.push(b(Btn::Use, 1920.0, 1940.0, 210.0)); }
@@ -225,7 +226,7 @@ fn press(b: Btn) -> Option<Out> {
     Some(match b {
         Btn::Light => Out::Tap(Tap::Light), Btn::Heavy => Out::Tap(Tap::Heavy), Btn::Roll => Out::Tap(Tap::Roll),
         Btn::Parry => Out::Tap(Tap::Parry), Btn::Flask => Out::Tap(Tap::Flask), Btn::Loose => Out::Tap(Tap::Loose),
-        Btn::Cast => Out::Tap(Tap::Cast), Btn::Jump => Out::Tap(Tap::Jump),
+        Btn::Cast => Out::Tap(Tap::Cast), Btn::Art => Out::Tap(Tap::Art), Btn::Jump => Out::Tap(Tap::Jump),
         Btn::Use => Out::Key('e'), Btn::Turn => Out::Key('t'), Btn::Map => Out::Key('m'), Btn::Pause | Btn::Back => Out::Key('q'),
         Btn::Guard => return None,
     })
@@ -237,7 +238,7 @@ fn dist(a: (f32, f32), b: (f32, f32)) -> f32 { ((a.0 - b.0).powi(2) + (a.1 - b.1
 mod tests {
     use super::*;
 
-    const ROAD: Ui = Ui::Road { prompt: false, ranged: false, cast: false };
+    const ROAD: Ui = Ui::Road { prompt: false, ranged: false, cast: false, art: false };
 
     fn at(b: Btn, ui: Ui) -> (f32, f32) { layout(ui).into_iter().find(|x| x.btn == b).unwrap().at }
 
@@ -302,12 +303,13 @@ mod tests {
 
     #[test]
     fn the_yard_has_a_jump_and_the_road_its_use_only_when_asked() {
-        let side = Ui::Side { ranged: true, cast: false };
+        let side = Ui::Side { ranged: true, cast: false, art: false };
         let has = |ui, b| layout(ui).iter().any(|x| x.btn == b);
         assert!(has(side, Btn::Jump) && has(side, Btn::Loose) && !has(side, Btn::Cast) && !has(side, Btn::Use));
-        assert!(!has(ROAD, Btn::Use) && has(Ui::Road { prompt: true, ranged: false, cast: false }, Btn::Use));
+        assert!(!has(ROAD, Btn::Use) && has(Ui::Road { prompt: true, ranged: false, cast: false, art: false }, Btn::Use));
+        assert!(!has(ROAD, Btn::Art) && has(Ui::Side { ranged: false, cast: false, art: true }, Btn::Art), "ART only with a forged weapon");
         // No two buttons overlap.
-        for ui in [ROAD, side, Ui::Road { prompt: true, ranged: true, cast: true }, Ui::Side { ranged: true, cast: true }] {
+        for ui in [ROAD, side, Ui::Road { prompt: true, ranged: true, cast: true, art: true }, Ui::Side { ranged: true, cast: true, art: true }] {
             let bs = layout(ui);
             for (i, a) in bs.iter().enumerate() {
                 for b in &bs[i + 1..] { assert!(dist(a.at, b.at) > a.r + b.r, "{:?} overlaps {:?}", a.btn, b.btn); }

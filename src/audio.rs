@@ -145,6 +145,13 @@ impl Audio {
                 Event::Began(Move::Step(_) | Move::Tumble | Move::Backstep) => self.play(c, Sfx::Roll),
                 Event::Began(Move::Lane(_)) => self.play_at(c, Sfx::Roll, 0.4, 1.2),
                 Event::Began(Move::Flask) => self.play(c, Sfx::FlaskOpen),
+                Event::Began(Move::Art) => self.play_at(c, Sfx::SwingHeavy, 1.0, 0.8),
+                // The art going off: a deep ring and its blow; Sentence's falling like a knell.
+                Event::Art { .. } => { self.play_at(c, Sfx::Parry, 0.9, 0.6); self.play_at(c, Sfx::GuardBreak, 0.7, 0.9); }
+                Event::Sentenced { .. } => { self.play_at(c, Sfx::Knell, 0.8, 1.2); self.play(c, Sfx::HitHeavy); }
+                Event::Caught => self.play_at(c, Sfx::Block, 0.5, 1.4),
+                Event::Rung { .. } => { self.play_at(c, Sfx::Knell, 0.9, 0.8); self.play_at(c, Sfx::GuardBreak, 0.6, 0.6); }
+                Event::Slam { heavy, .. } => self.play_at(c, Sfx::Felled, if heavy { 0.7 } else { 0.45 }, 0.75),
                 Event::Shot(r) => match r {
                     crate::gear::Ranged::Frost => self.play(c, Sfx::Frost),
                     // A crossbow's prod is shorter and stiffer than a bow's limbs.

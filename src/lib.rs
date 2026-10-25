@@ -9,6 +9,7 @@ mod anim;
 mod audio;
 mod cutscene;
 mod art;
+mod arts;
 mod assets;
 mod atlas;
 mod fight;

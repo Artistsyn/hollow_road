@@ -23,10 +23,13 @@ const TPS: f32 = 60.0;
 const WALK: f32 = 2.6 / TPS;
 /// A run, against a walk; it costs the road's run stamina.
 const RUN_K: f32 = 1.8;
-/// A jump: up at this speed (m/tick), pulled down by this (m/tick²); about a metre high and
-/// 0.6 s in the air.
-const JUMP_V: f32 = 7.0 / TPS;
-const GRAVITY: f32 = 24.0 / (TPS * TPS);
+/// A jump: up at this speed (m/tick), pulled down by this (m/tick²), and over the top of it (while
+/// slower than `HANG_V`) by only `HANG` of that: about a metre and a half high and 0.85 s in the
+/// air, a quarter of it floating at the top, time enough to clear a sweep or a ring.
+const JUMP_V: f32 = 7.8 / TPS;
+const GRAVITY: f32 = 21.0 / (TPS * TPS);
+const HANG_V: f32 = 1.6 / TPS;
+const HANG: f32 = 0.55;
 const JUMP_COST: f32 = 10.0;
 /// A roll: ticks, metres, and its i-frames (from, to).
 pub const ROLL_T: u32 = 28;
@@ -61,6 +64,8 @@ pub struct SideInput {
     pub loose: bool,
     /// A spell through the catalyst the other hand holds.
     pub cast: bool,
+    /// The weapon's art (`arts`).
+    pub art: bool,
     /// Held.
     pub guard: bool,
 }
@@ -70,9 +75,14 @@ pub struct SideInput {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SideBolt { pub s: f32, pub dir: f32, pub y: f32, pub ranged: crate::gear::Ranged, pub damage: f32, pub stance: f32, pub left: f32, pub age: u32 }
 
+/// The thrown Hatchet across the yard (`arts::WeaponArt::Hatchet`): where it is, which way it
+/// flew out, metres left before it turns, coming back, and the foes it has bitten each way.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct SideHatchet { pub s: f32, pub dir: f32, pub left: f32, pub back: bool, pub bit: (u64, u64), pub age: u32 }
+
 /// What the hero is doing.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Act { Light, Heavy, Roll(i8), Parry, Flask, Loose, Cast }
+pub enum Act { Light, Heavy, Roll(i8), Parry, Flask, Loose, Cast, Art }
 
 impl Act {
     /// A strike as a weapon of `class` throws it here: the road's (`Move::spec_for`) with the
@@ -94,12 +104,19 @@ impl Act {
             Act::Roll(_) => (0, ROLL_T, 0),
             Act::Parry | Act::Flask => self.as_move().spec_for(kit.arms.class, kit.off.map(|o| o.guard)).frames,
             Act::Loose | Act::Cast => Move::loose_spec(self.shot(kit).unwrap_or(crate::gear::Ranged::Bow)).frames,
+            Act::Art => Act::art_spec(kit).frames,
         }
+    }
+    /// The weapon's art as the yard has it: the road's with 0.9 m less reach (as a strike's).
+    pub fn art_spec(kit: &Kit) -> Spec {
+        let mut s = kit.art.unwrap_or(crate::arts::WeaponArt::Toll).spec();
+        s.reach -= 0.9;
+        s
     }
     fn total(self, kit: &Kit) -> u32 { let f = self.frames(kit); f.0 + f.1 + f.2 }
     /// As the road fight costs and names it.
     fn as_move(self) -> Move {
-        match self { Act::Light => Move::Light, Act::Heavy => Move::Heavy, Act::Roll(d) => Move::Step(d as i32), Act::Parry => Move::Parry, Act::Flask => Move::Flask, Act::Loose => Move::Loose, Act::Cast => Move::Cast }
+        match self { Act::Light => Move::Light, Act::Heavy => Move::Heavy, Act::Roll(d) => Move::Step(d as i32), Act::Parry => Move::Parry, Act::Flask => Move::Flask, Act::Loose => Move::Loose, Act::Cast => Move::Cast, Act::Art => Move::Art }
     }
     /// What a ranged attack or a cast sends, as `kit` holds it.
     pub fn shot(self, kit: &Kit) -> Option<crate::gear::Ranged> { match self { Act::Loose => kit.shot(false), Act::Cast => kit.shot(true), _ => None } }
@@ -136,6 +153,12 @@ pub struct SideHero {
     pub charges: f32,
     /// A Warden's ward, brought in from the road and taken back to it.
     pub bulwark: Bulwark,
+    /// The art meter, brought in from the road and taken back to it; Stone Skin's ticks left;
+    /// the foe Sentence marked and ticks until its blow; the foes the art under way struck.
+    pub art: f32,
+    pub stone: u32,
+    pub mark: Option<(usize, u32)>,
+    pierced: u64,
 }
 
 impl SideHero {
@@ -144,10 +167,13 @@ impl SideHero {
     fn free(&self) -> bool { self.act.is_none() && self.reeling == 0 && !self.dead }
     fn invulnerable(&self) -> bool {
         matches!(self.act, Some((Act::Roll(_), t)) if (ROLL_IFRAMES.0..ROLL_IFRAMES.1).contains(&t))
+            || matches!(self.act, Some((Act::Art, t)) if Act::art_spec(&self.stats.kit).iframes.is_some_and(|(a, b)| (a..b).contains(&t)))
             || (self.reel == Reel::Down && self.reeling < Reel::Down.ticks() - 8)
     }
     fn spend(&mut self, n: f32) { if n > 0.0 { self.stamina = (self.stamina - n).max(0.0); self.rested = 0; } }
     fn reel(&mut self, r: Reel) { self.reel = r; self.reeling = r.ticks(); self.act = None; }
+    /// Whether the weapon has an art and the meter holds its cost.
+    pub fn can_art(&self) -> bool { self.stats.kit.art.is_some_and(|a| self.art >= a.cost()) }
     /// Whether a ranged attack or a cast has a shot to give (as `fight::Hero::can_shoot`).
     fn can_shoot(&self, a: Act) -> bool {
         use crate::gear::Ranged;
@@ -705,6 +731,8 @@ pub struct SideFight {
     pub foes: Vec<Foe>,
     /// The hero's arrows and bolts in flight.
     pub bolts: Vec<SideBolt>,
+    /// The thrown Hatchet, out or on its way back.
+    pub hatchets: Vec<SideHatchet>,
     pub ticks: u64,
     /// A count that stands in for chance.
     seed: u32,
@@ -735,9 +763,11 @@ impl SideFight {
                 stats, hp, stamina, rested: 30, flasks, s, y: 0.0, vy: 0.0, facing: 1.0, act: None, guarding: false,
                 reel: Reel::None, reeling: 0, poise: stats.poise(), poise_wait: 0, from: 0.0, landed: false, dead: false, walking: false, buffer: None,
                 arrows: crate::fight::QUIVER, charges: stats.max_charges(), bulwark: Bulwark::default(),
+                art: 0.0, stone: 0, mark: None, pierced: 0,
             },
             foes,
             bolts: Vec::new(),
+            hatchets: Vec::new(),
             ticks: 0,
             seed: 0x51DE,
         }
@@ -763,6 +793,19 @@ impl SideFight {
         if !self.hero.dead { self.hero_tick(input, &mut out); }
         for i in 0..self.foes.len() { if self.foes[i].alive() { self.foe_tick(i, &mut out); } else { self.foes[i].down += 1; } }
         self.bolts_tick(&mut out);
+        self.hatchets_tick(&mut out);
+        // Sentence's blow falls when its count runs out.
+        if let Some((i, n)) = self.hero.mark {
+            self.hero.mark = (n > 1).then_some((i, n - 1));
+            if n <= 1 && self.foes.get(i).is_some_and(|f| f.alive()) {
+                let spec = Act::art_spec(&self.hero.stats.kit);
+                out.push(Event::Sentenced { enemy: i });
+                self.art_hit(i, spec.damage, spec.stance, &mut out);
+            }
+        }
+        if self.hero.stats.kit.art.is_some() {
+            self.hero.art = (self.hero.art + crate::arts::gained(&out)).min(crate::arts::ART_MAX);
+        }
         if self.hero.stats.kit.ranged == Some(crate::gear::Ranged::Bow) {
             let felled = out.iter().filter(|e| matches!(e, Event::Felled { .. })).count() as u32;
             self.hero.arrows = (self.hero.arrows + crate::fight::SALVAGE * felled).min(crate::fight::QUIVER);
@@ -788,13 +831,14 @@ impl SideFight {
         h.bulwark.tick(h.guarding, false);
         h.walking = false;
         // Presses wait a moment for the hero to be free, as on the road.
-        if input.roll || input.jump || input.light || input.heavy || input.parry || input.flask || input.loose || input.cast { h.buffer = Some((*input, 0)); }
+        h.stone = h.stone.saturating_sub(1);
+        if input.roll || input.jump || input.light || input.heavy || input.parry || input.flask || input.loose || input.cast || input.art { h.buffer = Some((*input, 0)); }
         else if let Some((b, age)) = h.buffer { h.buffer = (age < crate::fight::BUFFER).then_some((b, age + 1)); }
         let p = h.buffer.map(|b| b.0).unwrap_or_default();
         let pdir = (p.right as i8) - (p.left as i8);
         // What was pressed, if the hero is free to do it (in the air: only a strike).
         let want = if p.roll { Some(Act::Roll(if pdir != 0 { pdir } else if dir != 0 { dir } else { h.facing as i8 })) }
-            else if p.flask { Some(Act::Flask) } else if p.parry { Some(Act::Parry) } else if p.loose { Some(Act::Loose) } else if p.cast { Some(Act::Cast) }
+            else if p.art { Some(Act::Art) } else if p.flask { Some(Act::Flask) } else if p.parry { Some(Act::Parry) } else if p.loose { Some(Act::Loose) } else if p.cast { Some(Act::Cast) }
             else if p.heavy { Some(Act::Heavy) } else if p.light { Some(Act::Light) } else { None };
         if h.free() {
             if p.jump && !h.airborne() && !h.guarding {
@@ -807,17 +851,19 @@ impl SideFight {
                     Act::Light | Act::Heavy => a.strike_spec(class).stamina,
                     Act::Roll(_) => 12.0,
                     Act::Loose | Act::Cast => Move::loose_spec(a.shot(&h.stats.kit).unwrap_or(crate::gear::Ranged::Bow)).stamina,
+                    Act::Art => Act::art_spec(&h.stats.kit).stamina,
                     _ => 0.0,
                 });
                 if cost > 0.0 && h.stamina <= 0.0 {
                     out.push(Event::Spent);
                 } else if a == Act::Flask && h.flasks == 0 {
                 } else if matches!(a, Act::Loose | Act::Cast) && !h.can_shoot(a) {
+                } else if a == Act::Art && !h.can_art() {
                 } else {
                     h.spend(cost);
                     if let Act::Roll(d) = a { h.facing = d as f32; }
                     h.act = Some((a, 0));
-                    (h.from, h.landed) = (h.s, false);
+                    (h.from, h.landed, h.pierced) = (h.s, false, 0);
                     out.push(Event::Began(a.as_move()));
                 }
             } else if dir != 0 && !h.guarding {
@@ -837,13 +883,13 @@ impl SideFight {
         // In the air.
         if h.airborne() {
             h.y += h.vy;
-            h.vy -= GRAVITY;
+            h.vy -= GRAVITY * if h.vy.abs() < HANG_V { HANG } else { 1.0 };
             if h.airborne() && h.act.is_none() && dir != 0 { h.facing = dir as f32; }
             if h.y <= 0.0 { (h.y, h.vy) = (0.0, 0.0); }
         }
-        // Stamina back once it has gone unspent a while.
+        // Stamina back once it has gone unspent a while, and the hero is on their feet.
         h.rested = h.rested.saturating_add(1);
-        if h.rested > 30 && h.act.is_none_or(|(a, _)| a == Act::Flask) {
+        if h.rested > 30 && !h.airborne() && h.act.is_none_or(|(a, _)| a == Act::Flask) {
             let k = if h.guarding { 1.0 / 3.0 } else { 1.0 };
             h.stamina = (h.stamina + 55.0 / TPS * k * h.stats.regen()).min(h.stats.max_stamina());
         }
@@ -881,12 +927,15 @@ impl SideFight {
             }
             h.act = (t + 1 < a.total(&kit)).then_some((a, t + 1));
             if matches!(a, Act::Light | Act::Heavy) && t >= f.0 && t < f.0 + f.1 && !h.landed { self.strike(a, out); }
+            if a == Act::Art { if let Some(art) = kit.art { self.art_fires(art, t, out); } }
         }
         // The yard's walls; and the foes' bodies, which only a roll (or a jump over a small
         // one) passes through.
         let h = &mut self.hero;
         h.s = h.s.clamp(-HALF + HERO_HALF, HALF - HERO_HALF);
-        let rolling = matches!(h.act, Some((Act::Roll(_), _)));
+        // Light Lance's dash passes through bodies as a roll does.
+        let dash = h.stats.kit.art == Some(crate::arts::WeaponArt::Lance) && matches!(h.act, Some((Act::Art, t)) if { let f = Act::art_spec(&h.stats.kit).frames; t >= f.0 && t < f.0 + f.1 });
+        let rolling = matches!(h.act, Some((Act::Roll(_), _))) || dash;
         for f in self.foes.iter().filter(|f| f.alive()) {
             let gap = h.s - f.s;
             let reach = HERO_HALF + f.breed.half;
@@ -1141,7 +1190,17 @@ impl SideFight {
                 let from = if matches!(blow.motion, Motion::Shot(_)) && t == w { b.s } else { from };
                 // The shot leaving the hand, or the rune going off, for the effects to show.
                 if t == w {
-                    match blow.motion { Motion::Shot(_) => out.push(Event::Loosed { enemy: i }), Motion::Rune => out.push(Event::Burst { enemy: i, at: aim as f64 }), _ => {} }
+                    match blow.motion {
+                        Motion::Shot(_) => out.push(Event::Loosed { enemy: i }),
+                        Motion::Rune => out.push(Event::Burst { enemy: i, at: aim as f64 }),
+                        Motion::Ring => out.push(Event::Rung { enemy: i, at: (b.s + b.facing * 1.4) as f64 }),
+                        // A boss's blow meeting the ground: where its reach ends, or where it lands.
+                        Motion::Strike | Motion::Leap if b.breed.kind.is_none() => {
+                            let at = if blow.motion == Motion::Leap { b.s } else { b.s + b.facing * blow.reach.1.max(0.5) * 0.85 };
+                            out.push(Event::Slam { enemy: i, at: at as f64, heavy: blow.damage >= 30.0 });
+                        }
+                        _ => {}
+                    }
                 }
                 b.ai = Ai::Blow { i: k, t, hit, from, aim };
                 let live_now = t >= w && t < w + live;
@@ -1170,6 +1229,167 @@ impl SideFight {
                     Ai::Blow { i: k, t: t + 1, hit, from, aim }
                 };
             }
+        }
+    }
+
+    /// Foe `i` struck by the art (`hit`'s reckoning, `damage` and `stance` times the hero's
+    /// strike): what it took.
+    fn art_hit(&mut self, i: usize, damage: f32, stance: f32, out: &mut Vec<Event>) -> f32 {
+        let h = &self.hero;
+        let b = &mut self.foes[i];
+        let open = matches!(b.ai, Ai::Open(_));
+        let dealt = (damage * h.stats.damage() * if open { OPEN_DAMAGE * h.stats.kit.opener } else { 1.0 }).min(b.hp.max(0.0));
+        b.hp -= dealt;
+        let h = &mut self.hero;
+        h.hp = (h.hp + dealt * h.stats.kit.leech).min(h.stats.max_hp());
+        let b = &mut self.foes[i];
+        (b.hurt, b.stance_wait) = (10, 0);
+        out.push(Event::Hit { enemy: i, mv: Move::Art });
+        if b.hp <= 0.0 {
+            b.hp = 0.0;
+            b.ai = Ai::Dead;
+            out.push(Event::Felled { enemy: i });
+        } else if !open {
+            b.stance -= stance;
+            if b.stance <= 0.0 {
+                b.stance = b.breed.stance;
+                b.ai = Ai::Open(b.breed.open);
+                out.push(Event::StanceBroken { enemy: i });
+            }
+        }
+        dealt
+    }
+
+    /// Foe `i` thrown `arts::SHOVE` back from the hero: off balance (open half its usual time)
+    /// when `opens`, else only its blow broken off.
+    fn throw_back(&mut self, i: usize, opens: bool) {
+        let hero = self.hero.s;
+        let b = &mut self.foes[i];
+        if !b.alive() || matches!(b.ai, Ai::Open(_)) { return; }
+        b.s = (b.s + crate::arts::SHOVE * if b.s >= hero { 1.0 } else { -1.0 }).clamp(-HALF + b.breed.half, HALF - b.breed.half);
+        b.ai = if opens { Ai::Open((b.breed.open / 2).max(30)) } else { Ai::Wait(crate::arts::REELS) };
+    }
+
+    /// Living foes within `reach` of the hero: in front only, or either side (a slam, a scream).
+    fn art_reach(&self, reach: f32, both: bool) -> Vec<usize> {
+        let (hs, hf) = (self.hero.s, self.hero.facing);
+        (0..self.foes.len()).filter(|&i| {
+            let f = &self.foes[i];
+            let ahead = (f.s - hs) * hf;
+            f.alive() && if both { ahead.abs() <= reach + f.breed.half } else { ahead >= -f.breed.half && ahead <= reach + f.breed.half }
+        }).collect()
+    }
+
+    /// What `art` does `t` ticks into it (as `fight::Fight::art_fires`, across the yard).
+    fn art_fires(&mut self, art: crate::arts::WeaponArt, t: u32, out: &mut Vec<Event>) {
+        use crate::arts::*;
+        let spec = Act::art_spec(&self.hero.stats.kit);
+        let (w, live, _) = spec.frames;
+        let (d, s) = (spec.damage, spec.stance);
+        if t == art.fires() {
+            self.hero.art = (self.hero.art - art.cost()).max(0.0);
+            out.push(Event::Art { art });
+            match art {
+                WeaponArt::Toll => for i in self.art_reach(spec.reach, true) {
+                    let open = matches!(self.foes[i].ai, Ai::Open(_));
+                    self.art_hit(i, if open { d * 1.5 } else { d }, s, out);
+                    self.throw_back(i, true);
+                },
+                WeaponArt::Wail => {
+                    let mut drunk = 0.0;
+                    for i in self.art_reach(spec.reach, true) {
+                        drunk += self.art_hit(i, d, s, out);
+                        // A windup broken off; a shot in the air falls.
+                        let f = &mut self.foes[i];
+                        match f.blow() {
+                            Some((_, crate::fight::Phase::Windup, _)) => f.ai = Ai::Open((f.breed.open / 2).max(30)),
+                            Some((b, crate::fight::Phase::Active, _)) if matches!(b.motion, Motion::Shot(_)) => f.ai = Ai::Wait(REELS),
+                            _ => {}
+                        }
+                    }
+                    // Shots already loosed from beyond its reach fall too.
+                    for f in self.foes.iter_mut().filter(|f| f.shot().is_some()) { f.ai = Ai::Wait(REELS); }
+                    let h = &mut self.hero;
+                    h.hp = (h.hp + drunk * art.drinks()).min(h.stats.max_hp());
+                }
+                WeaponArt::Hatchet => {
+                    let h = &self.hero;
+                    self.hatchets.push(SideHatchet { s: h.s + h.facing * 0.4, dir: h.facing, left: spec.reach, back: false, bit: (0, 0), age: 0 });
+                }
+                WeaponArt::Sentence => {
+                    let hs = self.hero.s;
+                    let pick = self.art_reach(spec.reach, false).into_iter().min_by(|&a, &b| (self.foes[a].s - hs).abs().total_cmp(&(self.foes[b].s - hs).abs()));
+                    if let Some(i) = pick { self.hero.mark = Some((i, SENTENCE_DELAY)); }
+                }
+                WeaponArt::Reap => {
+                    let mut drunk = 0.0;
+                    for i in self.art_reach(spec.reach, true) { drunk += self.art_hit(i, d, s, out); }
+                    let h = &mut self.hero;
+                    h.hp = (h.hp + drunk * art.drinks()).min(h.stats.max_hp());
+                }
+                WeaponArt::Lance => {}
+                WeaponArt::StoneSkin => {
+                    self.hero.stone = STONE_TICKS;
+                    for i in self.art_reach(spec.reach, true) { self.art_hit(i, d, s, out); self.throw_back(i, false); }
+                }
+                WeaponArt::Wingbeat => for i in self.art_reach(spec.reach, false) { self.throw_back(i, false); },
+            }
+        }
+        match art {
+            // The dash: on through the live frames, piercing each foe it passes once.
+            WeaponArt::Lance if t >= w && t < w + live => {
+                let h = &mut self.hero;
+                h.s = (h.s + h.facing * LANCE_DASH / live as f32).clamp(-HALF + HERO_HALF, HALF - HERO_HALF);
+                for i in self.art_reach(1.0, true) {
+                    if self.hero.pierced & (1 << (i % 64)) != 0 { continue; }
+                    self.hero.pierced |= 1 << (i % 64);
+                    self.art_hit(i, d, s, out);
+                }
+            }
+            // The dive: across to the nearest ahead (bodies still stop it), striking as it lands.
+            WeaponArt::Wingbeat if t >= w && t < DIVE_AT => {
+                let h = &mut self.hero;
+                h.s += h.facing * DIVE / (DIVE_AT - w) as f32;
+            }
+            WeaponArt::Wingbeat if t == DIVE_AT => {
+                let hs = self.hero.s;
+                let pick = self.art_reach(DIVE_REACH, false).into_iter().min_by(|&a, &b| (self.foes[a].s - hs).abs().total_cmp(&(self.foes[b].s - hs).abs()));
+                if let Some(i) = pick { self.art_hit(i, d, s, out); }
+            }
+            _ => {}
+        }
+    }
+
+    /// The thrown Hatchet one tick on: out the way it was thrown biting the first foe it meets,
+    /// then back to the hero's hand, biting what it passes again.
+    fn hatchets_tick(&mut self, out: &mut Vec<Event>) {
+        let spec = Act::art_spec(&self.hero.stats.kit);
+        let step = crate::arts::HATCHET_SPEED / TPS;
+        let mut k = 0;
+        while k < self.hatchets.len() {
+            let mut t = self.hatchets[k];
+            t.age += 1;
+            let was = t.s;
+            if t.back { t.s += (self.hero.s - t.s).signum() * step; } else { t.s += t.dir * step; t.left -= step; }
+            let (lo, hi) = (was.min(t.s), was.max(t.s));
+            let bit = if t.back { t.bit.1 } else { t.bit.0 };
+            let hit: Vec<usize> = (0..self.foes.len()).filter(|&i| {
+                let f = &self.foes[i];
+                f.alive() && bit & (1 << (i % 64)) == 0 && f.s + f.breed.half >= lo && f.s - f.breed.half <= hi
+            }).collect();
+            for i in hit {
+                if t.back { t.bit.1 |= 1 << (i % 64); } else { t.bit.0 |= 1 << (i % 64); }
+                self.art_hit(i, spec.damage, spec.stance, out);
+                if !t.back { t.back = true; break; }
+            }
+            if !t.back && (t.left <= 0.0 || t.s.abs() >= HALF) { t.back = true; }
+            if t.back && (self.hero.s - t.s).abs() <= step {
+                self.hatchets.remove(k);
+                out.push(Event::Caught);
+                continue;
+            }
+            self.hatchets[k] = t;
+            k += 1;
         }
     }
 
@@ -1236,6 +1456,13 @@ impl SideFight {
             return true;
         }
         let damage = blow.damage * h.stats.taken();
+        if h.stone > 0 {
+            // Stone Skin: less gets through, and nothing knocks the hero about.
+            let damage = damage * crate::arts::STONE_TAKEN;
+            h.hp -= damage;
+            out.push(Event::Struck { damage, heavy: false });
+            return true;
+        }
         h.hp -= damage;
         h.poise -= damage * 1.3;
         h.poise_wait = 0;
@@ -1254,7 +1481,11 @@ impl SideFight {
         } else {
             let heavy = blow.damage >= crate::fight::HEAVY_HIT;
             // An armoured swing (an ultra greatsword's) rides it out.
-            let armoured = match h.act { Some((a @ (Act::Light | Act::Heavy), t)) => t < a.strike_spec(h.stats.kit.arms.class).armour, _ => false };
+            let armoured = match h.act {
+                Some((a @ (Act::Light | Act::Heavy), t)) => t < a.strike_spec(h.stats.kit.arms.class).armour,
+                Some((Act::Art, t)) => t < Act::art_spec(&h.stats.kit).armour,
+                _ => false,
+            };
             if !armoured { h.reel(if heavy { Reel::Recoil } else { Reel::Flinch }); }
             out.push(Event::Struck { damage, heavy });
         }
@@ -1405,7 +1636,9 @@ mod tests {
     /// blows, and still costs that player: (breed, tier, most of the reader's health it may leave).
     #[test]
     fn bosses_beat_a_masher_and_a_turtle_and_fall_to_a_reader_at_a_cost() {
-        for (breed, tier, most) in [(&COLLECTOR, 0, 0.7), (&WARDEN, 1, 0.85), (&CHIEF, 2, 0.75), (&BUTCHER, 5, 0.75), (&STATUE, 6, 0.75)] {
+        // The Collector's blows are mostly low: a jump timed well clears them, so the first boss
+        // leaves a reader more than the others do.
+        for (breed, tier, most) in [(&COLLECTOR, 0, 0.8), (&WARDEN, 1, 0.85), (&CHIEF, 2, 0.75), (&BUTCHER, 5, 0.75), (&STATUE, 6, 0.75)] {
             let runs = |bot| (0..12u32).map(|k| bout(breed, tier, bot, 0x51DE + 977 * k)).collect::<Vec<_>>();
             let wins = |r: &[(bool, f32, f32, u32)]| r.iter().filter(|r| r.0).count();
             let (mash, turtle, read) = (runs(Bot::Masher), runs(Bot::Turtle), runs(Bot::Reader));
@@ -1455,14 +1688,14 @@ mod tests {
     }
 
     #[test]
-    fn a_jump_rises_about_a_metre_and_comes_down() {
+    fn a_jump_rises_about_a_metre_and_a_half_and_floats_over_the_top() {
         let mut f = fight();
         f.tick(&SideInput { jump: true, ..idle() });
         let mut top = 0.0f32;
         let mut ticks = 0;
         while f.hero.airborne() && ticks < 200 { f.tick(&idle()); top = top.max(f.hero.y); ticks += 1; }
-        assert!((0.8..1.3).contains(&top), "{top}");
-        assert!((25..50).contains(&ticks), "{ticks} ticks up");
+        assert!((1.3..1.8).contains(&top), "{top}");
+        assert!((45..60).contains(&ticks), "{ticks} ticks up");
         assert!(f.hero.stamina < 100.0);
     }
 
@@ -1866,5 +2099,74 @@ mod tests {
                 _ => assert!(f.foes[0].stance <= stance - Move::loose_spec(r).stance + 0.5 && f.hero.charges < f.hero.stats.max_charges()),
             }
         }
+    }
+
+
+    /// The Warden squaring up `gap` in front of a hero holding forged weapon `name`, the meter at `meter`.
+    fn forged(name: &str, meter: f32, gap: f32) -> SideFight {
+        let mut l = crate::gear::Loadout::starting();
+        let i = crate::gear::find(name);
+        l.gain(i);
+        assert!(l.wear(0, Some(i)));
+        let mut f = fight();
+        f.hero.stats.kit = l.kit();
+        (f.hero.stats.might, f.hero.stats.dexterity) = (10, 10);
+        f.hero.art = meter;
+        f.foes[0].s = f.hero.s + gap;
+        f.foes[0].ai = Ai::Wait(10_000);
+        f
+    }
+    fn art_events(f: &mut SideFight, n: u32) -> Vec<Event> {
+        let mut ev = f.tick(&SideInput { art: true, ..idle() });
+        for _ in 1..n { ev.extend(f.tick(&idle())); }
+        ev
+    }
+    fn art_hits(ev: &[Event]) -> usize { ev.iter().filter(|e| matches!(e, Event::Hit { mv: Move::Art, .. })).count() }
+
+    #[test]
+    fn in_the_yard_an_art_waits_for_its_meter_and_the_toll_throws_the_boss_open() {
+        let mut f = forged("Bell-Hammer", 0.0, 1.6);
+        assert!(!art_events(&mut f, 5).contains(&Event::Began(Move::Art)));
+        f.hero.art = 70.0;
+        let ev = art_events(&mut f, 40);
+        assert!(ev.contains(&Event::Art { art: crate::arts::WeaponArt::Toll }) && art_hits(&ev) == 1);
+        assert_eq!(f.hero.art, 20.0);
+        assert!(matches!(f.foes[0].ai, Ai::Open(_)), "{:?}", f.foes[0].ai);
+    }
+
+    #[test]
+    fn in_the_yard_the_light_lance_dashes_through_the_boss() {
+        let mut f = forged("Lance of Light", 100.0, 1.6);
+        let ev = art_events(&mut f, 30);
+        assert_eq!(art_hits(&ev), 1);
+        assert!(f.hero.s > f.foes[0].s, "{} {}", f.hero.s, f.foes[0].s);
+    }
+
+    #[test]
+    fn in_the_yard_the_hatchet_comes_back_to_the_hand() {
+        let mut f = forged("Chieftain's Cleaver", 100.0, 4.0);
+        let ev = art_events(&mut f, 120);
+        assert_eq!(art_hits(&ev), 2);
+        assert!(ev.contains(&Event::Caught) && f.hatchets.is_empty());
+    }
+
+    #[test]
+    fn in_the_yard_stone_skin_shrugs_off_a_sweep_that_floors_anyone_else() {
+        let mut f = throwing(1, 2.0);
+        f.hero.stone = 300;
+        let mut ev = Vec::new();
+        assert!(run(&mut f, 80, idle(), |_, e| { ev.extend_from_slice(e); took(e) }));
+        assert!(!ev.iter().any(|e| matches!(e, Event::KnockedDown { .. })) && f.hero.reeling == 0, "{ev:?}");
+    }
+
+    #[test]
+    fn in_the_yard_the_wail_breaks_a_windup_and_sentence_falls_later() {
+        let mut f = forged("Drowned Wail", 100.0, 3.0);
+        f.foes[0].ai = Ai::Blow { i: 0, t: 0, hit: false, from: f.foes[0].s, aim: f.hero.s };
+        art_events(&mut f, 22);
+        assert!(matches!(f.foes[0].ai, Ai::Open(_)), "{:?}", f.foes[0].ai);
+        let mut g = forged("Gavel of Sentence", 100.0, 4.0);
+        let ev = art_events(&mut g, crate::arts::WeaponArt::Sentence.fires() + 1 + crate::arts::SENTENCE_DELAY);
+        assert!(ev.contains(&Event::Sentenced { enemy: 0 }) && art_hits(&ev) == 1, "{ev:?}");
     }
 }

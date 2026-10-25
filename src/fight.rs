@@ -169,6 +169,8 @@ pub struct Input {
     pub loose: bool,
     /// A spell cast through the catalyst the other hand holds.
     pub cast: bool,
+    /// The weapon's art (`arts`), if it has one and the meter holds its cost.
+    pub art: bool,
 }
 
 impl Input {
@@ -185,6 +187,7 @@ impl Input {
         if self.parry { m = Some(Move::Parry); }
         if self.light { m = Some(Move::Light); }
         if self.heavy { m = Some(Move::Heavy); }
+        if self.art { m = Some(Move::Art); }
         m
     }
 }
@@ -212,6 +215,8 @@ pub enum Move {
     Loose,
     /// A spell (`gear::Kit::spell_cast`) through the catalyst in the other hand.
     Cast,
+    /// The weapon's art (`arts::WeaponArt`), paid from the art meter.
+    Art,
 }
 
 /// A move's timing and price.
@@ -277,6 +282,8 @@ impl Move {
             Move::Riposte => s((18, 4, 28), 0.0, Some((0, 50)), 2.9, 60.0, 0.0),
             Move::Loose => Move::loose_spec(crate::gear::Ranged::Bow),
             Move::Cast => Move::loose_spec(crate::gear::Ranged::Frost),
+            // Only a forged weapon has one, and its own timing (`arts::WeaponArt::spec`).
+            Move::Art => crate::arts::WeaponArt::Toll.spec(),
         }
     }
 
@@ -390,6 +397,11 @@ pub enum Look { Arrow, Hex }
 /// the road (metres walked) and across it, what loosed it, what it deals, metres of flight left.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Bolt { pub s: f64, pub lane: i32, pub x: f32, pub ranged: crate::gear::Ranged, pub damage: f32, pub stance: f32, pub left: f32, pub age: u32 }
+
+/// The thrown Hatchet: where it is along the road and across it, metres it flies out before it
+/// turns back, what it deals, and the foes it has bitten going out and coming back (by index).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Hatchet { pub s: f64, pub lane: i32, pub x: f32, pub left: f32, pub back: bool, pub damage: f32, pub stance: f32, pub bit: (u64, u64), pub age: u32 }
 
 /// Something loosed down the road, in flight toward the hero: by enemy `from`, with what it
 /// does when it arrives; where it is along the road and across it.
@@ -798,6 +810,17 @@ pub enum Event {
     ParryMissed { damage: f32 },
     /// A roll or backstep slipped enemy `enemy`'s blow at the last moment: it stumbles.
     JustDodge { enemy: usize },
+    /// The weapon's art went off (paid for now).
+    Art { art: crate::arts::WeaponArt },
+    /// Sentence's blow fell on enemy `enemy`, marked a moment ago.
+    Sentenced { enemy: usize },
+    /// The thrown Hatchet came back to the hand.
+    Caught,
+    /// A yard foe's ring blow struck the stones `at` metres along (the yard's, until the game
+    /// moves it onto the road's): the ring sets out from there.
+    Rung { enemy: usize, at: f64 },
+    /// A boss's blow came down on the ground `at` metres along (as `Rung`): a slam or a landing.
+    Slam { enemy: usize, at: f64, heavy: bool },
     Healed,
     /// Wanted to move with no stamina.
     Spent,
@@ -926,13 +949,21 @@ pub struct Hero {
     pub charges: f32,
     /// A Warden's ward, filled by blocking (`Bulwark`).
     pub bulwark: Bulwark,
+    /// The art meter (0 to `arts::ART_MAX`), filled by fighting well.
+    pub art: f32,
+    /// Ticks of Stone Skin left.
+    pub stone: u32,
+    /// The foe Sentence marked, and ticks until its blow falls.
+    pub mark: Option<(usize, u32)>,
+    /// Foes the art under way struck already, by index (Light Lance pierces each once).
+    pub pierced: u64,
 }
 
 impl Hero {
     fn new() -> Hero { Hero::with(Stats::default()) }
     /// Whole, with these levels: as they rise from a shrine.
     pub fn with(stats: Stats) -> Hero {
-        Hero { stats, hp: stats.max_hp(), stamina: stats.max_stamina(), rested: REGEN_DELAY, flasks: FLASKS, lane: 0, x: 0.0, act: None, guarding: false, reeling: 0, reel: Reel::None, poise: stats.poise(), poise_wait: 0, buffer: None, dead: false, arrows: QUIVER, charges: stats.max_charges(), bulwark: Bulwark::default() }
+        Hero { stats, hp: stats.max_hp(), stamina: stats.max_stamina(), rested: REGEN_DELAY, flasks: FLASKS, lane: 0, x: 0.0, act: None, guarding: false, reeling: 0, reel: Reel::None, poise: stats.poise(), poise_wait: 0, buffer: None, dead: false, arrows: QUIVER, charges: stats.max_charges(), bulwark: Bulwark::default(), art: 0.0, stone: 0, mark: None, pierced: 0 }
     }
     fn free(&self) -> bool { self.act.is_none() && self.reeling == 0 && !self.dead }
     /// Whether there is a shot of `r` to give: an arrow, the blood for one, a charge.
@@ -949,6 +980,8 @@ impl Hero {
     pub fn can_loose(&self) -> bool { self.can_shoot(self.stats.kit.shot(false)) }
     /// Whether a spell can be cast: a catalyst held, a spell to cast, a charge for it (C).
     pub fn can_cast(&self) -> bool { self.stats.spell_ready() && self.can_shoot(self.stats.kit.shot(true)) }
+    /// Whether the weapon has an art and the meter holds its cost (Q).
+    pub fn can_art(&self) -> bool { self.stats.kit.art.is_some_and(|a| self.art >= a.cost()) }
     /// Start reeling `r`'s way, whatever was under way cut off.
     fn reel(&mut self, r: Reel) { self.reel = r; self.reeling = r.ticks(); self.act = None; }
     /// On the ground after a knockdown (past the first moment of the fall): blows pass over.
@@ -966,11 +999,13 @@ pub struct Fight {
     pub missiles: Vec<Missile>,
     /// The hero's arrows and bolts in flight.
     pub bolts: Vec<Bolt>,
+    /// The Chieftain's Cleaver thrown (`arts::WeaponArt::Hatchet`), out or on its way back.
+    pub hatchets: Vec<Hatchet>,
     rng: u64,
 }
 
 impl Fight {
-    pub fn new(enemies: Vec<Enemy>) -> Fight { Fight { hero: Hero::new(), enemies, missiles: Vec::new(), bolts: Vec::new(), rng: 0x9E37_79B9_7F4A_7C15 } }
+    pub fn new(enemies: Vec<Enemy>) -> Fight { Fight { hero: Hero::new(), enemies, missiles: Vec::new(), bolts: Vec::new(), hatchets: Vec::new(), rng: 0x9E37_79B9_7F4A_7C15 } }
 
     fn roll(&mut self, n: u32) -> u32 {
         self.rng ^= self.rng << 13; self.rng ^= self.rng >> 7; self.rng ^= self.rng << 17;
@@ -1005,6 +1040,7 @@ impl Fight {
                 Move::Tumble => return if a.t < TRAVEL && self.in_the_way(walked).is_none_or(|i| self.enemies[i].gap(walked) > 0.8) { TUMBLE } else { 0.0 },
                 // A sidestep keeps walking.
                 Move::Lane(_) => {}
+                Move::Art => return self.art_speed(a, walked),
                 _ => return 0.0,
             }
         }
@@ -1063,6 +1099,20 @@ impl Fight {
         for i in 0..self.enemies.len() { self.enemy_tick(i, walked, &mut out); }
         self.missiles_tick(walked, &mut out);
         self.bolts_tick(&mut out);
+        self.hatchets_tick(walked, &mut out);
+        // Sentence's blow falls when its count runs out.
+        if let Some((i, n)) = self.hero.mark {
+            self.hero.mark = (n > 1).then_some((i, n - 1));
+            if n <= 1 && self.enemies.get(i).is_some_and(|e| e.alive()) {
+                let spec = crate::arts::WeaponArt::Sentence.spec();
+                out.push(Event::Sentenced { enemy: i });
+                self.strike(i, Move::Art, spec, &mut out);
+            }
+        }
+        // The art meter fills from blows landed, parries and last-moment dodges and blocks.
+        if self.hero.stats.kit.art.is_some() {
+            self.hero.art = (self.hero.art + crate::arts::gained(&out)).min(crate::arts::ART_MAX);
+        }
         // Arrows pulled back out of the fallen.
         if self.hero.stats.kit.ranged == Some(crate::gear::Ranged::Bow) {
             let felled = out.iter().filter(|e| matches!(e, Event::Felled { .. })).count() as u32;
@@ -1096,7 +1146,11 @@ impl Fight {
                 let m = match m { Move::Step(dir) if !(-1..=1).contains(&(h.lane + dir)) => Move::Tumble, m => m };
                 let m = self.riposte_for(m, walked).unwrap_or(m);
                 let kit = self.hero.stats.kit;
-                let spec = match (m, kit.shot(m == Move::Cast)) { (Move::Loose | Move::Cast, Some(r)) => Move::loose_spec(r), _ => m.spec_for(kit.arms.class, kit.off.map(|o| o.guard)) };
+                let spec = match (m, kit.shot(m == Move::Cast), kit.art) {
+                    (Move::Loose | Move::Cast, Some(r), _) => Move::loose_spec(r),
+                    (Move::Art, _, Some(art)) => art.spec(),
+                    _ => m.spec_for(kit.arms.class, kit.off.map(|o| o.guard)),
+                };
                 let cost = self.hero.stats.cost(m, spec.stamina);
                 let h = &mut self.hero;
                 if cost > 0.0 && h.stamina <= 0.0 {
@@ -1104,7 +1158,7 @@ impl Fight {
                     h.buffer = None;
                 } else if m == Move::Flask && h.flasks == 0 {
                     h.buffer = None;
-                } else if (m == Move::Loose && !h.can_loose()) || (m == Move::Cast && !h.can_cast()) {
+                } else if (m == Move::Loose && !h.can_loose()) || (m == Move::Cast && !h.can_cast()) || (m == Move::Art && !h.can_art()) {
                     h.buffer = None;
                 } else if matches!(m, Move::Lane(dir) if !(-1..=1).contains(&(h.lane + dir))) {
                     // No stepping off the road's edge.
@@ -1116,6 +1170,7 @@ impl Fight {
                     if let Move::Step(dir) | Move::Lane(dir) = m { h.lane += dir; }
                     h.act = Some(Act { mv: m, spec, t: 0, landed: false, from_lane: from, from_x: h.x });
                     h.guarding = false;
+                    h.pierced = 0;
                     out.push(Event::Began(m));
                 }
             }
@@ -1153,8 +1208,13 @@ impl Fight {
             let k = if h.guarding { 1.0 / 3.0 } else { 1.0 };
             h.stamina = (h.stamina + REGEN * k * h.stats.regen()).min(h.stats.max_stamina());
         }
+        h.stone = h.stone.saturating_sub(1);
         let Some(mut a) = h.act else { return };
         let spec = a.spec;
+        if a.mv == Move::Art {
+            if let Some(art) = h.stats.kit.art { self.art_fires(art, &mut a, walked, out); }
+        }
+        let h = &mut self.hero;
         if a.mv == Move::Flask && a.t == spec.frames.0 {
             h.flasks -= 1;
             h.hp = (h.hp + FLASK_HEAL * h.stats.kit.heal).min(h.stats.max_hp());
@@ -1527,6 +1587,13 @@ impl Fight {
         if h.guarding && !behind && a.kind != Kind::Unblockable { return self.block(i, a, out); }
         let h = &mut self.hero;
         let damage = a.damage * h.stats.taken();
+        if h.stone > 0 {
+            // Stone Skin: less of it gets through, and nothing staggers or floors the hero.
+            let damage = damage * crate::arts::STONE_TAKEN;
+            h.hp -= damage;
+            out.push(Event::Struck { damage, heavy: false });
+            return;
+        }
         h.hp -= damage;
         h.poise -= damage * 1.3;
         h.poise_wait = 0;
@@ -1591,6 +1658,158 @@ impl Fight {
                 e.s += BURST_SHOVE as f64 * if e.s >= at { 1.0 } else { -1.0 };
                 e.ai = Ai::Stumbled(STUMBLE / 2);
             }
+        }
+    }
+
+    /// How fast the road walks under an art: Light Lance's dash straight through what is ahead,
+    /// Wingbeat's dive up to the nearest; standing still otherwise.
+    fn art_speed(&self, a: Act, walked: f64) -> f32 {
+        use crate::arts::{WeaponArt, DIVE, DIVE_AT, LANCE_DASH};
+        let (w, live, _) = a.spec.frames;
+        match self.hero.stats.kit.art {
+            Some(WeaponArt::Lance) if (w..w + live).contains(&a.t) => LANCE_DASH * 60.0 / live as f32,
+            Some(WeaponArt::Wingbeat) if (w..DIVE_AT).contains(&a.t) && self.in_the_way(walked).is_none_or(|i| self.enemies[i].gap(walked) > 0.8) => DIVE * 60.0 / (DIVE_AT - w) as f32,
+            _ => 0.0,
+        }
+    }
+
+    /// Enemy `i` struck by the art under way (`strike`, with no shield to turn it): what it took.
+    fn art_strike(&mut self, i: usize, spec: Spec, out: &mut Vec<Event>) -> f32 {
+        let before = self.enemies[i].hp;
+        self.strike(i, Move::Art, spec, out);
+        before - self.enemies[i].hp.max(0.0)
+    }
+
+    /// Enemy `i` thrown `SHOVE` back from the hero and off balance a while, unless it is already
+    /// open to a riposte.
+    fn throw_back(&mut self, i: usize, walked: f64) {
+        let e = &mut self.enemies[i];
+        if !e.alive() || matches!(e.ai, Ai::Staggered(_)) { return; }
+        e.s += crate::arts::SHOVE as f64 * if e.gap(walked) >= 0.0 { 1.0 } else { -1.0 };
+        e.ai = Ai::Stumbled(crate::arts::REELS);
+    }
+
+    /// Living foes `spec` reaches from the hero's lane (and the lanes beside, as wide as it is).
+    fn in_reach(&self, spec: Spec, walked: f64) -> Vec<usize> {
+        let lane = self.hero.lane;
+        self.enemies.iter().enumerate()
+            .filter(|(_, e)| e.alive() && (e.lane - lane).abs() <= spec.wide && (-0.3..=spec.reach).contains(&e.gap(walked)))
+            .map(|(i, _)| i).collect()
+    }
+
+    /// What `art` does this tick of its act `a`: most go off at the windup's end (`WeaponArt::fires`),
+    /// paid for then; Light Lance pierces through its live frames, Wingbeat dives at `DIVE_AT`.
+    fn art_fires(&mut self, art: crate::arts::WeaponArt, a: &mut Act, walked: f64, out: &mut Vec<Event>) {
+        use crate::arts::*;
+        let spec = a.spec;
+        let (w, live, _) = spec.frames;
+        if a.t == art.fires() {
+            self.hero.art = (self.hero.art - art.cost()).max(0.0);
+            out.push(Event::Art { art });
+            let near = self.in_reach(spec, walked);
+            a.landed = !near.is_empty();
+            match art {
+                WeaponArt::Toll => for i in near {
+                    // The bell rings the stunned harder.
+                    let open = matches!(self.enemies[i].ai, Ai::Staggered(_) | Ai::Stumbled(_));
+                    self.art_strike(i, if open { Spec { damage: spec.damage * 1.5, ..spec } } else { spec }, out);
+                    self.throw_back(i, walked);
+                },
+                WeaponArt::Wail => {
+                    let mut drunk = 0.0;
+                    for i in near {
+                        drunk += self.art_strike(i, spec, out);
+                        let e = &mut self.enemies[i];
+                        if e.alive() && matches!(e.attack(), Some((_, Phase::Windup, _))) { e.ai = Ai::Stumbled(REELS); }
+                    }
+                    // What is in the air falls.
+                    self.missiles.clear();
+                    let h = &mut self.hero;
+                    h.hp = (h.hp + drunk * art.drinks()).min(h.stats.max_hp());
+                }
+                WeaponArt::Hatchet => {
+                    let h = &self.hero;
+                    let damage = spec.damage;
+                    self.hatchets.push(Hatchet { s: walked + HERO_D as f64 + 0.4, lane: h.lane, x: h.x, left: HATCHET_RANGE, back: false, damage, stance: spec.stance, bit: (0, 0), age: 0 });
+                    a.landed = true;
+                }
+                WeaponArt::Sentence => {
+                    // The nearest ahead, its own lane first.
+                    let lane = self.hero.lane;
+                    let pick = near.into_iter().filter(|&i| self.enemies[i].gap(walked) > -0.3)
+                        .min_by(|&x, &y| {
+                            let k = |i: usize| ((self.enemies[i].lane - lane).abs(), self.enemies[i].gap(walked));
+                            let (kx, ky) = (k(x), k(y));
+                            kx.0.cmp(&ky.0).then(kx.1.total_cmp(&ky.1))
+                        });
+                    if let Some(i) = pick { self.hero.mark = Some((i, SENTENCE_DELAY)); }
+                }
+                WeaponArt::Reap => {
+                    let mut drunk = 0.0;
+                    for i in near { drunk += self.art_strike(i, spec, out); }
+                    let h = &mut self.hero;
+                    h.hp = (h.hp + drunk * art.drinks()).min(h.stats.max_hp());
+                }
+                // The dash pierces through its live frames, below.
+                WeaponArt::Lance => {}
+                WeaponArt::StoneSkin => {
+                    self.hero.stone = STONE_TICKS;
+                    for i in near { self.art_strike(i, spec, out); self.throw_back(i, walked); }
+                }
+                // The gust throws back, and hurts nothing; the dive strikes at `DIVE_AT`.
+                WeaponArt::Wingbeat => for i in near { self.throw_back(i, walked); },
+            }
+        }
+        if art == WeaponArt::Lance && (w..w + live).contains(&a.t) {
+            for i in self.in_reach(spec, walked) {
+                if self.hero.pierced & (1 << (i % 64)) != 0 { continue; }
+                self.hero.pierced |= 1 << (i % 64);
+                a.landed = true;
+                self.art_strike(i, spec, out);
+            }
+        }
+        if art == WeaponArt::Wingbeat && a.t == DIVE_AT {
+            let near = self.in_reach(Spec { reach: DIVE_REACH, ..spec }, walked);
+            let pick = near.into_iter().min_by(|&x, &y| self.enemies[x].gap(walked).total_cmp(&self.enemies[y].gap(walked)));
+            if let Some(i) = pick { self.art_strike(i, spec, out); }
+        }
+    }
+
+    /// The thrown Hatchet one tick on: out down its lane biting the first foe in its way, then
+    /// back to the hand, biting what it passes again.
+    fn hatchets_tick(&mut self, walked: f64, out: &mut Vec<Event>) {
+        use crate::arts::HATCHET_SPEED;
+        let hand = walked + HERO_D as f64;
+        let mut k = 0;
+        while k < self.hatchets.len() {
+            let mut t = self.hatchets[k];
+            let step = HATCHET_SPEED / 60.0;
+            t.age += 1;
+            t.x += (self.hero.x - t.x) * if t.back { 0.2 } else { 0.0 } + (t.lane as f32 * LANE_W - t.x) * if t.back { 0.0 } else { 0.15 };
+            let (from, to) = if t.back { (t.s - step as f64, t.s) } else { (t.s, t.s + step as f64) };
+            t.s = if t.back { from } else { to };
+            if !t.back { t.left -= step; }
+            let lane = if t.back { self.hero.lane } else { t.lane };
+            let bit = if t.back { t.bit.1 } else { t.bit.0 };
+            let hit: Vec<usize> = (0..self.enemies.len()).filter(|&i| {
+                let e = &self.enemies[i];
+                e.alive() && e.lane == lane && bit & (1 << (i % 64)) == 0 && e.s >= from - 0.4 && e.s <= to + 0.2
+            }).collect();
+            let spec = Spec { damage: t.damage, stance: t.stance, ..crate::arts::WeaponArt::Hatchet.spec() };
+            for i in hit {
+                if t.back { t.bit.1 |= 1 << (i % 64); } else { t.bit.0 |= 1 << (i % 64); }
+                self.art_strike(i, spec, out);
+                // Going out, it bites the first and turns back.
+                if !t.back { t.back = true; break; }
+            }
+            if !t.back && t.left <= 0.0 { t.back = true; }
+            if t.back && t.s <= hand {
+                self.hatchets.remove(k);
+                out.push(Event::Caught);
+                continue;
+            }
+            self.hatchets[k] = t;
+            k += 1;
         }
     }
 }
@@ -2540,5 +2759,132 @@ mod tests {
         k.hero.arrows = 5;
         run(&mut k, 120, |_, t| if t == 0 { press_loose() } else { idle() }, |_, ev| ev.iter().any(|e| matches!(e, Event::Felled { .. })));
         assert_eq!(k.hero.arrows, 5 - 1 + SALVAGE);
+    }
+
+
+    /// The hero holding forged weapon `name`, the meter at `meter`.
+    fn forged(name: &str, meter: f32, enemies: Vec<Enemy>) -> Fight {
+        let mut f = armed(name, enemies);
+        f.hero.art = meter;
+        f
+    }
+    fn press_art() -> Input { Input { art: true, ..idle() } }
+    /// Ticks with the road walking as `speed` says (an art's dash or dive), from `walked`: every event and where it ended.
+    fn art_run(f: &mut Fight, n: u32, mut walked: f64) -> (Vec<Event>, f64) {
+        let mut ev = Vec::new();
+        for t in 0..n {
+            let i = if t == 0 { press_art() } else { idle() };
+            walked += (f.speed(&i, walked) / 60.0) as f64;
+            ev.extend(f.tick(&i, walked));
+        }
+        (ev, walked)
+    }
+    fn art_hits(ev: &[Event]) -> usize { ev.iter().filter(|e| matches!(e, Event::Hit { mv: Move::Art, .. })).count() }
+
+    #[test]
+    fn an_art_waits_for_its_meter_is_paid_when_it_goes_off_and_fighting_well_fills_it() {
+        use crate::arts::*;
+        let mut f = forged("Bell-Hammer", 0.0, vec![dummy(2.0, 0)]);
+        let ev = run(&mut f, 5, |_, t| if t == 0 { press_art() } else { idle() }, |_, _| false);
+        assert!(!ev.contains(&Event::Began(Move::Art)), "an empty meter does nothing");
+        // A light landed fills it; a plain weapon has no meter to fill.
+        hits(&mut f, Input { light: true, ..idle() });
+        assert_eq!(f.hero.art, GAIN_LIGHT);
+        let mut plain = armed("Husk Cleaver", vec![dummy(2.0, 0)]);
+        hits(&mut plain, Input { light: true, ..idle() });
+        assert_eq!(plain.hero.art, 0.0);
+        f.hero.art = 60.0;
+        let ev = run(&mut f, WeaponArt::Toll.fires(), |_, t| if t == 0 { press_art() } else { idle() }, |_, _| false);
+        assert!(ev.contains(&Event::Began(Move::Art)) && f.hero.art == 60.0, "paid only when it goes off");
+        let ev = run(&mut f, 2, |_, _| idle(), |_, _| false);
+        assert!(ev.contains(&Event::Art { art: WeaponArt::Toll }));
+        assert_eq!(f.hero.art, 10.0, "its own blows give nothing back");
+    }
+
+    #[test]
+    fn the_toll_rings_through_the_lanes_beside_and_throws_them_off_balance() {
+        let mut f = forged("Bell-Hammer", 100.0, vec![dummy(2.0, 0), dummy(2.5, 1), dummy(2.0, -1)]);
+        // Where they stand as it goes off (they close in while it winds up).
+        let (mut ev, _) = art_run(&mut f, crate::arts::WeaponArt::Toll.fires(), 0.0);
+        let before: Vec<f64> = f.enemies.iter().map(|e| e.s).collect();
+        ev.extend(f.tick(&idle(), 0.0));
+        assert_eq!(art_hits(&ev), 3);
+        // Off balance and thrown back; or, its stance rung through, open to a riposte where it stands.
+        for (e, s) in f.enemies.iter().zip(before) {
+            let shoved = (e.s - s - crate::arts::SHOVE as f64).abs() < 1e-6;
+            assert!(matches!(e.ai, Ai::Stumbled(_)) && shoved || matches!(e.ai, Ai::Staggered(_)) && e.s == s, "{:?}", e.ai);
+        }
+    }
+
+    #[test]
+    fn the_wail_breaks_windups_drinks_and_drops_what_is_in_the_air() {
+        let mut f = forged("Drowned Wail", 100.0, vec![husk(4.0, -1)]);
+        f.enemies[0].ai = Ai::Attack { i: 0, t: 0, wide: 0, landed: false, aim: HERO_D as f64 };
+        f.missiles.push(Missile { from: 0, attack: Archetype::Archer.attacks()[0], s: (HERO_D + 6.0) as f64, lane: 0, x: 0.0, age: 0 });
+        f.hero.hp = 50.0;
+        let (ev, _) = art_run(&mut f, 22, 0.0);
+        assert_eq!(art_hits(&ev), 1);
+        assert!(matches!(f.enemies[0].ai, Ai::Stumbled(_)), "{:?}", f.enemies[0].ai);
+        assert!(f.missiles.is_empty() && f.hero.hp > 50.0);
+    }
+
+    #[test]
+    fn the_hatchet_bites_the_first_foe_and_again_on_its_way_back() {
+        let mut f = forged("Chieftain's Cleaver", 100.0, vec![dummy(6.0, 0), dummy(7.0, 0)]);
+        let (ev, _) = art_run(&mut f, 150, 0.0);
+        let bit: Vec<usize> = ev.iter().filter_map(|e| match e { Event::Hit { enemy, mv: Move::Art } => Some(*enemy), _ => None }).collect();
+        assert_eq!(bit, vec![0, 0], "out and back, never the one behind");
+        assert!(ev.contains(&Event::Caught) && f.hatchets.is_empty());
+    }
+
+    #[test]
+    fn sentence_falls_on_the_marked_foe_a_moment_later_through_its_shield() {
+        let mut f = forged("Gavel of Sentence", 100.0, vec![Enemy { ai: Ai::Wait(u32::MAX), ..of(Archetype::Shieldbearer, 5.0, 0) }]);
+        let (ev, _) = art_run(&mut f, crate::arts::WeaponArt::Sentence.fires() + 2, 0.0);
+        assert!(f.hero.mark.is_some_and(|(i, _)| i == 0) && art_hits(&ev) == 0);
+        let (ev, _) = art_run(&mut f, crate::arts::SENTENCE_DELAY, 0.0);
+        assert!(ev.contains(&Event::Sentenced { enemy: 0 }) && art_hits(&ev) == 1 && !ev.iter().any(|e| matches!(e, Event::Deflected { .. })));
+    }
+
+    #[test]
+    fn reap_cuts_every_lane_and_drinks() {
+        let mut f = forged("Reaper's Glaive", 100.0, vec![dummy(2.0, -1), dummy(2.0, 0), dummy(2.0, 1)]);
+        f.hero.hp = 40.0;
+        let (ev, _) = art_run(&mut f, 40, 0.0);
+        assert_eq!(art_hits(&ev), 3);
+        assert!(f.hero.hp > 40.0);
+    }
+
+    #[test]
+    fn the_light_lance_dashes_through_what_is_ahead_untouchable() {
+        let mut f = forged("Lance of Light", 100.0, vec![dummy(2.5, 0), dummy(3.5, 0)]);
+        let (ev, walked) = art_run(&mut f, 30, 0.0);
+        assert_eq!(art_hits(&ev), 2, "pierces each once");
+        assert!((walked - crate::arts::LANCE_DASH as f64).abs() < 0.2, "{walked}");
+        assert!(f.enemies.iter().all(|e| e.gap(walked) < 0.5), "out past them");
+    }
+
+    #[test]
+    fn stone_skin_takes_less_and_nothing_knocks_the_hero_about() {
+        use crate::arts::*;
+        let mut f = forged("Stoneheart Greatsword", 100.0, vec![husk(2.0, 0)]);
+        let (ev, _) = art_run(&mut f, 60, 0.0);
+        assert!(art_hits(&ev) == 1 && f.hero.stone > 0 && f.hero.stone <= STONE_TICKS);
+        let mut f = attacking(f, 0);
+        f.enemies[0].s = (HERO_D + 1.0) as f64;
+        let hp = f.hero.hp;
+        let ev = run(&mut f, 80, |_, _| idle(), |_, ev| hurt(ev));
+        let taken = ev.iter().find_map(|e| match e { Event::Struck { damage, .. } => Some(*damage), _ => None }).expect("struck");
+        assert!((hp - f.hero.hp - taken).abs() < 1e-4 && f.hero.reeling == 0);
+    }
+
+    #[test]
+    fn wingbeat_throws_back_then_dives_onto_the_nearest() {
+        let mut f = forged("Feather of the Fallen Light", 100.0, vec![dummy(3.5, 0)]);
+        let (ev, walked) = art_run(&mut f, crate::arts::DIVE_AT + 2, 0.0);
+        assert!(walked > 2.5, "{walked}");
+        assert_eq!(art_hits(&ev), 1);
+        assert!(matches!(f.enemies[0].ai, Ai::Stumbled(_) | Ai::Staggered(_) | Ai::Dead), "{:?}", f.enemies[0].ai);
+        assert!(f.enemies[0].s > (HERO_D + 3.5) as f64, "thrown back by the gust");
     }
 }

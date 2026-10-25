@@ -38,12 +38,10 @@ fn unpack() -> PathBuf {
     }
     let mut files = Vec::new();
     walk(&BUILT, &mut files);
-    let stamp = files.iter().fold(0xcbf2_9ce4_8422_2325u64, |h, f| {
-        let h = f.path().to_string_lossy().bytes().fold(h, |h, b| (h ^ b as u64).wrapping_mul(0x100_0000_01b3));
-        (h ^ f.contents().len() as u64).wrapping_mul(0x100_0000_01b3)
-    }).to_string();
+    // Every file's path and contents, hashed when the library was built (build.rs).
+    let stamp = env!("HOLLOW_ROAD_ASSETS_STAMP");
     let mark = root.join(".unpacked");
-    if std::fs::read_to_string(&mark).ok().as_deref() == Some(stamp.as_str()) { return root; }
+    if std::fs::read_to_string(&mark).ok().as_deref() == Some(stamp) { return root; }
     let t = std::time::Instant::now();
     let _ = std::fs::remove_dir_all(&root);
     for f in &files {
@@ -51,7 +49,7 @@ fn unpack() -> PathBuf {
         if let Some(parent) = to.parent() { let _ = std::fs::create_dir_all(parent); }
         if let Err(e) = std::fs::write(&to, f.contents()) { log::error!("[hollow_road] could not unpack {}: {e}", to.display()); }
     }
-    let _ = std::fs::write(&mark, &stamp);
+    let _ = std::fs::write(&mark, stamp);
     log::info!("[hollow_road] unpacked {} assets to {} in {:.1} s", files.len(), root.display(), t.elapsed().as_secs_f32());
     root
 }

@@ -146,6 +146,14 @@ impl Play {
         self.tap(ch);
         self.key_as(Key::Named(NamedKey::Shift), KeyboardState::Released);
     }
+    /// At the veil before a standing boss, held there: step through it (E). Whether it did.
+    fn step_through_veil(&mut self) -> bool {
+        let ahead = self.canvas.get_plugin::<quartz_path_forge::PathForgePlugin>().unwrap().walked_ahead();
+        let g = self.game();
+        let at = g.playing() && g.world.at_veil(&g.fight, ahead);
+        if at { self.tap("e"); }
+        at
+    }
     /// A way tapped twice and held: a run.
     fn run_on(&mut self, ch: &str) { self.tap(ch); self.key(ch, KeyboardState::Pressed); }
     /// Tick until `pred` holds (at most `n` ticks); whether it did.
@@ -621,6 +629,7 @@ fn boss_moves() {
     for _ in 0..6000 {
         p.fell_all();
         p.ticks(1);
+        p.step_through_veil();
         if matches!(p.mode(), Mode::Side(_)) { met = true; break; }
     }
     p.key("w", KeyboardState::Released);
@@ -890,6 +899,7 @@ fn collector_moves() {
     for _ in 0..6000 {
         p.fell_all();
         p.ticks(1);
+        p.step_through_veil();
         if matches!(p.mode(), Mode::Side(_)) { met = true; break; }
     }
     p.key("w", KeyboardState::Released);
@@ -971,9 +981,29 @@ fn boss() {
     p.ticks(10);
     p.key("w", KeyboardState::Pressed);
     let mut met = false;
+    // The veil across the road before the Warden: from down the road, held at it, and
+    // stepping through it.
+    let mut far = false;
     for _ in 0..6000 {
         p.fell_all();
         p.ticks(1);
+        let ahead = p.canvas.get_plugin::<quartz_path_forge::PathForgePlugin>().unwrap().walked_ahead();
+        let veil = p.game().world.veil();
+        if !far && veil.is_some_and(|v| v - ahead < 14.0) { p.shot("b00a_veil"); far = true; }
+        let at = { let g = p.game(); g.playing() && g.world.at_veil(&g.fight, ahead) };
+        if at {
+            p.ticks(20);
+            p.shot("b00b_at_the_veil");
+            // The hand pressing into it from beyond, at its deepest (`veil_picture`: 128 ticks into
+            // each 512, for 64).
+            while p.game().ticks % 512 != 160 { p.ticks(1); }
+            p.shot("b00b2_pressed_from_beyond");
+            p.tap("e");
+            p.ticks(14);
+            p.shot("b00c_stepping_through");
+            p.ticks(18);
+            p.shot("b00d_burning_open");
+        }
         if matches!(p.mode(), Mode::Side(_)) { met = true; break; }
     }
     p.key("w", KeyboardState::Released);
@@ -1013,8 +1043,12 @@ fn boss() {
     assert_eq!(arena(&mut p).side.hero.hp, hp, "the sweep passed under");
     throw(&mut p, 2, 3.0);
     let w = windup(&mut p, 2);
-    p.ticks(w + 8);
+    p.ticks(w + 2);
+    p.shot("b05a_knell_struck");
+    p.ticks(10);
     p.shot("b05_knell_ring");
+    p.ticks(14);
+    p.shot("b05b_knell_rolling");
     p.ticks(60);
     throw(&mut p, 3, 4.5);
     let w = windup(&mut p, 3);
@@ -1531,7 +1565,12 @@ fn pause_keeps() {
     let dir = p.game().saves.clone();
     // Done since the last look, then paused straight away.
     { let g = p.game(); g.world.souls = 4321; g.fight.hero.stats.vigor = 7; }
+    // Q is the weapon art on the road, not a pause; Esc pauses.
     p.tap("q");
+    p.ticks(2);
+    assert!(matches!(p.mode(), Mode::Play), "Q paused the road");
+    p.key_as(Key::Named(NamedKey::Escape), KeyboardState::Pressed);
+    p.key_as(Key::Named(NamedKey::Escape), KeyboardState::Released);
     p.ticks(2);
     assert!(p.until_mode(10, |m| matches!(m, Mode::Front(crate::shrine::Front::Pause(_)))), "never paused");
     p.shot("q01_paused");
@@ -1901,7 +1940,7 @@ fn entrance() {
     assert!(p.walk_until(3000, false, |s| s.stop.as_deref() == Some("gate@vale")), "never reached the gate");
     p.ticks(10);
     p.key("w", KeyboardState::Pressed);
-    for _ in 0..6000 { p.fell_all(); p.ticks(1); if matches!(p.mode(), Mode::Side(_)) { break; } }
+    for _ in 0..6000 { p.fell_all(); p.ticks(1); p.step_through_veil(); if matches!(p.mode(), Mode::Side(_)) { break; } }
     p.key("w", KeyboardState::Released);
     assert_eq!(p.scene_at().map(|s| s.0), Some("entrance"), "no entrance: {}", p.status());
     for (secs, name) in [(1.6, "e01_swing"), (1.3, "e02_bars"), (1.3, "e03_toll"), (0.9, "e04_closer"), (1.8, "e05_named"), (2.2, "e06_open")] {
@@ -1932,7 +1971,7 @@ fn ending() {
     assert!(p.walk_until(3000, false, |s| s.stop.as_deref() == Some("spire_summit@sealed_slab")), "never reached the summit");
     p.ticks(10);
     p.key("w", KeyboardState::Pressed);
-    for _ in 0..6000 { p.fell_all(); p.ticks(1); if matches!(p.mode(), Mode::Side(_)) { break; } }
+    for _ in 0..6000 { p.fell_all(); p.ticks(1); p.step_through_veil(); if matches!(p.mode(), Mode::Side(_)) { break; } }
     p.key("w", KeyboardState::Released);
     assert_eq!(arena(&mut p).side.foes[0].breed.name, "The Archangel");
     p.watch(2.4);
@@ -1999,4 +2038,104 @@ fn barred() {
     p.shot("b03_taken_the_open_way");
     p.ticks(50);
     p.shot("b04_turned_onto_it");
+}
+
+/// The forged weapons' arts (Q): each on the road against husks set where it reaches, as it winds
+/// up and as it goes off (the Hatchet in flight, Sentence's blow falling, Wingbeat's dive); then
+/// three in the yard at the gate.
+#[test]
+#[ignore]
+fn arts() {
+    use crate::arts::{WeaponArt, DIVE_AT, SENTENCE_DELAY};
+    use crate::fight::{Ai, Archetype, Enemy};
+    use crate::game::Mode;
+    let mut p = Play::started();
+    p.ticks(40);
+    let forged = |piece: &str| {
+        let mut l = crate::gear::Loadout::starting();
+        let i = crate::gear::find(piece);
+        l.gain(i);
+        assert!(l.wear(0, Some(i)));
+        l.kit()
+    };
+    let road: [(&str, &str, &[(f32, i32)]); 8] = [
+        ("Bell-Hammer", "art01_toll", &[(2.2, 0), (2.6, 1)]),
+        ("Drowned Wail", "art02_wail", &[(4.0, 0), (5.0, -1)]),
+        ("Chieftain's Cleaver", "art03_hatchet", &[(6.0, 0)]),
+        ("Gavel of Sentence", "art04_sentence", &[(4.5, 0)]),
+        ("Reaper's Glaive", "art05_reap", &[(2.4, -1), (2.4, 0), (2.4, 1)]),
+        ("Lance of Light", "art06_lance", &[(2.8, 0), (3.8, 0)]),
+        ("Stoneheart Greatsword", "art07_stone_skin", &[(2.2, 0)]),
+        ("Feather of the Fallen Light", "art08_wingbeat", &[(3.5, 0)]),
+    ];
+    for (piece, name, at) in road {
+        let walked = p.canvas.get_plugin::<quartz_path_forge::PathForgePlugin>().unwrap().walked_ahead();
+        {
+            let g = p.game();
+            g.fight.enemies = at.iter().map(|&(d, lane)| Enemy { ai: Ai::Wait(10_000), ..Enemy::new(Archetype::Husk, walked + crate::fight::HERO_D as f64 + d as f64, lane) }).collect();
+            g.fight.missiles.clear();
+            let h = &mut g.fight.hero;
+            h.stats.kit = forged(piece);
+            (h.stats.might, h.stats.dexterity) = (10, 10);
+            *h = crate::fight::Hero::with(h.stats);
+            h.art = 100.0;
+        }
+        let art = p.fight().hero.stats.kit.art.expect("no art");
+        let fires = art.fires();
+        p.tap("q");
+        assert!(p.until(60, |f| f.hero.act.is_some_and(|a| a.mv == crate::fight::Move::Art && a.t + 6 >= fires)), "{piece}: the art never began");
+        p.shot(&format!("{name}_windup"));
+        p.until(30, |f| f.hero.act.is_some_and(|a| a.t >= fires + 2));
+        p.shot(name);
+        let late = match art {
+            WeaponArt::Hatchet => p.until(120, |f| f.hatchets.first().is_some_and(|t| t.back)),
+            WeaponArt::Sentence => p.until(SENTENCE_DELAY + 20, |f| f.hero.mark.is_some_and(|(_, n)| n <= 1)),
+            WeaponArt::Wingbeat => p.until(60, |f| f.hero.act.is_some_and(|a| a.t >= DIVE_AT)),
+            _ => false,
+        };
+        if late { p.ticks(2); p.shot(&format!("{name}_after")); }
+        p.until(240, |f| f.hero.act.is_none() && f.hatchets.is_empty() && f.hero.mark.is_none());
+        p.ticks(30);
+    }
+    // The yard at the gate: the Toll, the Lance through the boss, the Hatchet across.
+    p.game().fight.enemies.clear();
+    p.game().world.warping = Some("gate@vale".into());
+    p.canvas.run(Action::RunPlugin { name: "path_forge".into(), data: "warp:gate@vale".into() });
+    assert!(p.walk_until(3000, false, |s| s.stop.as_deref() == Some("gate@vale")), "never reached the gate");
+    p.ticks(10);
+    p.key("w", KeyboardState::Pressed);
+    let mut met = false;
+    for _ in 0..6000 {
+        p.fell_all();
+        p.ticks(1);
+        p.step_through_veil();
+        if matches!(p.mode(), Mode::Side(_)) { met = true; break; }
+    }
+    p.key("w", KeyboardState::Released);
+    assert!(met, "the boss never stepped out");
+    p.ticks(40);
+    p.skip_scene();
+    assert!(p.until_mode(400, |m| matches!(m, Mode::Side(a) if a.t >= 140)));
+    for (piece, name, gap, after) in [("Bell-Hammer", "art10_yard_toll", 1.6, 2), ("Lance of Light", "art11_yard_lance", 1.8, 6), ("Chieftain's Cleaver", "art12_yard_hatchet", 4.0, 14)] {
+        let kit = forged(piece);
+        {
+            let a = arena(&mut p);
+            let h = &mut a.side.hero;
+            (h.stats.kit, h.stats.might, h.stats.dexterity) = (kit, 10, 10);
+            (h.hp, h.art, h.reel, h.reeling, h.act) = (h.stats.max_hp(), 100.0, crate::fight::Reel::None, 0, None);
+            h.s = -2.5;
+            h.facing = 1.0;
+            a.side.foes[0].s = h.s + gap;
+            a.side.foes[0].facing = -1.0;
+            a.side.foes[0].ai = crate::side::Ai::Wait(10_000);
+        }
+        p.game().fight.hero.stats.kit = kit;
+        p.ticks(4);
+        p.tap("q");
+        let fires = kit.art.expect("no art").fires();
+        assert!(p.until_mode(80, |m| matches!(m, Mode::Side(a) if a.side.hero.act.is_some_and(|(_, t)| t >= fires + after))), "{piece}: no art in the yard");
+        p.shot(name);
+        p.until_mode(200, |m| matches!(m, Mode::Side(a) if a.side.hero.act.is_none() && a.side.hatchets.is_empty()));
+        p.ticks(20);
+    }
 }
