@@ -78,6 +78,9 @@ pub struct Sheet {
     pub draws: HashMap<String, Vec<Hold>>,
     /// Which weapon and offhand pairs `dress` has drawn.
     pub dressed: std::collections::HashSet<(String, String)>,
+    /// Each armed or dressed frame's `Glint`, by the frame (`Arc::as_ptr`), and whether it is the
+    /// mirror of the one drawn (the glint is kept once, for the frame as drawn).
+    pub glints: HashMap<usize, (Arc<Glint>, bool)>,
 }
 
 /// Where a frame holds its weapon: the grip in canvas pixels, the blade's angle on screen
@@ -86,6 +89,17 @@ pub struct Sheet {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Hold { pub grip: (f32, f32), pub angle: f32, pub over: bool, pub reach: f32 }
 
+impl Hold {
+    /// Whether an axe in `clip` must be drawn mirrored across its haft to cut with its edge: its
+    /// strike (the clip's fastest turn) sweeps anticlockwise on screen, and an axe's picture lies
+    /// with its edge on the side that leads a clockwise one (below the haft, the head to the right).
+    fn edge_trails(clip: &str, holds: &[Hold]) -> bool {
+        if !clip.strip_prefix("e_").unwrap_or(clip).starts_with("axe_") { return false; }
+        let turn = |a: f32, b: f32| (b - a + 540.0).rem_euclid(360.0) - 180.0;
+        holds.windows(2).map(|w| turn(w[0].angle, w[1].angle)).max_by(|a, b| a.abs().total_cmp(&b.abs())).is_some_and(|d| d < 0.0)
+    }
+}
+
 /// Where a frame's free hand is, for an offhand to be strapped to: the fist in canvas pixels, the
 /// forearm's direction elbow to fist on screen (degrees, 0 = right, 90 = down), whether the arm is
 /// drawn over the body or behind it, whether the frame is side-on (`e_` clips) or from behind,
@@ -93,6 +107,19 @@ pub struct Hold { pub grip: (f32, f32), pub angle: f32, pub over: bool, pub reac
 /// (getting up, knocked down, dying: the arm is flung out, not held before an upright body).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct OffHold { pub fist: (f32, f32), pub angle: f32, pub over: bool, pub side: bool, pub spin: f32, pub lying: bool }
+
+/// Which pixels of a frame the weapon and the offhand cover, as they were drawn into it (`Sheet::arm`,
+/// `Sheet::dress`): for a look laid on the piece itself and nowhere else (`sheen`).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Glint { pub weapon: Vec<(u16, u16)>, pub off: Vec<(u16, u16)> }
+
+impl Glint {
+    /// As it lies on the frame flipped left to right, `width` wide.
+    pub fn mirrored(&self, width: u32) -> Glint {
+        let flip = |v: &[(u16, u16)]| v.iter().map(|&(x, y)| ((width as u16).saturating_sub(1 + x), y)).collect();
+        Glint { weapon: flip(&self.weapon), off: flip(&self.off) }
+    }
+}
 
 /// A point track a built clip carries along with its frames (`side_roll`): weapon holds and
 /// offhand holds alike.
@@ -121,6 +148,18 @@ impl Track for OffHold {
 /// the fist, and how far back along the forearm from the fist that pixel is strapped (a buckler is
 /// gripped in the fist, a kite shield rides the forearm).
 pub struct Shield { pub front: RgbaImage, pub back: RgbaImage, pub centre: (f32, f32), pub strap: f32 }
+
+/// What marks a clip's tracks for holding a shield (`hold_shield.txt`, `off_shield.txt`).
+const SHIELDED: &str = "#shield";
+
+/// How near a bare drawing's fist and its shield way's must be to count as one pose (fractions
+/// of the frame), and how far past the figure's middle the hood reaches (`Sheet::shield_way`).
+const AGREE: f32 = 0.03;
+const HOOD_HALF: f32 = 0.1;
+
+/// How much of a shield raised before the chest, seen from behind, shows out past the body's
+/// side (of its width): the rest is held in front of the hero, behind them on screen.
+const GUARD_PAST: f32 = 0.45;
 
 /// How far ahead of the fist's middle a buckler's face sits, along the forearm (frame pixels):
 /// past the knuckles.
@@ -164,7 +203,8 @@ impl Shield {
         } else {
             // From behind the body is between the eye and most of the shield: hanging, it is seen
             // nearly edge-on against the thigh, a sliver out past the cloak; raised before the
-            // chest, only its rim shows past the left side. Either way the body hides the rest.
+            // chest, held near the middle in front of them, part of it shows past the left side.
+            // Either way the body hides the rest.
             let hanging = hang.abs() < 50.0;
             // A forearm driven straight up the screen is punched out ahead (a parry): the shield
             // faces the blow, so its inside faces the eye whole, on the fist that grips it, over
@@ -173,13 +213,17 @@ impl Shield {
             let ahead = if hanging { 0.0 } else { k * k * (3.0 - 2.0 * k) };
             let wide = if hanging { 0.42 } else { (0.55 + 0.35 * raised) * (1.0 - ahead) + ahead };
             // On the ground an arm not hanging is flung out, not held across the chest: on the fist.
-            let left = if hold.lying && !hanging { 0.0 } else { self.back.width() as f32 * wide * if hanging { 0.3 } else { 0.8 * (1.0 - ahead) } };
+            let left = if hold.lying && !hanging { 0.0 } else { self.back.width() as f32 * wide * if hanging { 0.3 } else { GUARD_PAST * (1.0 - ahead) } };
             (&self.back, wide, lean, hold.over && !hanging, left)
         }
     }
 
     /// `frame` with the shield on the forearm `hold` says, over the body or behind it.
-    pub fn worn_on(&self, frame: &RgbaImage, hold: &OffHold) -> RgbaImage {
+    #[cfg(test)]
+    pub fn worn_on(&self, frame: &RgbaImage, hold: &OffHold) -> RgbaImage { self.worn_marking(frame, hold, &mut Vec::new()) }
+
+    /// As `worn_on`, each pixel of the shield that shows added to `marks`.
+    fn worn_marking(&self, frame: &RgbaImage, hold: &OffHold, marks: &mut Vec<(u16, u16)>) -> RgbaImage {
         let (img, wide, lean, over, left) = self.as_seen(hold);
         let (fs, fc) = hold.angle.to_radians().sin_cos();
         // A buckler seen edge-on is gripped in the fist, its face just ahead of the knuckles:
@@ -204,7 +248,7 @@ impl Shield {
                 if sx < 0.0 || sy < 0.0 || sx >= iw || sy >= ih { continue; }
                 let p = *img.get_pixel(sx as u32, sy as u32);
                 if p[3] < 128 { continue; }
-                if over || frame.get_pixel(x, y)[3] < 128 { out.put_pixel(x, y, p); }
+                if over || frame.get_pixel(x, y)[3] < 128 { out.put_pixel(x, y, p); marks.push((x as u16, y as u16)); }
             }
         }
         out
@@ -245,7 +289,12 @@ impl Held {
     /// pulled back to it and an arrow lies nocked from it, string and arrow over the body. Side-on
     /// the arrow runs from the hand out through the grip; from behind it points away up the road,
     /// foreshortened (the two fists are too nearly in line there to give it a direction).
-    pub fn gripped(&self, frame: &RgbaImage, hold: &OffHold, draw: Option<&Hold>) -> RgbaImage {
+    #[cfg(test)]
+    pub fn gripped(&self, frame: &RgbaImage, hold: &OffHold, draw: Option<&Hold>) -> RgbaImage { self.gripped_marking(frame, hold, draw, &mut Vec::new()) }
+
+    /// As `gripped`, each pixel of the thing itself that shows (not a string or an arrow) added
+    /// to `marks`.
+    fn gripped_marking(&self, frame: &RgbaImage, hold: &OffHold, draw: Option<&Hold>, marks: &mut Vec<(u16, u16)>) -> RgbaImage {
         let hang = ((hold.angle - 90.0 + 540.0) % 360.0) - 180.0;
         let lean = if draw.is_some() { 0.0 } else { hang * self.follow } + hold.spin;
         // A bow is drawn shorter than its picture but as thick: scaled across too, its stave
@@ -287,7 +336,7 @@ impl Held {
                 if sx < 0.0 || sy < 0.0 || sx >= iw || sy >= ih { continue; }
                 let p = *self.image.get_pixel(sx as u32, sy as u32);
                 if p[3] < 128 { continue; }
-                if over || frame.get_pixel(x, y)[3] < 128 { out.put_pixel(x, y, p); }
+                if over || frame.get_pixel(x, y)[3] < 128 { out.put_pixel(x, y, p); marks.push((x as u16, y as u16)); }
             }
         }
         let Some(bow) = self.bow else { return out };
@@ -352,8 +401,18 @@ impl Weapon {
         (n.len() == 4).then(|| Weapon { image, grip: (n[0], n[1]), tip: (n[2], n[3]) })
     }
 
+    /// The same weapon turned over: its picture mirrored across its haft, grip and tip kept.
+    fn mirrored(&self) -> Weapon {
+        let h = self.image.height() as f32;
+        Weapon { image: image::imageops::flip_vertical(&self.image), grip: (self.grip.0, h - self.grip.1), tip: (self.tip.0, h - self.tip.1) }
+    }
+
     /// `frame` with the weapon put in its hand as `hold` says.
-    pub fn held_in(&self, frame: &RgbaImage, hold: &Hold) -> RgbaImage {
+    #[cfg(test)]
+    pub fn held_in(&self, frame: &RgbaImage, hold: &Hold) -> RgbaImage { self.held_marking(frame, hold, &mut Vec::new()) }
+
+    /// As `held_in`, each pixel of the weapon that shows added to `marks`.
+    fn held_marking(&self, frame: &RgbaImage, hold: &Hold, marks: &mut Vec<(u16, u16)>) -> RgbaImage {
         let own = (self.tip.1 - self.grip.1).atan2(self.tip.0 - self.grip.0);
         let (s, c) = (hold.angle.to_radians() - own).sin_cos();
         let (os, oc) = own.sin_cos();
@@ -377,7 +436,7 @@ impl Weapon {
                 if sx < 0.0 || sy < 0.0 || sx >= iw || sy >= ih { continue; }
                 let p = *self.image.get_pixel(sx as u32, sy as u32);
                 if p[3] < 128 { continue; }
-                if hold.over || frame.get_pixel(x, y)[3] < 128 { out.put_pixel(x, y, p); }
+                if hold.over || frame.get_pixel(x, y)[3] < 128 { out.put_pixel(x, y, p); marks.push((x as u16, y as u16)); }
             }
         }
         out
@@ -455,6 +514,17 @@ impl Sheet {
                 }).collect();
                 tracks.insert(name.clone(), (t, frames[0].dimensions()));
             }
+            // With a shield on the arm a clip may hold things its own way (the shield braced, the
+            // weapon kept back): `hold_shield.txt` and `off_shield.txt`, kept as `<clip>#shield`.
+            for (file, into) in [("hold_shield.txt", &mut tracks), ("off_shield.txt", &mut off_tracks)] {
+                let Some(t) = read_holds(&e.path().join(file)).filter(|t| t.len() == frames.len()) else { continue };
+                let t = t.into_iter().zip(&frames).map(|((x, y, angle, over, reach, elbow), f)| {
+                    let ((x, y), angle) = elbow.map_or(((x, y), angle), |el| fit_hold(f, (x, y), angle, el));
+                    (x, y, angle, over, reach)
+                }).collect();
+                into.insert(format!("{name}{SHIELDED}"), (t, frames[0].dimensions()));
+            }
+            if let Some(kept) = Sheet::shield_way(&e.path(), &frames) { clips.insert(format!("{name}{SHIELDED}"), Clip { frames: kept, mirrored: Vec::new() }); }
             if let Some(t) = read_holds(&e.path().join("off.txt")).filter(|t| t.len() == frames.len()) {
                 let t = t.into_iter().zip(&frames).map(|((x, y, angle, over, reach, elbow), f)| {
                     let ((x, y), angle) = elbow.map_or(((x, y), angle), |el| fit_hold(f, (x, y), angle, el));
@@ -514,7 +584,7 @@ impl Sheet {
                       [&format!("e_{fam}_idle"), &format!("e_{fam}_roll"), &format!("e_{fam}_flip")], &format!("{fam}_roll_side"));
         }
         Some(Sheet { clips, ground: bottom as f32 + 1.0, figure: (bottom + 1 - top) as f32, canvas, roll_keys, holds, blades: HashMap::new(),
-                     offs, weapons: HashMap::new(), shields: HashMap::new(), helds: HashMap::new(), draws, dressed: Default::default() })
+                     offs, weapons: HashMap::new(), shields: HashMap::new(), helds: HashMap::new(), draws, dressed: Default::default(), glints: HashMap::new() })
     }
 
     /// Put `weapon` in the hands of the bare-handed clips drawn for its kind (`<kind>_...` and,
@@ -523,14 +593,47 @@ impl Sheet {
     pub fn arm(&mut self, art: &str, kind: &str, weapon: &Weapon) {
         self.blades.insert(art.to_owned(), (weapon.tip.0 - weapon.grip.0).hypot(weapon.tip.1 - weapon.grip.1));
         self.weapons.entry(art.to_owned()).or_insert_with(|| Arc::new(weapon.clone()));
+        let turned = weapon.mirrored();
+        let mut built = Vec::new();
         for (name, holds) in &self.holds {
-            if !name.strip_prefix("e_").unwrap_or(name).strip_prefix(kind).is_some_and(|r| r.starts_with('_')) { continue; }
+            if name.contains(SHIELDED) || !name.strip_prefix("e_").unwrap_or(name).strip_prefix(kind).is_some_and(|r| r.starts_with('_')) { continue; }
             let Some(bare) = self.clips.get(name) else { continue };
-            let frames: Vec<Arc<RgbaImage>> = bare.frames.iter().zip(holds).map(|(f, h)| Arc::new(weapon.held_in(f, h))).collect();
+            let weapon = if Hold::edge_trails(name, holds) { &turned } else { weapon };
+            let (frames, glints): (Vec<Arc<RgbaImage>>, Vec<Glint>) = bare.frames.iter().zip(holds).map(|(f, h)| {
+                let mut marks = Vec::new();
+                (Arc::new(weapon.held_marking(f, h, &mut marks)), Glint { weapon: marks, off: Vec::new() })
+            }).unzip();
             let mirrored: Vec<_> = frames.iter().map(|f| Arc::new(image::imageops::flip_horizontal(f.as_ref()))).collect();
             for f in frames.iter().chain(&mirrored) { quartz::set_pixel_art(f, true); }
-            self.clips.insert(format!("{name}@{art}"), Clip { frames, mirrored });
+            let clip = Clip { frames, mirrored };
+            built.push((clip.clone(), glints));
+            self.clips.insert(format!("{name}@{art}"), clip);
         }
+        for (clip, glints) in built { self.keep_glints(&clip, glints); }
+    }
+
+    /// Keep `glints`, one a frame of `clip`, for its frames and their mirrors.
+    fn keep_glints(&mut self, clip: &Clip, glints: Vec<Glint>) {
+        for ((f, m), g) in clip.frames.iter().zip(&clip.mirrored).zip(glints) {
+            let g = Arc::new(g);
+            self.glints.insert(Arc::as_ptr(f) as usize, (g.clone(), false));
+            self.glints.insert(Arc::as_ptr(m) as usize, (g, true));
+        }
+    }
+
+    /// Where the frame `f` shown has its weapon and its offhand, if it was armed or dressed here:
+    /// for the mirror of one, flipped.
+    pub fn glint(&self, f: &Arc<RgbaImage>) -> Option<Glint> {
+        let (g, mirrored) = self.glints.get(&(Arc::as_ptr(f) as usize))?;
+        Some(if *mirrored { g.mirrored(f.width()) } else { (**g).clone() })
+    }
+
+    /// `arm` the weapon `art` (put in hand already, by `arm`) into the clips of another `kind`, once:
+    /// a weapon made for both hands held in one is drawn into the one-handed clips when it is.
+    pub fn arm_as(&mut self, art: &str, kind: &str) {
+        if [format!("{kind}_light@{art}"), format!("{kind}_idle@{art}")].iter().any(|n| self.clips.contains_key(n)) { return; }
+        let Some(weapon) = self.weapons.get(art).cloned() else { return };
+        self.arm(art, kind, &weapon);
     }
 
     /// Draw the offhand `off` (one of `shields`, or of `helds`) on the free arm of every clip that
@@ -542,29 +645,73 @@ impl Sheet {
         if !self.dressed.insert((art.to_owned(), off.to_owned())) { return; }
         let (shield, held) = (self.shields.get(off).cloned(), self.helds.get(off).cloned());
         let Some(weapon) = self.weapons.get(art).cloned().filter(|_| shield.is_some() || held.is_some()) else { return };
-        let put = |f: &RgbaImage, o: &OffHold| match (&shield, &held) {
-            (Some(s), _) => s.worn_on(f, o),
-            (None, Some(g)) => g.gripped(f, o, None),
+        let put = |f: &RgbaImage, o: &OffHold, marks: &mut Vec<(u16, u16)>| match (&shield, &held) {
+            (Some(s), _) => s.worn_marking(f, o, marks),
+            (None, Some(g)) => g.gripped_marking(f, o, None, marks),
             (None, None) => f.clone(),
         };
         let suffix = format!("@{art}");
+        let turned = weapon.mirrored();
         let names: Vec<String> = self.clips.keys().filter_map(|n| n.strip_suffix(&suffix)).filter(|n| self.offs.contains_key(*n)).map(str::to_owned).collect();
+        // A shield is held its clip's shield way where it has one.
+        let way = |name: &str| if shield.is_some() { format!("{name}{SHIELDED}") } else { name.to_owned() };
         for name in names {
-            let (Some(bare), Some(holds), Some(offs)) = (self.clips.get(&name), self.holds.get(&name), self.offs.get(&name)) else { continue };
-            let frames: Vec<Arc<RgbaImage>> = bare.frames.iter().zip(holds).zip(offs)
-                .map(|((f, h), o)| Arc::new(weapon.held_in(&put(f, o), h))).collect();
-            self.clips.insert(format!("{name}@{art}+{off}"), Clip::marked(frames));
+            let holds = self.holds.get(&way(&name)).or_else(|| self.holds.get(&name));
+            let offs = self.offs.get(&way(&name)).or_else(|| self.offs.get(&name));
+            let bare = self.clips.get(&way(&name)).or_else(|| self.clips.get(&name));
+            let (Some(bare), Some(holds), Some(offs)) = (bare, holds, offs) else { continue };
+            let weapon = if Hold::edge_trails(&name, holds) { &turned } else { weapon.as_ref() };
+            let (frames, glints): (Vec<Arc<RgbaImage>>, Vec<Glint>) = bare.frames.iter().zip(holds).zip(offs).map(|((f, h), o)| {
+                let mut g = Glint::default();
+                let on = put(f, o, &mut g.off);
+                (Arc::new(weapon.held_marking(&on, h, &mut g.weapon)), g)
+            }).unzip();
+            let clip = Clip::marked(frames);
+            self.keep_glints(&clip, glints);
+            self.clips.insert(format!("{name}@{art}+{off}"), clip);
         }
         let Some(bow) = held.filter(|g| g.bow.is_some()) else { return };
         let names: Vec<String> = self.draws.keys().filter(|n| !self.clips.contains_key(&format!("{n}+{off}"))).cloned().collect();
         for name in names {
             let (Some(bare), Some(draws), Some(offs)) = (self.clips.get(&name), self.draws.get(&name), self.offs.get(&name)) else { continue };
-            let frames: Vec<Arc<RgbaImage>> = bare.frames.iter().zip(draws).zip(offs).map(|((f, d), o)| Arc::new(bow.gripped(f, o, Some(d)))).collect();
-            self.clips.insert(format!("{name}+{off}"), Clip::marked(frames));
+            let (frames, glints): (Vec<Arc<RgbaImage>>, Vec<Glint>) = bare.frames.iter().zip(draws).zip(offs).map(|((f, d), o)| {
+                let mut g = Glint::default();
+                (Arc::new(bow.gripped_marking(f, o, Some(d), &mut g.off)), g)
+            }).unzip();
+            let clip = Clip::marked(frames);
+            self.keep_glints(&clip, glints);
+            self.clips.insert(format!("{name}+{off}"), clip);
         }
     }
 
     pub fn clip(&self, name: &str) -> Option<&Clip> { self.clips.get(name) }
+
+    /// A clip's frames for its shield way (`hold_shield.txt`): where the bare drawing lifts the
+    /// weapon hand above where the shield way holds it, the weapon side above the resting fist is
+    /// drawn as in the frame where both agree, so no bare fist shows over the shoulder. None when
+    /// nothing is lifted or no frame agrees.
+    fn shield_way(dir: &Path, frames: &[Arc<RgbaImage>]) -> Option<Vec<Arc<RgbaImage>>> {
+        let bare = read_holds(&dir.join("hold.txt")).filter(|t| t.len() == frames.len())?;
+        let shield = read_holds(&dir.join("hold_shield.txt")).filter(|t| t.len() == frames.len())?;
+        let rest = (0..frames.len()).find(|&k| (bare[k].0 - shield[k].0).abs() < AGREE && (bare[k].1 - shield[k].1).abs() < AGREE)?;
+        let lifted: Vec<bool> = bare.iter().zip(&shield).map(|(b, s)| b.1 < s.1 - AGREE).collect();
+        if !lifted.contains(&true) { return None; }
+        let still = &frames[rest];
+        let (w, h) = still.dimensions();
+        let columns: Vec<u32> = (0..w).filter(|&x| (0..h).any(|y| still.get_pixel(x, y)[3] >= 128)).collect();
+        let mid = (*columns.first()? + *columns.last()?) as f32 / 2.0;
+        let weapon_right = bare[rest].0 * w as f32 > mid;
+        let edge = mid + if weapon_right { HOOD_HALF } else { -HOOD_HALF } * w as f32;
+        let top = ((shield[rest].1 * h as f32) as u32).min(h);
+        Some(frames.iter().zip(&lifted).map(|(f, &up)| {
+            if !up || f.dimensions() != (w, h) { return f.clone(); }
+            let mut kept = (**f).clone();
+            for y in 0..top {
+                for x in (0..w).filter(|&x| (x as f32 + 0.5 > edge) == weapon_right) { kept.put_pixel(x, y, *still.get_pixel(x, y)); }
+            }
+            Arc::new(kept)
+        }).collect())
+    }
 
     /// Where to draw a frame so the figure stands `metres` tall with its feet at `feet` (canvas
     /// units), `ppm` canvas units to the metre: the object's position and size.
@@ -830,6 +977,69 @@ mod tests {
         let r = rotated(&img, 90.0, (4.5, 4.5));
         assert_eq!(r.get_pixel(7, 4)[0], 255, "top went right");
         assert_eq!(opaque_box(&r), Some((7, 4, 7, 4)));
+    }
+
+    /// The strikes with weapons in hand, a row a clip, to judge a swing by:
+    /// `cargo test --release armed -- --ignored` writes target/shots/armed.png.
+    #[test]
+    #[ignore]
+    fn armed() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let Some(mut s) = Sheet::load(&root.join("assets/pixellab/wayfarer_ne")) else { return };
+        let dir = root.join("assets/pixellab/weapons");
+        let mut rows = Vec::new();
+        for (art, kind) in [("husk_cleaver", "axe"), ("chieftains_cleaver", "axe"), ("executioner_greatsword", "greatsword"), ("stoneheart_greatsword", "ultra"), ("executioner_greatsword", "sword")] {
+            let Some(w) = Weapon::load(&dir, art) else { continue };
+            s.arm(art, kind, &w);
+            for clip in ["light", "heavy"] {
+                for side in ["", "e_"] { rows.push(format!("{side}{kind}_{clip}@{art}")); }
+            }
+        }
+        rows.retain(|n| s.clips.contains_key(n));
+        eprintln!("[armed] {}", rows.join(", "));
+        let rows: Vec<&Clip> = rows.iter().filter_map(|n| s.clips.get(n)).collect();
+        let cols = rows.iter().map(|c| c.frames.len()).max().unwrap_or(1) as u32;
+        let (w, h) = s.canvas;
+        let mut out = RgbaImage::from_pixel(cols * w, rows.len() as u32 * h, image::Rgba([60, 64, 58, 255]));
+        for (r, c) in rows.iter().enumerate() {
+            for (k, f) in c.frames.iter().enumerate() { image::imageops::overlay(&mut out, f.as_ref(), (k as u32 * w) as i64, (r as u32 * h) as i64); }
+        }
+        let _ = std::fs::create_dir_all(root.join("target/shots"));
+        out.save(root.join("target/shots/armed.png")).unwrap();
+    }
+
+    /// The guard with each shield on the free arm and a weapon in hand, from behind and side-on,
+    /// then the weapon's own guard and parry with none, a row a clip: `cargo test --release guarded -- --ignored` writes target/shots/guarded.png.
+    #[test]
+    #[ignore]
+    fn guarded() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let Some(mut s) = Sheet::load(&root.join("assets/pixellab/wayfarer_ne")) else { return };
+        let (weapons, offs) = (root.join("assets/pixellab/weapons"), root.join("assets/pixellab/offhand"));
+        let mut rows = Vec::new();
+        for art in ["husk_cleaver", "wayfarer_sword"] {
+            let Some(w) = Weapon::load(&weapons, art) else { continue };
+            s.arm(art, "one", &w);
+            for shield in ["warden_bulwark", "kite_shield", "pilgrim_buckler", "duelist_parma"] {
+                let Some(sh) = Shield::load(&offs, shield) else { continue };
+                s.shields.insert(shield.to_owned(), Arc::new(sh));
+                s.dress(art, shield);
+                for clip in ["one_guard", "one_block_hit", "e_one_guard"] { rows.push(format!("{clip}@{art}+{shield}")); }
+            }
+            // No shield: the weapon guards and parries.
+            for clip in ["one_guard", "one_parry_weapon", "e_one_parry_weapon"] { rows.push(format!("{clip}@{art}")); }
+        }
+        rows.retain(|n| s.clips.contains_key(n));
+        eprintln!("[guarded] {}", rows.join(", "));
+        let rows: Vec<&Clip> = rows.iter().filter_map(|n| s.clips.get(n)).collect();
+        let cols = rows.iter().map(|c| c.frames.len()).max().unwrap_or(1) as u32;
+        let (w, h) = s.canvas;
+        let mut out = RgbaImage::from_pixel(cols * w, rows.len().max(1) as u32 * h, image::Rgba([60, 64, 58, 255]));
+        for (r, c) in rows.iter().enumerate() {
+            for (k, f) in c.frames.iter().enumerate() { image::imageops::overlay(&mut out, f.as_ref(), (k as u32 * w) as i64, (r as u32 * h) as i64); }
+        }
+        let _ = std::fs::create_dir_all(root.join("target/shots"));
+        out.save(root.join("target/shots/guarded.png")).unwrap();
     }
 
     /// Every clip of every character, a row each, numbered by frame:

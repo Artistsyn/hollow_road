@@ -19,7 +19,7 @@ pub use crate::atlas::START;
 pub const CURRENCY: &str = "echoes";
 pub const CURRENCY_TITLE: &str = "Echoes";
 /// The most enemies any place holds: the game makes this many enemy objects.
-pub const MOST_FOES: usize = 5;
+pub const MOST_FOES: usize = 7;
 /// How near the shrine the hero must stand to rest, metres.
 pub const SHRINE_REACH: f32 = 3.0;
 /// Metres within which a living enemy, ahead or behind, keeps what wants a quiet moment (a cache
@@ -89,17 +89,24 @@ pub enum Note {
     /// gauntlet, held until every one is.
     Held(Archetype, bool),
     Recovered(u32),
-    /// The smith raised the weapon or the armour to this.
+    /// The smith raised a piece to this; gave one at its top this capstone.
     Forged(&'static str, u32),
+    Capped(&'static str, &'static str),
     /// Met someone on the road.
     Met(&'static str),
     /// A piece of gear off the dead, and one put on (or a place left empty: "nothing").
     Found(&'static str),
     Wore(&'static str),
+    /// The weapon worn, made for both hands, now held in one (true) or both.
+    Grip(&'static str, bool),
+    /// Put on, though the hero is short of what it needs (what it wants, said).
+    WoreWeak(&'static str, String),
     /// A boss felled, and the souls it gave.
     Vanquished(&'static str, u32),
     /// The smith forged this from a boss's remnant.
     Crafted(&'static str),
+    /// The smith fletched a bundle: how many, of what (arrows or bolts).
+    Fletched(u32, &'static str),
     /// Foes sprang out (true: from a chest).
     Ambushed(bool),
     /// The last boss beaten: the pilgrimage begins again, harder (its count).
@@ -140,8 +147,8 @@ pub struct World {
     pub chose_at: Option<f64>,
     /// The branch taken: the one leaned into, or the only one open whatever the lean.
     pub took: Option<Branch>,
-    /// Shards carried, for the smith.
-    pub shards: u32,
+    /// Shards carried for the smith, by grade (`gear::SHARDS`).
+    pub shards: [u32; 3],
     /// Whether the keeper has spoken her first words, and the smith been met on the road (he waits
     /// at the shrines after).
     pub met_keeper: bool,
@@ -150,6 +157,8 @@ pub struct World {
     pub talks: [u32; 2],
     /// What the hero owns and wears.
     pub gear: crate::gear::Loadout,
+    /// The arrows and bolts carried as last kept (`fight::Hero::quiver` is the one shot from).
+    pub ammo: crate::fight::Quiver,
     /// How many of each kind of enemy have fallen (for what they leave), and a count that stands
     /// in for chance.
     pub fallen: [u32; Archetype::ALL.len()],
@@ -198,8 +207,8 @@ impl World {
     pub fn new(walked: f64) -> World {
         World {
             at: START.into(), base: walked, entered: 0.0, sent: false, warping: None, warp_into: 0.0, checkpoint: START.into(), rested: Vec::new(), souls: 0, stain: None,
-            pilgrimages: 0, signpost: None, lean: None, chose: false, chose_at: None, took: None, shards: 0, met_keeper: false, met_smith: false, talks: [0, 0],
-            gear: crate::gear::Loadout::starting(), fallen: [0; Archetype::ALL.len()], luck: 0, beaten: Vec::new(), faced: Vec::new(), keys: Vec::new(), remnants: Vec::new(), opened: Vec::new(),
+            pilgrimages: 0, signpost: None, lean: None, chose: false, chose_at: None, took: None, shards: [0; 3], met_keeper: false, met_smith: false, talks: [0, 0],
+            gear: crate::gear::Loadout::starting(), ammo: crate::fight::Quiver::SETTING_OUT, fallen: [0; Archetype::ALL.len()], luck: 0, beaten: Vec::new(), faced: Vec::new(), keys: Vec::new(), remnants: Vec::new(), opened: Vec::new(),
             seen: vec![atlas::node(START)], slain: Vec::new(), spawned: Vec::new(), detour: None, explored: Vec::new(), taken: Vec::new(),
             cleared: Vec::new(), told: false, lane: None, keep_hero: false, held_told: false, carry: None,
         }
@@ -221,20 +230,62 @@ impl World {
 
     /// How strong the place's enemies are against the road's first: (health, blows). Deeper
     /// regions and each pilgrimage again make them stronger.
-    pub fn scale(&self) -> (f32, f32) {
-        let tier = atlas::REGIONS[self.here().region].tier as f32 - 1.0;
-        let again = 1.0 + 0.5 * self.pilgrimages as f32;
-        ((1.0 + 0.3 * tier).max(0.8) * again, (1.0 + 0.22 * tier).max(0.85) * again)
+    pub fn scale(&self) -> (f32, f32) { Self::scale_at(atlas::REGIONS[self.here().region].tier, self.pilgrimages) }
+
+    /// What the place's region makes of the road's kinds of foe (`fight::Variant`).
+    pub fn variant(&self) -> crate::fight::Variant { crate::fight::Variant::of_tier(atlas::REGIONS[self.here().region].tier) }
+
+    /// The enemies' (health, blows) in a region of `tier`, `pilgrimages` in: deeper, harder, and
+    /// harder again by what the smith's levels a hero is expected to carry there (`forged_at`)
+    /// add past those the curve was first set against (one weapon and one armour level, 8% and
+    /// 5%, every second tier), so a blow still takes about as many to kill, and to be killed by.
+    pub fn scale_at(tier: u32, pilgrimages: u32) -> (f32, f32) {
+        let t = tier as f32 - 1.0;
+        let again = 1.0 + 0.5 * pilgrimages as f32;
+        let ((main, armour), first) = (Self::forged_at(tier), (tier / 2) as f32);
+        let health = (1.0 + crate::gear::MAIN_STEP * main as f32) / (1.0 + 0.08 * first);
+        let blows = (1.0 - 0.05 * first) / (1.0 - crate::gear::ARMOUR_STEP * armour as f32);
+        ((1.0 + 0.3 * t).max(0.8) * again * health, (1.0 + 0.22 * t).max(0.85) * again * blows)
+    }
+
+    /// The smith's levels a hero is expected to have by a region of `tier`, from the shards the
+    /// regions before it give: the main hand's, and the armour's together.
+    pub fn forged_at(tier: u32) -> (u32, u32) {
+        const MAIN: [u32; 8] = [0, 1, 3, 4, 5, 6, 7, 8];
+        const ARMOUR: [u32; 8] = [0, 2, 6, 8, 10, 12, 14, 16];
+        let t = (tier as usize).min(7);
+        (MAIN[t], ARMOUR[t])
+    }
+
+    /// The shards a `k` felled in a region of `tier` leaves, by `roll`: a lancer's and a
+    /// shieldbearer's always, any other's one time in six; the common grade in the first regions,
+    /// rarer ones deeper (`shard_grade`). A rare one found is told.
+    fn shards_from(&mut self, k: Archetype, tier: u32, roll: u32) -> Option<Note> {
+        let n = match shards(k) { 0 if (roll >> 16) % 6 == 0 => 1, n => n };
+        if n == 0 { return None; }
+        let grade = Self::shard_grade(tier, roll >> 20);
+        self.shards[grade] += n;
+        (grade > 0).then(|| Note::Found(crate::gear::SHARDS[grade]))
+    }
+
+    /// The grade of shard a region of `tier` gives, by `roll`: ash to Blackridge; from
+    /// Stonehollow ember half the time; from Eryndor star a third of the time, else ember.
+    pub fn shard_grade(tier: u32, roll: u32) -> usize {
+        match tier {
+            0..=2 => 0,
+            3..=5 => if roll % 2 == 0 { 1 } else { 0 },
+            _ => if roll % 3 == 0 { 2 } else { 1 },
+        }
     }
 
     /// The enemies of the stop the hero is in that are not down, placed from where they arrived
     /// (mirrored walking the place the other way), as strong as the region makes them.
     pub fn foes(&mut self) -> Vec<Enemy> {
         let p = self.here();
-        let scale = self.scale();
+        let (scale, variant) = (self.scale(), self.variant());
         let flip = if self.forward() { 1 } else { -1 };
         self.spawned = (0..p.foes.len()).filter(|&i| !self.slain.contains(&(p.id, i))).collect();
-        self.spawned.iter().map(|&i| { let (k, ahead, lane) = p.foes[i]; Enemy::new(k, self.road_at(ahead), lane * flip).scaled(scale).unaware() }).collect()
+        self.spawned.iter().map(|&i| { let (k, ahead, lane) = p.foes[i]; Enemy::new(k, self.road_at(ahead), lane * flip).scaled(scale).of(variant).unaware() }).collect()
     }
 
     /// Remember the fight's enemies that are down as down.
@@ -274,6 +325,9 @@ impl World {
         self.chose = false;
         self.chose_at = None;
         self.took = None;
+        // Off any fork's lane: the next time a branch is taken, even the same one (after dying,
+        // or turning back), it leads on again rather than running on as an endless lane.
+        self.lane = None;
         let p = self.here();
         if !self.seen.contains(&p.id) { self.seen.push(p.id); }
         let mut notes = vec![Note::Arrived(p.title)];
@@ -514,7 +568,7 @@ impl World {
         self.checkpoint = self.at.clone();
         if !self.rested.contains(&self.at) { self.rested.push(self.at.clone()); }
         self.slain.clear();
-        fight.hero = crate::fight::Hero::with(fight.hero.stats);
+        fight.hero = fight.hero.renewed();
         fight.enemies = self.foes();
         vec![Note::Rested]
     }
@@ -535,7 +589,11 @@ impl World {
             "gear": {
                 "owned": self.gear.owned.iter().map(|&i| item(i)).collect::<Vec<_>>(),
                 "worn": self.gear.worn.iter().map(|w| w.map(item)).collect::<Vec<_>>(),
+                "one_hand": self.gear.one_hand,
+                "levels": self.gear.levels.iter().map(|(&i, n)| (item(i).to_owned(), json!(n))).collect::<serde_json::Map<_, _>>(),
+                "capstones": self.gear.capstones.iter().map(|(&i, c)| (item(i).to_owned(), json!(c.name()))).collect::<serde_json::Map<_, _>>(),
             },
+            "ammo": { "arrows": self.ammo.arrows, "bolts": self.ammo.bolts },
             "fallen": fallen, "luck": self.luck,
             "beaten": self.beaten, "faced": self.faced, "keys": self.keys.iter().map(|k| k.name()).collect::<Vec<_>>(), "remnants": self.remnants,
             "opened": self.opened, "seen": self.seen, "explored": self.explored, "taken": self.taken,
@@ -560,7 +618,11 @@ impl World {
         w.stain = v["stain"].as_object().and_then(|s| Some(Stain { stop: s.get("stop")?.as_str()?.to_owned(), at: s.get("at")?.as_f64()? as f32, souls: s.get("souls")?.as_u64()? as u32 }))
             .filter(|s| known(&s.stop));
         w.pilgrimages = num("pilgrimages");
-        w.shards = num("shards");
+        // A save from before shards had grades: what it carried, the common grade.
+        w.shards = match v["shards"].as_array() {
+            Some(a) => std::array::from_fn(|g| a.get(g).and_then(|n| n.as_u64()).unwrap_or(0) as u32),
+            None => [num("shards"), 0, 0],
+        };
         w.met_keeper = v["met_keeper"].as_bool().unwrap_or(false);
         w.met_smith = v["met_smith"].as_bool().unwrap_or(false);
         for (n, t) in w.talks.iter_mut().enumerate() { *t = v["talks"][n].as_u64().unwrap_or(0) as u32; }
@@ -572,7 +634,17 @@ impl World {
             }
             let owned = w.gear.owned.clone();
             for slot in w.gear.worn.iter_mut() { if slot.is_some_and(|i| !owned.contains(&i)) { *slot = None; } }
+            w.gear.one_hand = v["gear"]["one_hand"].as_bool().unwrap_or(false);
+            if let Some(levels) = v["gear"]["levels"].as_object() {
+                w.gear.levels = levels.iter().filter_map(|(n, l)| Some((piece(n)?, l.as_u64()? as u32))).filter(|&(i, l)| l > 0 && w.gear.owned.contains(&i)).collect();
+            }
+            if let Some(caps) = v["gear"]["capstones"].as_object() {
+                w.gear.capstones = caps.iter().filter_map(|(n, c)| Some((piece(n)?, crate::capstone::Capstone::named(c.as_str()?)?)))
+                    .filter(|&(i, c)| w.gear.owned.contains(&i) && crate::capstone::Capstone::choices(&crate::gear::ITEMS[i]).contains(&c)).collect();
+            }
         }
+        // A save from before arrows were carried sets out with what a new pilgrimage does.
+        if v["ammo"].is_object() { w.ammo = crate::fight::Quiver { arrows: v["ammo"]["arrows"].as_u64().unwrap_or(0) as u32, bolts: v["ammo"]["bolts"].as_u64().unwrap_or(0) as u32, imbued: 0 }; }
         for k in Archetype::ALL { w.fallen[k as usize] = v["fallen"][format!("{k:?}")].as_u64().unwrap_or(0) as u32; }
         w.luck = num("luck");
         w.beaten = names("beaten");
@@ -647,7 +719,7 @@ impl World {
         self.souls -= cost;
         match which { 0 => st.vigor += 1, 1 => st.endurance += 1, 2 => st.might += 1, 3 => st.dexterity += 1, _ => st.focus += 1 }
         let lvl = st.level();
-        fight.hero = crate::fight::Hero::with(*st);
+        fight.hero = crate::fight::Hero { stats: *st, ..fight.hero.renewed() };
         Some(Note::Rose(lvl))
     }
 
@@ -656,36 +728,89 @@ impl World {
     pub fn craftable(&self) -> Vec<(&'static crate::gear::Recipe, bool)> {
         crate::gear::RECIPES.iter()
             .filter(|r| self.remnants.contains(&r.remnant) && !self.gear.owns(crate::gear::find(r.item)))
-            .map(|r| (r, self.souls >= r.echoes && self.shards >= r.shards)).collect()
+            .map(|r| (r, self.souls >= r.echoes && self.shards[r.grade] >= r.shards)).collect()
     }
 
     /// The smith forges recipe `r`'s piece: the remnant, the echoes and the shards spent.
     pub fn craft(&mut self, r: &'static crate::gear::Recipe) -> Option<Note> {
         let at = self.remnants.iter().position(|x| *x == r.remnant)?;
         let item = crate::gear::find(r.item);
-        if self.gear.owns(item) || self.souls < r.echoes || self.shards < r.shards { return None; }
+        if self.gear.owns(item) || self.souls < r.echoes || self.shards[r.grade] < r.shards { return None; }
         self.remnants.remove(at);
         self.souls -= r.echoes;
-        self.shards -= r.shards;
+        self.shards[r.grade] -= r.shards;
         self.gear.gain(item);
         Some(Note::Crafted(r.item))
     }
 
-    /// The souls and shards the smith asks to take gear from +`lvl` to the next; None at the top.
-    pub fn forge_cost(lvl: u32) -> Option<(u32, u32)> {
-        (lvl < crate::fight::GEAR_MAX).then(|| (80 * (lvl + 1), lvl + 1))
+    /// What the smith fletches for souls: a bundle of arrows, and one of bolts (how many, the price).
+    pub const FLETCH: [(&'static str, u32, u32); 2] = [("arrows", 10, 40), ("bolts", 6, 60)];
+
+    /// Buy bundle `which` of `FLETCH` for the hero's quiver; None when it cannot be paid for, or
+    /// there is no room for it.
+    pub fn fletch(&mut self, fight: &mut Fight, which: usize) -> Option<Note> {
+        let (what, n, price) = *Self::FLETCH.get(which)?;
+        let q = &mut fight.hero.quiver;
+        let full = if which == 0 { q.arrows >= crate::fight::Quiver::ARROWS } else { q.bolts >= crate::fight::Quiver::BOLTS };
+        if self.souls < price || full { return None; }
+        self.souls -= price;
+        if which == 0 { q.add(n, 0) } else { q.add(0, n) }
+        self.ammo = crate::fight::Quiver { imbued: 0, ..*q };
+        Some(Note::Fletched(n, what))
     }
 
-    /// The smith forges the weapon (0) or the armour (1) up a step, if it can be paid for.
-    pub fn forge(&mut self, fight: &mut Fight, which: usize) -> Option<Note> {
-        let st = &mut fight.hero.stats;
-        let lvl = if which == 0 { st.weapon } else { st.armour };
-        let (souls, shards) = Self::forge_cost(lvl)?;
-        if self.souls < souls || self.shards < shards { return None; }
+    /// The places (`gear::SLOTS`) whose worn piece the smith can reinforce: the weapon, the
+    /// offhand and the armour, as far as something is worn there.
+    pub fn forgeable(&self) -> Vec<usize> {
+        (0..crate::gear::SLOTS.len()).filter(|&p| self.gear.worn[p].is_some() && crate::gear::SLOTS[p].0.most() > 0).collect()
+    }
+
+    /// What the smith asks to take the piece worn at `place` one level further: (grade, shards,
+    /// echoes). None when nothing is worn there or it is as far as it goes.
+    pub fn reinforce_cost(&self, place: usize) -> Option<(usize, u32, u32)> {
+        let i = self.gear.worn.get(place).copied().flatten()?;
+        let (slot, n) = (crate::gear::ITEMS[i].slot, self.gear.level(i));
+        (n < slot.most()).then(|| slot.reinforcing(n + 1))
+    }
+
+    /// The shards carried, as the HUD shows them: ash / ember / star.
+    pub fn shards_line(&self) -> String { format!("{}/{}/{}", self.shards[0], self.shards[1], self.shards[2]) }
+
+    /// The shards carried, as the smith counts them: "Ash Shards 3, Ember 1, Star 0".
+    pub fn shards_text(&self) -> String {
+        format!("Ash Shards {}, Ember {}, Star {}", self.shards[0], self.shards[1], self.shards[2])
+    }
+
+    /// Shards of `grade` named for a price: "1 Ash Shard", "3 Ember Shards".
+    pub fn shards_named(grade: usize, n: u32) -> String {
+        format!("{n} {}{}", crate::gear::SHARDS[grade], if n == 1 { "" } else { "s" })
+    }
+
+    /// Whether the piece worn at `place` is at its top and waits for its capstone.
+    pub fn cappable(&self, place: usize) -> bool {
+        self.gear.worn.get(place).copied().flatten().is_some_and(|i| self.reinforce_cost(place).is_none() && !self.gear.capstones.contains_key(&i) && !crate::capstone::Capstone::choices(&crate::gear::ITEMS[i]).is_empty())
+    }
+
+    /// The smith gives the piece worn at `place`, at its top, capstone `cap`; the hero's kit is
+    /// worn again with it.
+    pub fn cap(&mut self, fight: &mut Fight, place: usize, cap: crate::capstone::Capstone) -> Option<Note> {
+        let i = self.gear.worn.get(place).copied().flatten()?;
+        if !self.gear.cap(i, cap) { return None; }
+        fight.hero.stats.kit = self.gear.kit();
+        Some(Note::Capped(crate::gear::ITEMS[i].name, cap.name()))
+    }
+
+    /// The smith reinforces the piece worn at `place` one level, if it can be paid for; the
+    /// hero's kit is worn again with it.
+    pub fn reinforce(&mut self, fight: &mut Fight, place: usize) -> Option<Note> {
+        let (grade, shards, souls) = self.reinforce_cost(place)?;
+        if self.souls < souls || self.shards[grade] < shards { return None; }
+        let i = self.gear.worn[place]?;
+        self.gear.reinforce(i);
         self.souls -= souls;
-        self.shards -= shards;
-        if which == 0 { st.weapon += 1; } else { st.armour += 1; }
-        Some(Note::Forged(if which == 0 { "Weapon" } else { "Armour" }, lvl + 1))
+        self.shards[grade] -= shards;
+        fight.hero.stats.kit = self.gear.kit();
+        Some(Note::Forged(crate::gear::ITEMS[i].name, self.gear.level(i)))
     }
 
     /// The hero fell: the souls stay where they fell (one chance to fetch them; an older stain is
@@ -787,9 +912,9 @@ impl World {
         let mut notes = Vec::new();
         let tier = atlas::REGIONS[self.here().region].tier.saturating_sub(1) as f32;
         let more = self.gear.kit().souls * (1.0 + 0.6 * tier) * (1.0 + 0.5 * self.pilgrimages as f32);
+        let region = atlas::REGIONS[self.here().region].tier;
         for k in kinds {
             self.souls += (k.souls() as f32 * more).round() as u32;
-            self.shards += shards(k);
             // The first of a kind leaves the first piece of its kind the hero lacks; after that,
             // one in eight leaves one of them.
             let n = &mut self.fallen[k as usize];
@@ -797,6 +922,7 @@ impl World {
             let first = *n == 1;
             self.luck = self.luck.wrapping_add(1);
             let roll = self.luck.wrapping_mul(0x9E37_79B9).rotate_left(13).wrapping_mul(0x85EB_CA6B);
+            notes.extend(self.shards_from(k, region, roll));
             let lacking: Vec<usize> = crate::gear::drops(k).iter().map(|n| crate::gear::find(n)).filter(|&i| !self.gear.owns(i)).collect();
             if lacking.is_empty() || !(first || roll % 8 == 0) { continue; }
             let i = if first { lacking[0] } else { lacking[(roll >> 8) as usize % lacking.len()] };
@@ -836,7 +962,7 @@ impl World {
             let into = std::mem::take(&mut self.warp_into);
             let (foes, n) = self.arrive(&w, walked, into, level);
             fight.enemies = foes;
-            if !std::mem::take(&mut self.keep_hero) { fight.hero = crate::fight::Hero::with(fight.hero.stats); }
+            if !std::mem::take(&mut self.keep_hero) { fight.hero = fight.hero.renewed(); }
             if let Some(carry) = self.carry.take() {
                 // Seen the other way: left is right, behind is ahead.
                 fight.hero.lane = -fight.hero.lane;
@@ -986,6 +1112,76 @@ mod tests {
     use crate::fight::Ai;
     use Archetype::{Husk, Lancer, Wretch};
 
+    #[test]
+    fn the_smiths_levels_stay_with_their_piece_and_an_old_save_moves_its_levels_onto_what_is_worn() {
+        use crate::gear::{Loadout, ITEMS, SLOTS};
+        let mut g = Loadout::starting();
+        let (weapon, helm) = (g.worn[0].unwrap(), g.worn[2].unwrap());
+        for _ in 0..9 { g.reinforce(weapon); }
+        for _ in 0..9 { g.reinforce(helm); }
+        assert_eq!((g.level(weapon), g.level(helm)), (8, 4), "a weapon goes to +8, armour to +4");
+        let k = g.kit();
+        assert!(k.main == 8 && (k.forged_armour - 4.0 * crate::gear::ARMOUR_STEP).abs() < 1e-6);
+        // Put away, a piece keeps its level and adds nothing; worn again, it is as it was.
+        g.worn[0] = None;
+        assert_eq!((g.kit().main, g.level(weapon)), (0, 8));
+        g.worn[0] = Some(weapon);
+        assert_eq!(g.kit().main, 8);
+        // An old save's hero-wide levels: the weapon's onto the weapon, the armour's spread so
+        // about the same share of a blow is turned.
+        let mut old = Loadout::starting();
+        old.take_old_levels(3, 2);
+        let armour: Vec<u32> = (2..6).map(|p| old.level(old.worn[p].unwrap())).collect();
+        assert_eq!((old.level(old.worn[0].unwrap()), armour), (3, vec![2, 2, 2, 1]));
+        assert!((old.kit().forged_armour - 0.105).abs() < 1e-6, "old +2 turned 10%");
+        let mut most = Loadout::starting();
+        most.take_old_levels(5, 5);
+        assert!((2..6).all(|p| most.level(most.worn[p].unwrap()) == 4));
+        // Not twice: a save that has levels of its own keeps them.
+        most.take_old_levels(1, 0);
+        assert_eq!(most.level(most.worn[0].unwrap()), 5);
+        assert!(SLOTS.iter().all(|(s, _)| s.reinforcing(1).1 >= 1) && ITEMS[weapon].slot.reinforcing(8) == (2, 2, 640));
+    }
+
+    #[test]
+    fn a_piece_at_its_top_takes_one_capstone_of_its_kind_for_good_and_a_save_keeps_it() {
+        use crate::capstone::Capstone;
+        let mut w = World::new(0.0);
+        let mut f = Fight::new(Vec::new());
+        let (weapon, hood) = (w.gear.worn[0].unwrap(), w.gear.worn[2].unwrap());
+        assert!(!w.cappable(0) && w.cap(&mut f, 0, Capstone::Ember).is_none(), "not at its top yet");
+        w.gear.levels.insert(weapon, 8);
+        w.gear.levels.insert(hood, 4);
+        assert!(w.cappable(0) && w.cappable(2) && !w.cappable(3));
+        assert_eq!(w.cap(&mut f, 0, Capstone::Vigil), None, "not a weapon's");
+        assert_eq!(w.cap(&mut f, 0, Capstone::Ember), Some(Note::Capped(crate::gear::ITEMS[weapon].name, "Ember Edge")));
+        assert_eq!(w.cap(&mut f, 0, Capstone::Rime), None, "for good");
+        assert!(!w.cappable(0) && f.hero.stats.kit.capped.burn > 0.0 && f.hero.stats.kit.capped.worn[0] == Some(Capstone::Ember));
+        assert!(w.cap(&mut f, 2, Capstone::Vigil).is_some());
+        let hp = f.hero.stats.max_hp();
+        let back = World::restored(0.0, &w.saved()).unwrap();
+        assert_eq!((back.gear.capstone(weapon), back.gear.capstone(hood)), (Some(Capstone::Ember), Some(Capstone::Vigil)));
+        assert!((back.gear.kit().hp - w.gear.kit().hp).abs() < 1e-6 && hp > crate::fight::HP);
+    }
+
+    #[test]
+    fn deeper_regions_give_rarer_shards_and_a_rare_one_is_told() {
+        let grades = |tier: u32| -> [usize; 3] { let mut n = [0; 3]; for r in 0..600 { n[World::shard_grade(tier, r)] += 1; } n };
+        assert_eq!(grades(0), [600, 0, 0]);
+        assert_eq!(grades(2), [600, 0, 0]);
+        assert_eq!(grades(4), [300, 300, 0]);
+        assert_eq!(grades(6), [0, 400, 200]);
+        let mut w = World::new(0.0);
+        assert_eq!(w.shards_from(Lancer, 0, 0), None);
+        assert_eq!(w.shards_from(Lancer, 6, 0), Some(Note::Found("Star Shard")));
+        assert_eq!(w.shards, [1, 0, 1]);
+        // Any other kind leaves one now and then.
+        let some = (0..60u32).filter(|&r| { let before = w.shards; w.shards_from(Husk, 0, r << 16); w.shards != before }).count();
+        assert_eq!(some, 10);
+        // The expected hero's levels only climb, and reach the top in the last region.
+        assert!((1..8).all(|t| World::forged_at(t).0 >= World::forged_at(t - 1).0) && World::forged_at(7) == (8, 16));
+    }
+
     fn fell(f: &mut Fight) { for e in f.enemies.iter_mut() { e.ai = Ai::Dead; } }
 
     #[test]
@@ -1099,6 +1295,25 @@ mod tests {
         assert_eq!((f.enemies.len(), f.enemies[0].kind), (1, Archetype::Lancer));
         assert_eq!(f.enemies[0].s, 90.0 + (HERO_D + 15.0) as f64);
         assert!(w.lean.is_none() && !w.chose);
+    }
+
+    #[test]
+    fn a_branch_taken_again_after_dying_still_leads_on() {
+        let mut w = World::new(0.0);
+        let mut f = Fight::new(w.foes());
+        let lane = atlas::lane("vale_edge", START);
+        assert_eq!(w.tick(&mut f, 80.0, Some(&lane), None).0, Some(Go::Next));
+        w.tick(&mut f, 90.0, Some("vale_edge@road"), None);
+        w.tick(&mut f, 120.0, Some("vale@vale_edge"), None);
+        f.hero.dead = true;
+        w.died(130.0);
+        w.tick(&mut f, 131.0, Some(START), None);
+        // The same branch again, from the shrine: on into the marsh, not an endless lane.
+        assert_eq!(w.tick(&mut f, 211.0, Some(&lane), None).0, Some(Go::Next), "the lane leads on");
+        // Turned back from the marsh's edge and down the same branch again, too.
+        w.tick(&mut f, 221.0, Some("vale_edge@road"), None);
+        w.tick(&mut f, 240.0, Some(START), None);
+        assert_eq!(w.tick(&mut f, 260.0, Some(&lane), None).0, Some(Go::Next), "and again");
     }
 
     #[test]
@@ -1401,13 +1616,14 @@ mod tests {
         let shrine = format!("{place}@{}", atlas::PLACES[2].id);
         w.checkpoint = shrine.clone();
         w.rested = vec![START.into(), shrine.clone()];
-        (w.souls, w.shards, w.pilgrimages, w.luck, w.talks) = (812, 4, 1, 9, [2, 1]);
+        (w.souls, w.shards, w.pilgrimages, w.luck, w.talks) = (812, [4, 2, 1], 1, 9, [2, 1]);
         (w.met_keeper, w.met_smith) = (true, true);
         w.stain = Some(Stain { stop: shrine.clone(), at: 12.5, souls: 300 });
         let kite = crate::gear::find("Kite Shield");
         w.gear.gain(kite);
         assert!(w.gear.wear(1, Some(kite)));
         w.fallen[Archetype::Lancer as usize] = 7;
+        w.ammo = crate::fight::Quiver { arrows: 13, bolts: 4, imbued: 3 };
         w.beaten = vec![place];
         w.keys = vec![Key::Hook, Key::ShardII];
         w.remnants = vec!["Bell Warden's Clapper"];
@@ -1418,12 +1634,14 @@ mod tests {
         w.slain = vec![(place, 0)];
         let text = serde_json::to_string(&w.saved()).unwrap();
         let back = World::restored(50.0, &serde_json::from_str(&text).unwrap()).expect("a world's save");
-        assert_eq!((back.checkpoint.as_str(), back.rested.len(), back.souls, back.shards, back.pilgrimages, back.luck, back.talks), (shrine.as_str(), 2, 812, 4, 1, 9, [2, 1]));
+        assert_eq!((back.checkpoint.as_str(), back.rested.len(), back.souls, back.shards, back.pilgrimages, back.luck, back.talks), (shrine.as_str(), 2, 812, [4, 2, 1], 1, 9, [2, 1]));
         assert!(back.met_keeper && back.met_smith);
         assert_eq!(back.stain.as_ref().map(|s| (s.at, s.souls)), Some((12.5, 300)));
         assert_eq!((back.gear.owned.clone(), back.gear.worn), (w.gear.owned.clone(), w.gear.worn));
         assert_eq!(back.gear.kit().off.map(|o| o.art), Some("kite_shield"));
         assert_eq!(back.fallen, w.fallen);
+        // The arrows and bolts carried; an imbue under way is not kept.
+        assert_eq!(back.ammo, crate::fight::Quiver { arrows: 13, bolts: 4, imbued: 0 });
         assert_eq!((back.beaten.clone(), back.keys.clone(), back.remnants.clone(), back.seen.clone(), back.taken.clone(), back.cleared.clone()), (w.beaten.clone(), w.keys.clone(), w.remnants.clone(), w.seen.clone(), w.taken.clone(), w.cleared.clone()));
         assert!(back.slain.is_empty() && back.base == 50.0);
         assert_eq!(back.checkpoint_title(), atlas::PLACES[3].title);
@@ -1435,8 +1653,10 @@ mod tests {
         let mut v: serde_json::Value = serde_json::from_str(&text).unwrap();
         v["checkpoint"] = serde_json::json!("nowhere@never");
         v["gear"]["owned"] = serde_json::json!(["No Such Thing", "Kite Shield"]);
+        v.as_object_mut().unwrap().remove("ammo");
         let odd = World::restored(0.0, &v).unwrap();
         assert_eq!(odd.checkpoint, START);
+        assert_eq!(odd.ammo, crate::fight::Quiver::SETTING_OUT, "a save from before arrows were carried");
         assert_eq!(odd.gear.owned, vec![kite]);
         assert!(World::restored(0.0, &serde_json::json!("not a world")).is_none());
     }

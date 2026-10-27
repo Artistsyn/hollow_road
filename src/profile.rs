@@ -72,6 +72,9 @@ pub struct Saved {
     pub stats: Stats,
     pub played: u64,
     pub world: Value,
+    /// A save from before the smith's levels were the pieces' own: the hero's weapon and armour
+    /// levels, for `gear::Loadout::take_old_levels`. (0, 0) in any newer save.
+    pub old_levels: (u32, u32),
 }
 
 /// The save of a pilgrimage: `calling`, the levels in `stats`, `played` seconds, and `world`.
@@ -84,7 +87,7 @@ pub fn record(calling: Calling, stats: &Stats, played: u64, world: &World) -> Va
         "played": played,
         "hero": {
             "vigor": stats.vigor, "endurance": stats.endurance, "might": stats.might, "dexterity": stats.dexterity,
-            "focus": stats.focus, "weapon": stats.weapon, "armour": stats.armour,
+            "focus": stats.focus,
         },
         "world": world.saved(),
     })
@@ -105,8 +108,8 @@ pub fn read(dir: &Path, slot: usize) -> Option<Saved> {
     let calling = Calling::ALL.into_iter().find(|c| Some(c.name()) == v["calling"].as_str())?;
     let h = &v["hero"];
     let n = |k: &str| h[k].as_u64().unwrap_or(0) as u32;
-    let stats = Stats { vigor: n("vigor"), endurance: n("endurance"), might: n("might"), dexterity: n("dexterity"), focus: n("focus"), weapon: n("weapon"), armour: n("armour"), ..Stats::default() };
-    Some(Saved { calling, stats, played: v["played"].as_u64().unwrap_or(0), world: v["world"].clone() })
+    let stats = Stats { vigor: n("vigor"), endurance: n("endurance"), might: n("might"), dexterity: n("dexterity"), focus: n("focus"), ..Stats::default() };
+    Some(Saved { calling, stats, played: v["played"].as_u64().unwrap_or(0), world: v["world"].clone(), old_levels: (n("weapon"), n("armour")) })
 }
 
 /// Every slot as the title lists it.
@@ -152,13 +155,14 @@ mod tests {
         let d = scratch("roundtrip");
         let mut w = World::new(0.0);
         w.souls = 1234;
-        w.shards = 3;
-        let stats = Stats { vigor: 4, might: 7, weapon: 2, ..Stats::default() };
+        w.shards = [3, 1, 0];
+        w.gear.levels.insert(w.gear.worn[0].unwrap(), 2);
+        let stats = Stats { vigor: 4, might: 7, ..Stats::default() };
         write(&d, 2, &record(Calling::Warden, &stats, 3725, &w)).unwrap();
         let s = read(&d, 2).expect("slot 3 reads back");
-        assert_eq!((s.calling, s.stats.vigor, s.stats.might, s.stats.weapon, s.played), (Calling::Warden, 4, 7, 2, 3725));
+        assert_eq!((s.calling, s.stats.vigor, s.stats.might, s.played, s.old_levels), (Calling::Warden, 4, 7, 3725, (0, 0)));
         let back = World::restored(0.0, &s.world).unwrap();
-        assert_eq!((back.souls, back.shards), (1234, 3));
+        assert_eq!((back.souls, back.shards, back.gear.level(back.gear.worn[0].unwrap())), (1234, [3, 1, 0], 2));
         let list = summaries(&d);
         assert_eq!(list.len(), SLOTS);
         assert!(list[0] == Slot::Empty && matches!(list[2], Slot::Kept(_)));

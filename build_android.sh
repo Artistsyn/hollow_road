@@ -41,7 +41,9 @@ cargo apk build --release --lib --target aarch64-linux-android
 
 APK="target/release/apk/main.apk"
 [[ -f "$APK" ]] || { echo "cargo-apk reported success but produced no APK at $APK" >&2; exit 1; }
-echo "Built $APK ($(du -h "$APK" | cut -f1))"
+# The copy to hand out, named for the game rather than cargo-apk's library name.
+cp "$APK" "target/release/apk/Hollow Road.apk"
+echo "Built $APK ($(du -h "$APK" | cut -f1)), shared as target/release/apk/Hollow Road.apk"
 
 if [[ $INSTALL -eq 1 ]]; then
   adb -s "$SERIAL" get-state >/dev/null 2>&1 || { echo "Device $SERIAL is not connected; install skipped." >&2; exit 1; }

@@ -42,12 +42,52 @@ const REGEN_DELAY: u32 = 30;
 /// A press waits this many ticks for the hero to be free, then is dropped. Only the last is kept.
 pub const BUFFER: u32 = 18;
 pub const FLASKS: u32 = 3;
-/// A full quiver, and the arrows taken back from each foe felled while a bow is held.
-pub const QUIVER: u32 = 12;
+/// Arrows pulled back out of each foe felled while a bow is held (a crossbow's, one bolt), and what
+/// an archer felled leaves of its own: arrows and bolts.
 pub(crate) const SALVAGE: u32 = 2;
-/// What a blood bow's arrow costs in health, and a blood crossbow's bolt.
-pub const BLOOD_COST: f32 = 5.0;
-pub const BLOOD_BOLT_COST: f32 = 7.0;
+const ARCHER_ARROWS: u32 = 4;
+const ARCHER_BOLTS: u32 = 2;
+/// Blood Imbue (C, a blood bow held and no spell to cast): the share of the hero's health it
+/// costs, the shots it imbues, how much harder an imbued one strikes, and of what an imbued
+/// blood bow's arrow deals, what comes back as health.
+pub const IMBUE_COST: f32 = 0.12;
+pub const IMBUE_SHOTS: u32 = 5;
+pub const IMBUE_DAMAGE: f32 = 1.5;
+pub const IMBUE_DRINK: f32 = 0.35;
+
+/// What the hero carries to shoot: arrows for a bow, bolts for a crossbow (found on archers,
+/// pulled out of the fallen, bought of the smith; never refilled by resting), and the shots a
+/// Blood Imbue has left.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Quiver { pub arrows: u32, pub bolts: u32, pub imbued: u32 }
+
+impl Quiver {
+    /// Carried at most.
+    pub const ARROWS: u32 = 30;
+    pub const BOLTS: u32 = 20;
+    /// What a pilgrimage sets out with.
+    pub const SETTING_OUT: Quiver = Quiver { arrows: 20, bolts: 10, imbued: 0 };
+    /// Whether there is a shot for `r`: an arrow, or a bolt.
+    pub fn has(&self, r: crate::gear::Ranged) -> bool { if r.bolts() { self.bolts > 0 } else { self.arrows > 0 } }
+    /// The arrow or bolt for a shot of `r`, taken; and whether it goes imbued.
+    pub fn take(&mut self, r: crate::gear::Ranged) -> bool {
+        if r.bolts() { self.bolts = self.bolts.saturating_sub(1) } else { self.arrows = self.arrows.saturating_sub(1) }
+        let imbued = r.imbues() && self.imbued > 0;
+        if imbued { self.imbued -= 1; }
+        imbued
+    }
+    /// More arrows and bolts, within what can be carried.
+    pub fn add(&mut self, arrows: u32, bolts: u32) {
+        self.arrows = (self.arrows + arrows).min(Self::ARROWS);
+        self.bolts = (self.bolts + bolts).min(Self::BOLTS);
+    }
+    /// What `felled` foes give back, `archers` of them archers: pulled out of each for what is
+    /// held (`held`), and an archer's own arrows and bolts, whatever is held.
+    pub fn salvage(&mut self, held: Option<crate::gear::Ranged>, felled: u32, archers: u32) {
+        let (a, b) = match held { Some(r) if r.bolts() => (0, felled), Some(r) if r != crate::gear::Ranged::Frost => (SALVAGE * felled, 0), _ => (0, 0) };
+        self.add(a + ARCHER_ARROWS * archers, b + ARCHER_BOLTS * archers);
+    }
+}
 /// Of a frost charge, what each melee strike landed fills: the catalyst is fed by fighting up close
 /// (two blows a charge).
 pub(crate) const CHARGE_PER_HIT: f32 = 0.5;
@@ -79,6 +119,15 @@ pub(crate) const BURST_DAMAGE: f32 = 30.0;
 pub(crate) const BURST_SPLASH: f32 = 0.4;
 pub(crate) const BURST_REACH: f32 = 2.5;
 pub(crate) const BURST_SHOVE: f32 = 1.5;
+/// The other shields' wards let go, at a full ward: a kite's bash (its hurt, the stamina back,
+/// how much longer than a stagger the foe is down); a buckler's blow turned back (how much
+/// more than the blow itself); a parma's riposte (how much more, and of it, the health back).
+pub(crate) const BASH_DAMAGE: f32 = 12.0;
+pub(crate) const BASH_STAMINA: f32 = 40.0;
+pub(crate) const BASH_DOWN: f32 = 1.0;
+pub(crate) const TURN_MORE: f32 = 2.0;
+pub(crate) const DUEL_DAMAGE: f32 = 36.0;
+pub(crate) const DUEL_DRINK: f32 = 0.3;
 /// A roll or backstep that began this few ticks before a blow fell on the lane it left is
 /// perfect: the attacker stumbles.
 pub const PERFECT: u32 = 9;
@@ -239,9 +288,28 @@ pub struct Spec {
     pub armour: u32,
 }
 
+/// How much longer a weapon made for both hands takes to swing and to recover held in one.
+pub const ONE_HAND_SLOW: f32 = 1.15;
+
+impl Spec {
+    /// The same strike swung one-handed with a weapon made for both: windup and recovery
+    /// `ONE_HAND_SLOW` longer, the live frames as they were.
+    pub fn one_handed(self) -> Spec {
+        let slow = |t: u32| (t as f32 * ONE_HAND_SLOW).ceil() as u32;
+        Spec { frames: (slow(self.frames.0), self.frames.1, slow(self.frames.2)), ..self }
+    }
+}
+
 impl Move {
     /// As swung with the Wayfarer's sword.
     pub fn spec(self) -> Spec { self.spec_for(crate::gear::Class::Sword, Some(crate::gear::Guard::Buckler)) }
+
+    /// As `kit` swings it: `spec_for` its weapon and offhand, and a weapon made for both hands held
+    /// in one (`Kit::one_hand`) slower to swing and to recover.
+    pub fn spec_with(self, kit: &crate::gear::Kit) -> Spec {
+        let s = self.spec_for(kit.arms.class, kit.off.map(|o| o.guard));
+        if kit.one_hand && matches!(self, Move::Light | Move::Heavy) { s.one_handed() } else { s }
+    }
 
     /// As swung with a weapon of `class` and `off` in the other hand: the light and heavy are the
     /// weapon's own, the parry the offhand's; the rest are the body's.
@@ -286,6 +354,10 @@ impl Move {
             Move::Art => crate::arts::WeaponArt::Toll.spec(),
         }
     }
+
+    /// Blood Imbue's timing: the blood drawn across the bow, a moment to commit to (any hit cuts it
+    /// off, nothing paid), no stamina.
+    pub fn imbue_spec() -> Spec { Spec { frames: (24, 4, 16), stamina: 0.0, iframes: None, reach: 0.0, damage: 0.0, stance: 0.0, wide: 0, armour: 0 } }
 
     /// An arrow's or a bolt's timing and price, kept well short of melee's: a long draw with no
     /// armour (any hit cuts it off, the shot not spent), stamina that stays unspent while it
@@ -396,12 +468,61 @@ pub enum Look { Arrow, Hex }
 /// The hero's arrow or frost bolt in flight down their lane, away from them: where it is along
 /// the road (metres walked) and across it, what loosed it, what it deals, metres of flight left.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Bolt { pub s: f64, pub lane: i32, pub x: f32, pub ranged: crate::gear::Ranged, pub damage: f32, pub stance: f32, pub left: f32, pub age: u32 }
+pub struct Bolt { pub s: f64, pub lane: i32, pub x: f32, pub ranged: crate::gear::Ranged, pub damage: f32, pub stance: f32, pub left: f32, pub age: u32, pub imbued: bool, pub pierced: u64, pub keen: bool }
+
+impl Bolt {
+    /// Whether it goes on through what it strikes (an imbued crossbow bolt, or any shot of a bow
+    /// with the Keen capstone), each foe once.
+    pub fn pierces(&self) -> bool { self.keen || (self.imbued && self.ranged == crate::gear::Ranged::BloodCrossbow) }
+    /// Whether what it deals comes back to the hero as health (an imbued blood bow's arrow).
+    pub fn drinks(&self) -> bool { self.imbued && self.ranged == crate::gear::Ranged::BloodBow }
+}
 
 /// The thrown Hatchet: where it is along the road and across it, metres it flies out before it
 /// turns back, what it deals, and the foes it has bitten going out and coming back (by index).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Hatchet { pub s: f64, pub lane: i32, pub x: f32, pub left: f32, pub back: bool, pub damage: f32, pub stance: f32, pub bit: (u64, u64), pub age: u32 }
+
+/// What deeper regions make of the road's kinds of foe, seen in their colours (`game`, an engine
+/// `Recolor`) and felt in how they fight: blighted ones, from Stonehollow on, sap stamina with
+/// every blow that lands; dread ones, from the Blackwood on, the fiercest, wreathed in a
+/// smouldering aura, get their stance back twice as fast, so a guard must be broken in one press.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Variant { #[default] Plain, Blighted, Dread }
+
+/// Of a blighted foe's blow that lands, what is taken from stamina as well.
+pub const BLIGHT_SAP: f32 = 0.5;
+
+impl Variant {
+    /// The variant a region of `tier` breeds.
+    pub fn of_tier(tier: u32) -> Variant {
+        match tier { 0..=2 => Variant::Plain, 3..=5 => Variant::Blighted, _ => Variant::Dread }
+    }
+    /// The stamina a blow that dealt `damage` saps.
+    pub fn sap(self, damage: f32) -> f32 { if self == Variant::Blighted { damage * BLIGHT_SAP } else { 0.0 } }
+    /// How many times as fast its stance comes back.
+    pub fn recovery(self) -> u32 { if self == Variant::Dread { 2 } else { 1 } }
+}
+
+/// A capstone's burn on a foe (`capstone::Capstone::Ember`, `Searing`): ticks left, and what each
+/// takes off it.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Burn { pub left: u32, pub per: f32 }
+
+impl Burn {
+    /// Set burning by a blow that dealt `dealt`, `share` of it again over `capstone::BURN_TICKS`;
+    /// a fiercer burn already on it is kept.
+    pub fn light(&mut self, dealt: f32, share: f32) {
+        let per = dealt * share / crate::capstone::BURN_TICKS as f32;
+        if share > 0.0 && dealt > 0.0 { *self = Burn { left: crate::capstone::BURN_TICKS, per: per.max(if self.left > 0 { self.per } else { 0.0 }) }; }
+    }
+    /// A tick of it: what it takes off now.
+    pub fn tick(&mut self) -> f32 {
+        if self.left == 0 { return 0.0; }
+        self.left -= 1;
+        self.per
+    }
+}
 
 /// Something loosed down the road, in flight toward the hero: by enemy `from`, with what it
 /// does when it arrives; where it is along the road and across it.
@@ -431,6 +552,22 @@ impl Attack {
 /// The shieldbearer's bash back when its shield turns a light strike (its attack of that index).
 const SHIELD_COUNTER: usize = 3;
 
+/// A felled bloater's burst, `BURST_AT` ticks after it falls (its windup the swelling): over its
+/// lane and both beside it, and nothing stops it but distance or a roll.
+pub const BURST_AT: u32 = 50;
+const BURST: Attack = att("burst", (BURST_AT, 6, 0), 2.6, 1, 30.0, 0.0, Kind::Unblockable, false);
+/// Ticks a burst stays drawn after it goes off (its swelling counts on to here, then stops).
+pub const BURST_END: u32 = BURST_AT + 24;
+/// The gravecaller's raise (its attack of that index); how many it has, how many of its raised
+/// may stand at once, how strong they are of a husk, how far in front of it they rise, and the
+/// beat before they move.
+const RAISE: usize = 0;
+const RAISES: u32 = 2;
+const MOST_RAISED: usize = 2;
+const RISEN_HP: f32 = 0.6;
+const RISE_AHEAD: f64 = 2.0;
+const RISE_BEAT: u32 = 45;
+
 /// The kinds of enemy.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Archetype {
@@ -450,30 +587,44 @@ pub enum Archetype {
     /// opens under their feet. Teaches leaving the marked ground and rolling late; close, it
     /// throws them back.
     Hexer,
+    /// Huge and slow, with a maul no guard holds: an overhead slam (held aloft, sometimes, before
+    /// it falls), a sweep across two lanes, and a stamp that cracks the ground nothing stops.
+    /// Teaches rolling through and punishing its long recoveries.
+    Brute,
+    /// Quick and frail, in packs: a bite, a double snap, and a pounce from afar that follows the
+    /// hero's lane until late. Teaches keeping several in view and rolling late.
+    Hound,
+    /// Swollen with plague: a gout of bile across two lanes and a belly slam, and felled it swells
+    /// and bursts over its lane and both beside it (`BURST`). Teaches backing off what you kill.
+    Bloater,
+    /// Hangs back and calls up the dead: husks out of the ground (`RAISE`), grave-hands under the
+    /// hero's feet, and a staff swipe for whoever closes. Teaches cutting through to the caller.
+    Gravecaller,
 }
 
 impl Archetype {
-    pub const ALL: [Archetype; 6] = [Archetype::Husk, Archetype::Lancer, Archetype::Shieldbearer, Archetype::Wretch, Archetype::Archer, Archetype::Hexer];
+    pub const ALL: [Archetype; 10] = [Archetype::Husk, Archetype::Lancer, Archetype::Shieldbearer, Archetype::Wretch, Archetype::Archer, Archetype::Hexer, Archetype::Brute, Archetype::Hound,
+        Archetype::Bloater, Archetype::Gravecaller];
     pub fn hp(self) -> f32 {
-        match self { Archetype::Husk => 80.0, Archetype::Lancer => 70.0, Archetype::Shieldbearer => 110.0, Archetype::Wretch => 50.0, Archetype::Archer => 52.0, Archetype::Hexer => 58.0 }
+        match self { Archetype::Husk => 80.0, Archetype::Lancer => 70.0, Archetype::Shieldbearer => 110.0, Archetype::Wretch => 50.0, Archetype::Archer => 52.0, Archetype::Hexer => 58.0, Archetype::Brute => 150.0, Archetype::Hound => 36.0, Archetype::Bloater => 90.0, Archetype::Gravecaller => 66.0 }
     }
     pub fn stance(self) -> f32 {
-        match self { Archetype::Husk => 30.0, Archetype::Lancer => 28.0, Archetype::Shieldbearer => 45.0, Archetype::Wretch => 18.0, Archetype::Archer => 16.0, Archetype::Hexer => 20.0 }
+        match self { Archetype::Husk => 30.0, Archetype::Lancer => 28.0, Archetype::Shieldbearer => 45.0, Archetype::Wretch => 18.0, Archetype::Archer => 16.0, Archetype::Hexer => 20.0, Archetype::Brute => 62.0, Archetype::Hound => 14.0, Archetype::Bloater => 34.0, Archetype::Gravecaller => 20.0 }
     }
     /// Approach pace, m/s, and how far off it notices the hero, metres.
     fn pace(self) -> (f32, f32) {
-        match self { Archetype::Husk => (0.9, 9.0), Archetype::Lancer => (0.8, 11.0), Archetype::Shieldbearer => (0.7, 8.0), Archetype::Wretch => (1.6, 10.0), Archetype::Archer => (0.8, 17.0), Archetype::Hexer => (0.7, 15.0) }
+        match self { Archetype::Husk => (0.9, 9.0), Archetype::Lancer => (0.8, 11.0), Archetype::Shieldbearer => (0.7, 8.0), Archetype::Wretch => (1.6, 10.0), Archetype::Archer => (0.8, 17.0), Archetype::Hexer => (0.7, 15.0), Archetype::Brute => (0.6, 8.0), Archetype::Hound => (2.1, 13.0), Archetype::Bloater => (0.6, 9.0), Archetype::Gravecaller => (0.7, 15.0) }
     }
     /// Souls it leaves when felled.
     pub fn souls(self) -> u32 {
-        match self { Archetype::Husk => 30, Archetype::Lancer => 40, Archetype::Shieldbearer => 60, Archetype::Wretch => 25, Archetype::Archer => 45, Archetype::Hexer => 55 }
+        match self { Archetype::Husk => 30, Archetype::Lancer => 40, Archetype::Shieldbearer => 60, Archetype::Wretch => 25, Archetype::Archer => 45, Archetype::Hexer => 55, Archetype::Brute => 85, Archetype::Hound => 20, Archetype::Bloater => 50, Archetype::Gravecaller => 70 }
     }
     /// Whether it turns light strikes aside while it stands guard (not mid-attack, not staggered).
     pub fn shielded(self) -> bool { self == Archetype::Shieldbearer }
     /// The gap it tries to hold, metres: the ranged kinds hang back and give ground as the hero
     /// comes (slower than the hero walks, so they can be caught); the rest close to strike.
     pub fn keep(self) -> Option<f32> {
-        match self { Archetype::Archer => Some(9.0), Archetype::Hexer => Some(7.5), _ => None }
+        match self { Archetype::Archer => Some(9.0), Archetype::Hexer => Some(7.5), Archetype::Gravecaller => Some(8.0), _ => None }
     }
     pub fn attacks(self) -> &'static [Attack] {
         const HUSK: [Attack; 3] = [
@@ -527,14 +678,43 @@ impl Archetype {
             att("rune", (78, 8, 44), 12.0, 0, 30.0, 0.0, Kind::Unblockable, false).delayed(0.35, 0.7).area(),
             att("repel", (30, 6, 40), 2.6, 1, 16.0, 30.0, Kind::GuardBreak, false),
         ];
+        // The slam breaks any guard and recovers long (roll through, then punish); held aloft it
+        // flashes early and follows the hero's lane almost to the end. The sweep crosses two lanes
+        // and can be parried; the stamp cracks the ground across them, and nothing stops it.
+        const BRUTE: [Attack; 4] = [
+            att("slam", (64, 8, 62), 3.0, 0, 42.0, 70.0, Kind::GuardBreak, false),
+            att("sweep", (54, 8, 46), 3.0, 1, 28.0, 40.0, Kind::Physical, true),
+            att("late slam", (96, 8, 62), 3.0, 0, 46.0, 70.0, Kind::GuardBreak, false).art("slam").delayed(0.35, 0.9),
+            att("stamp", (46, 6, 44), 2.6, 1, 22.0, 0.0, Kind::Unblockable, false),
+        ];
+        // A bite, or two snaps back to back (parry either); from afar a pounce that follows the
+        // hero's lane until late.
+        const HOUND: [Attack; 4] = [
+            att("bite", (20, 4, 22), 2.2, 0, 11.0, 12.0, Kind::Physical, true),
+            att("bite", (16, 4, 8), 2.2, 0, 9.0, 10.0, Kind::Physical, true).then(2),
+            att("snap", (12, 4, 24), 2.2, 0, 11.0, 12.0, Kind::Physical, true).art("bite").follow_up(),
+            att("pounce", (40, 6, 34), 4.8, 0, 16.0, 26.0, Kind::GuardBreak, false).delayed(0.5, 0.88),
+        ];
+        // The bile breaks guards across two lanes; the slam can be parried. Its burst is `BURST`.
+        const BLOATER: [Attack; 2] = [
+            att("belch", (56, 8, 44), 3.4, 1, 20.0, 34.0, Kind::GuardBreak, false),
+            att("slam", (44, 6, 46), 2.4, 0, 22.0, 26.0, Kind::Physical, true),
+        ];
+        // The raise (`RAISE`) hurts no one; the hands open under the hero (get off the patch); the
+        // swipe is for whoever closes.
+        const GRAVECALLER: [Attack; 3] = [
+            att("raise", (70, 10, 40), 14.0, 0, 0.0, 0.0, Kind::Physical, false),
+            att("grasp", (66, 8, 40), 11.0, 0, 26.0, 0.0, Kind::Unblockable, false).delayed(0.4, 0.75).area(),
+            att("swipe", (30, 6, 38), 2.6, 1, 16.0, 24.0, Kind::GuardBreak, false),
+        ];
         match self {
             Archetype::Husk => &HUSK, Archetype::Lancer => &LANCER, Archetype::Shieldbearer => &SHIELDBEARER, Archetype::Wretch => &WRETCH,
-            Archetype::Archer => &ARCHER, Archetype::Hexer => &HEXER,
+            Archetype::Archer => &ARCHER, Archetype::Hexer => &HEXER, Archetype::Brute => &BRUTE, Archetype::Hound => &HOUND, Archetype::Bloater => &BLOATER, Archetype::Gravecaller => &GRAVECALLER,
         }
     }
     /// Ticks it waits between attacks, at least and at most.
     fn rest(self) -> (u32, u32) {
-        match self { Archetype::Husk => (50, 110), Archetype::Lancer => (60, 120), Archetype::Shieldbearer => (70, 130), Archetype::Wretch => (25, 60), Archetype::Archer => (50, 100), Archetype::Hexer => (70, 130) }
+        match self { Archetype::Husk => (50, 110), Archetype::Lancer => (60, 120), Archetype::Shieldbearer => (70, 130), Archetype::Wretch => (25, 60), Archetype::Archer => (50, 100), Archetype::Hexer => (70, 130), Archetype::Brute => (80, 140), Archetype::Hound => (22, 56), Archetype::Bloater => (70, 130), Archetype::Gravecaller => (80, 140) }
     }
 }
 
@@ -571,8 +751,11 @@ pub struct Enemy {
     /// more deeper in the world (`scaled`).
     pub top: f32,
     pub power: f32,
-    /// Ticks left of a frost bolt's chill (`CHILL`).
+    /// Ticks left of a frost bolt's chill (`CHILL`), and of a capstone's burn.
     pub chill: u32,
+    pub burn: Burn,
+    /// What its region has made of it (`Variant`).
+    pub variant: Variant,
     /// How it passes the time before it has noticed the hero (None: alert, as one made for a
     /// fight always is), and how far it stands off its lane's middle, metres (where its idling
     /// took it; it eases back once it has noticed).
@@ -580,7 +763,13 @@ pub struct Enemy {
     pub drift: f32,
     /// Ticks it has stood beside the hero's lane, alert and near (it steps across at `CROSS_EVERY`).
     pub cross: u32,
+    pub grave: Grave,
 }
+
+/// What death means to an enemy: ticks since a bloater fell (it bursts at `BURST_AT`), whether a
+/// gravecaller raised it (it leaves nothing when felled), and a gravecaller's raises left.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Grave { pub swell: u32, pub raised: bool, pub raises: u32 }
 
 /// What an enemy on the road does before it notices the hero.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -620,7 +809,8 @@ const CROSS_EVERY: u32 = 40;
 
 impl Enemy {
     pub fn new(kind: Archetype, s: f64, lane: i32) -> Enemy {
-        Enemy { kind, s, lane, hp: kind.hp(), stance: kind.stance(), stance_wait: 0, ai: Ai::Wait(30), hurt: 0, top: kind.hp(), power: 1.0, chill: 0, idle: None, drift: 0.0, cross: 0 }
+        Enemy { kind, s, lane, hp: kind.hp(), stance: kind.stance(), stance_wait: 0, ai: Ai::Wait(30), hurt: 0, top: kind.hp(), power: 1.0, chill: 0, burn: Burn::default(), variant: Variant::Plain, idle: None, drift: 0.0, cross: 0,
+                grave: Grave { raises: if kind == Archetype::Gravecaller { RAISES } else { 0 }, ..Grave::default() } }
     }
 
     /// Alert and after the hero: behind them (got past) and not yet given up.
@@ -631,7 +821,7 @@ impl Enemy {
     /// never moves as one. Watchers start at the road's edge on their lane's side.
     pub fn unaware(mut self) -> Enemy {
         let seed = ((self.s * 97.0) as i64 as u64).wrapping_mul(0x9E37_79B9).wrapping_add(self.lane as u64 * 7919) as u32;
-        let way = match self.kind { Archetype::Archer | Archetype::Hexer => Way::Watch, Archetype::Shieldbearer => Way::Attention, _ => Way::Pace };
+        let way = match self.kind { Archetype::Archer | Archetype::Hexer | Archetype::Gravecaller => Way::Watch, Archetype::Shieldbearer => Way::Attention, _ => Way::Pace };
         let side = if self.lane != 0 { self.lane.signum() as f32 } else if seed % 2 == 0 { -1.0 } else { 1.0 };
         let mid = self.lane as f32 * LANE_W;
         let (to, drift) = match way {
@@ -650,7 +840,11 @@ impl Enemy {
         self.power *= power;
         self
     }
+    /// As its region breeds it (`Variant`).
+    pub fn of(self, variant: Variant) -> Enemy { Enemy { variant, ..self } }
     pub fn alive(&self) -> bool { self.ai != Ai::Dead }
+    /// A burst's lanes: its own and both beside it, on the road.
+    pub fn burst_lanes(&self) -> (i32, i32) { ((self.lane - 1).max(-1), (self.lane + 1).min(1)) }
     /// Metres ahead of the camera, as of `walked`.
     pub fn ahead(&self, walked: f64) -> f32 { (self.s - walked) as f32 }
     /// Metres between the hero and it (negative once it is behind the hero).
@@ -724,6 +918,16 @@ impl Bulwark {
     }
     /// The ward's share of full.
     pub fn share(&self) -> f32 { self.ward / WARD_MAX }
+    /// Fill it by `n`, within full.
+    pub fn fill(&mut self, n: f32) { self.ward = (self.ward + n).min(WARD_MAX); self.idle = 0; }
+    /// Let it go, if `WARD_BURST` or more is stored: its share of full, emptied.
+    pub fn let_go(&mut self) -> Option<f32> {
+        (self.ward >= WARD_BURST).then(|| { let w = self.share(); self.ward = 0.0; w })
+    }
+    /// What a parry of a blow asking `guard` fills it by, through `kit`'s ward.
+    pub fn parried(&mut self, kit: &crate::gear::Kit, guard: f32) {
+        if let Some(w) = kit.ward { self.fill(guard * WARD_PER_STAMINA * w.fills().1 * kit.ward_boost()); }
+    }
 }
 
 /// How a guard met a blow.
@@ -739,26 +943,24 @@ pub enum Guarded {
 }
 
 /// How a guard with `stats`, `stamina` left and `bulwark` meets a blow that asks `guard` of it
-/// and deals `damage`, `breaker` if it is built to break guards. A bulwark's ward fills from each
-/// block, by what the blow asked rather than what the shield paid, and empties into a burst.
+/// and deals `damage`, `breaker` if it is built to break guards. A Warden's ward fills from each
+/// block, by what the blow asked rather than what the shield paid, and (but for a parma's) a
+/// perfect block lets it go.
 pub fn guard_blow(stats: &Stats, stamina: f32, bulwark: &mut Bulwark, guard: f32, damage: f32, breaker: bool) -> Guarded {
     let kit = stats.kit;
-    let gain = guard * WARD_PER_STAMINA * kit.ward;
-    if kit.ward > 0.0 { bulwark.idle = 0; }
-    if kit.ward > 0.0 && bulwark.fresh && bulwark.up <= PERFECT_BLOCK {
+    let gain = guard * WARD_PER_STAMINA * kit.ward.map_or(0.0, |w| w.fills().0) * kit.ward_boost();
+    if let Some(ward) = kit.ward.filter(|_| bulwark.fresh && bulwark.up <= PERFECT_BLOCK) {
         // Once a raise: a second blow on the same guard is blocked as any other.
         bulwark.fresh = false;
-        if bulwark.ward >= WARD_BURST {
-            let w = bulwark.share();
-            bulwark.ward = 0.0;
+        if let Some(w) = Some(ward).filter(|w| w.on_block()).and_then(|_| bulwark.let_go()) {
             return Guarded::Perfect { burst: Some(w) };
         }
-        bulwark.ward = (bulwark.ward + gain).min(WARD_MAX);
+        bulwark.fill(gain);
         return Guarded::Perfect { burst: None };
     }
     let cost = guard * kit.guard * if breaker { 1.5 } else { 1.0 };
     if cost > stamina { return Guarded::Broken { cost, damage: damage * 0.5 * stats.taken() }; }
-    bulwark.ward = (bulwark.ward + gain).min(WARD_MAX);
+    if kit.ward.is_some() { bulwark.fill(gain); }
     Guarded::Held { cost, chip: if breaker { damage * 0.15 * kit.chip * stats.taken() } else { 0.0 }, breaker }
 }
 
@@ -771,6 +973,8 @@ pub enum Event {
     Loosed { enemy: usize },
     /// The hero loosed an arrow or cast a bolt.
     Shot(crate::gear::Ranged),
+    /// The hero imbued their next shots with their own blood (Blood Imbue).
+    Imbued,
     /// The hero's arrow or bolt caught on enemy `enemy`'s raised shield.
     Glanced { enemy: usize },
     /// Enemy `enemy`'s rune opened, `at` metres along the road.
@@ -805,7 +1009,7 @@ pub enum Event {
     /// A bulwark met a blow raised at the last moment: nothing spent, nothing through.
     PerfectBlock,
     /// ... and let its ward go into enemy `enemy`, at `power` of a full ward.
-    WardBurst { enemy: usize, power: f32 },
+    WardBurst { enemy: usize, power: f32, ward: crate::gear::Ward },
     /// A parry out of time: half the blow came through.
     ParryMissed { damage: f32 },
     /// A roll or backstep slipped enemy `enemy`'s blow at the last moment: it stumbles.
@@ -821,6 +1025,10 @@ pub enum Event {
     Rung { enemy: usize, at: f64 },
     /// A boss's blow came down on the ground `at` metres along (as `Rung`): a slam or a landing.
     Slam { enemy: usize, at: f64, heavy: bool },
+    /// A felled bloater burst, `at` metres along (as `Rung` in the yard).
+    Popped { enemy: usize, at: f64 },
+    /// A gravecaller called enemy `enemy` up out of the ground.
+    Raised { enemy: usize },
     Healed,
     /// Wanted to move with no stamina.
     Spent,
@@ -840,10 +1048,6 @@ pub struct Stats {
     pub might: u32,
     pub dexterity: u32,
     pub focus: u32,
-    /// The weapon's and the armour's upgrade at the smith (+0 to `GEAR_MAX`): 8% more strike
-    /// damage, and 5% less damage taken, a step. Not levels: they do not raise a level's cost.
-    pub weapon: u32,
-    pub armour: u32,
     /// What everything worn does (`gear::Loadout::kit`).
     pub kit: crate::gear::Kit,
 }
@@ -852,9 +1056,6 @@ pub struct Stats {
 /// then cost, of their usual.
 pub const WEAK: f32 = 0.6;
 pub const WEAK_STRIKE: f32 = 1.25;
-
-/// The highest upgrade the smith can forge.
-pub const GEAR_MAX: u32 = 5;
 
 impl Stats {
     pub fn level(&self) -> u32 { self.vigor + self.endurance + self.might + self.dexterity + self.focus }
@@ -891,20 +1092,23 @@ impl Stats {
     pub fn max_hp(&self) -> f32 { HP + 8.0 * self.vigor as f32 + self.kit.hp }
     pub fn max_stamina(&self) -> f32 { STAMINA + 6.0 * self.endurance as f32 + self.kit.stamina }
     /// Spell charges at full: three, one more for every four levels of focus, and the catalyst's.
-    pub fn max_charges(&self) -> f32 { 3.0 + (self.focus / 4) as f32 + self.kit.catalyst.map_or(0.0, |c| c.charges) }
+    pub fn max_charges(&self) -> f32 { 3.0 + (self.focus / 4) as f32 + self.kit.catalyst.map_or(0.0, |c| c.charges + self.kit.charges) }
     /// What an arrow, a bolt or a spell hits for against its own damage, as in the souls games:
     /// a bow or a crossbow by its own grades and needs (a crossbow's are none: its bolt is its
-    /// weight), a spell by the catalyst it is cast through; all by what is worn, never by the smith.
+    /// weight), a spell by the catalyst it is cast through; all by what is worn, and the smith's
+    /// levels on the offhand it comes from.
     pub fn ranged_damage(&self, r: crate::gear::Ranged) -> f32 {
         let sc = match r {
             crate::gear::Ranged::Frost => self.kit.catalyst.map_or(crate::gear::UNSCALED, |c| c.scaling),
             _ => self.kit.shooting,
         };
-        self.graded(sc.base, sc.needs, sc.scales) * self.kit.damage
+        let spell = if r == crate::gear::Ranged::Frost { self.kit.capped.spell_more } else { 1.0 };
+        self.graded(sc.base, sc.needs, sc.scales) * (1.0 + crate::gear::OFF_STEP * self.kit.off_level as f32) * spell * self.kit.damage
     }
-    pub fn damage(&self) -> f32 { self.arms_damage() * (1.0 + 0.08 * self.weapon as f32) * self.kit.damage }
-    /// What is left of a blow after the armour.
-    pub fn taken(&self) -> f32 { (1.0 - 0.05 * self.armour as f32) * self.kit.taken }
+    /// A strike: the weapon's, raised by the smith's levels on it and by the rest of the kit.
+    pub fn damage(&self) -> f32 { self.arms_damage() * (1.0 + crate::gear::MAIN_STEP * self.kit.main as f32) * self.kit.damage }
+    /// What is left of a blow after the armour, the smith's levels on it first.
+    pub fn taken(&self) -> f32 { (1.0 - self.kit.forged_armour) * self.kit.taken }
     /// Poise at full: hits' worth before a stagger.
     pub fn poise(&self) -> f32 { POISE + self.kit.poise }
     /// Weight the hero carries without slowing (`burdened` past 70% of it): endurance raises it.
@@ -944,8 +1148,8 @@ pub struct Hero {
     /// The last press, and how many ticks it has waited.
     pub buffer: Option<(Move, u32)>,
     pub dead: bool,
-    /// Arrows in the quiver, and frost charges (whole ones cast).
-    pub arrows: u32,
+    /// Arrows and bolts carried (and a Blood Imbue's shots left), and frost charges (whole ones cast).
+    pub quiver: Quiver,
     pub charges: f32,
     /// A Warden's ward, filled by blocking (`Bulwark`).
     pub bulwark: Bulwark,
@@ -961,25 +1165,30 @@ pub struct Hero {
 
 impl Hero {
     fn new() -> Hero { Hero::with(Stats::default()) }
+    /// A sanctuary shield's capstone after a parry or a perfect block: its share of full health back.
+    pub fn mend(&mut self) { self.hp = (self.hp + self.stats.kit.capped.mend * self.stats.max_hp()).min(self.stats.max_hp()); }
     /// Whole, with these levels: as they rise from a shrine.
     pub fn with(stats: Stats) -> Hero {
-        Hero { stats, hp: stats.max_hp(), stamina: stats.max_stamina(), rested: REGEN_DELAY, flasks: FLASKS, lane: 0, x: 0.0, act: None, guarding: false, reeling: 0, reel: Reel::None, poise: stats.poise(), poise_wait: 0, buffer: None, dead: false, arrows: QUIVER, charges: stats.max_charges(), bulwark: Bulwark::default(), art: 0.0, stone: 0, mark: None, pierced: 0 }
+        Hero { stats, hp: stats.max_hp(), stamina: stats.max_stamina(), rested: REGEN_DELAY, flasks: FLASKS, lane: 0, x: 0.0, act: None, guarding: false, reeling: 0, reel: Reel::None, poise: stats.poise(), poise_wait: 0, buffer: None, dead: false, quiver: Quiver::default(), charges: stats.max_charges(), bulwark: Bulwark::default(), art: 0.0, stone: 0, mark: None, pierced: 0 }
     }
+    /// Whole again with the same levels (as at a shrine), keeping what is carried to shoot.
+    pub fn renewed(&self) -> Hero { Hero { quiver: Quiver { imbued: 0, ..self.quiver }, ..Hero::with(self.stats) } }
     fn free(&self) -> bool { self.act.is_none() && self.reeling == 0 && !self.dead }
-    /// Whether there is a shot of `r` to give: an arrow, the blood for one, a charge.
+    /// Whether there is a shot of `r` to give: an arrow or a bolt, a charge.
     pub fn can_shoot(&self, r: Option<crate::gear::Ranged>) -> bool {
-        use crate::gear::Ranged;
         match r {
-            Some(Ranged::Bow) => self.arrows > 0,
-            Some(r @ (Ranged::BloodBow | Ranged::BloodCrossbow)) => self.hp > r.blood() + 1.0,
-            Some(Ranged::Frost) => self.charges >= 1.0,
+            Some(crate::gear::Ranged::Frost) => self.charges >= 1.0,
+            Some(r) => self.quiver.has(r),
             None => false,
         }
     }
+    /// Whether Blood Imbue can be called (C): a blood bow held, the blood to pay for it, and
+    /// shots to imbue.
+    pub fn can_imbue(&self) -> bool { self.stats.kit.imbues() && self.quiver.imbued < IMBUE_SHOTS && self.hp > self.stats.max_hp() * IMBUE_COST + 1.0 }
     /// Whether the hand's bow or crossbow has a shot to give (F).
     pub fn can_loose(&self) -> bool { self.can_shoot(self.stats.kit.shot(false)) }
     /// Whether a spell can be cast: a catalyst held, a spell to cast, a charge for it (C).
-    pub fn can_cast(&self) -> bool { self.stats.spell_ready() && self.can_shoot(self.stats.kit.shot(true)) }
+    pub fn can_cast(&self) -> bool { (self.stats.spell_ready() && self.can_shoot(self.stats.kit.shot(true))) || self.can_imbue() }
     /// Whether the weapon has an art and the meter holds its cost (Q).
     pub fn can_art(&self) -> bool { self.stats.kit.art.is_some_and(|a| self.art >= a.cost()) }
     /// Start reeling `r`'s way, whatever was under way cut off.
@@ -1084,10 +1293,17 @@ impl Fight {
             };
             Some(Threat { enemy: i, lanes: e.lanes(), d, kind: a.kind, parry: a.parry, phase, progress, area: a.area })
         });
+        // A felled bloater swelling: the ground it will burst over.
+        let swelling = self.enemies.iter().enumerate().filter(|(_, e)| !e.alive() && (1..BURST_AT + BURST.frames.1).contains(&e.grave.swell)).map(|(i, e)| {
+            let (d, t) = (e.ahead(walked), e.grave.swell);
+            Threat { enemy: i, lanes: e.burst_lanes(), d: (d - BURST.reach, d + 0.4), kind: BURST.kind, parry: false,
+                     phase: phase(BURST.frames, t), progress: (t as f32 / BURST_AT as f32).min(1.0), area: false }
+        });
+        let swung = swung.chain(swelling).collect::<Vec<_>>();
         let flying = self.missiles.iter().map(|m| {
             Threat { enemy: m.from, lanes: (m.lane, m.lane), d: (HERO_D - 0.3, (m.s - walked) as f32), kind: m.attack.kind, parry: m.attack.parry, phase: Phase::Active, progress: 1.0, area: false }
         });
-        swung.chain(flying).collect()
+        swung.into_iter().chain(flying).collect()
     }
 
     /// One tick at 60 Hz, with the road `walked` metres along as drawn.
@@ -1113,11 +1329,14 @@ impl Fight {
         if self.hero.stats.kit.art.is_some() {
             self.hero.art = (self.hero.art + crate::arts::gained(&out)).min(crate::arts::ART_MAX);
         }
-        // Arrows pulled back out of the fallen.
-        if self.hero.stats.kit.ranged == Some(crate::gear::Ranged::Bow) {
-            let felled = out.iter().filter(|e| matches!(e, Event::Felled { .. })).count() as u32;
-            self.hero.arrows = (self.hero.arrows + SALVAGE * felled).min(QUIVER);
+        // Arrows pulled back out of the fallen, and archers' own.
+        let felled: Vec<usize> = out.iter().filter_map(|e| if let Event::Felled { enemy } = e { Some(*enemy) } else { None }).collect();
+        if !felled.is_empty() {
+            let archers = felled.iter().filter(|&&i| self.enemies.get(i).is_some_and(|e| e.kind == Archetype::Archer)).count() as u32;
+            self.hero.quiver.salvage(self.hero.stats.kit.ranged, felled.len() as u32, archers);
         }
+        for &i in &felled { if self.enemies[i].kind == Archetype::Bloater { self.enemies[i].grave.swell = 1; } }
+        self.swells_tick(walked, &mut out);
         if self.hero.hp <= 0.0 && !self.hero.dead {
             self.hero.dead = true;
             self.hero.act = None;
@@ -1149,7 +1368,8 @@ impl Fight {
                 let spec = match (m, kit.shot(m == Move::Cast), kit.art) {
                     (Move::Loose | Move::Cast, Some(r), _) => Move::loose_spec(r),
                     (Move::Art, _, Some(art)) => art.spec(),
-                    _ => m.spec_for(kit.arms.class, kit.off.map(|o| o.guard)),
+                    (Move::Cast, None, _) if kit.imbues() => Move::imbue_spec(),
+                    _ => m.spec_with(&kit),
                 };
                 let cost = self.hero.stats.cost(m, spec.stamina);
                 let h = &mut self.hero;
@@ -1220,17 +1440,18 @@ impl Fight {
             h.hp = (h.hp + FLASK_HEAL * h.stats.kit.heal).min(h.stats.max_hp());
             out.push(Event::Healed);
         }
+        // Blood Imbue: paid for in health as it goes off; a call cut off spends nothing.
+        if a.mv == Move::Cast && a.t == spec.frames.0 && h.stats.kit.imbues() {
+            h.hp = (h.hp - h.stats.max_hp() * IMBUE_COST).max(1.0);
+            h.quiver.imbued = IMBUE_SHOTS;
+            out.push(Event::Imbued);
+        }
         // Loosed at the end of the draw, paid for then: a draw cut off spends nothing.
         if matches!(a.mv, Move::Loose | Move::Cast) && a.t == spec.frames.0 {
             if let Some(r) = h.stats.kit.shot(a.mv == Move::Cast) {
-                use crate::gear::Ranged;
-                match r {
-                    Ranged::Bow => h.arrows = h.arrows.saturating_sub(1),
-                    Ranged::BloodBow | Ranged::BloodCrossbow => h.hp = (h.hp - r.blood()).max(1.0),
-                    Ranged::Frost => h.charges = (h.charges - 1.0).max(0.0),
-                }
-                let damage = spec.damage * h.stats.ranged_damage(r);
-                let bolt = Bolt { s: walked + HERO_D as f64 + 0.4, lane: h.lane, x: h.x, ranged: r, damage, stance: spec.stance, left: spec.reach, age: 0 };
+                let imbued = if r == crate::gear::Ranged::Frost { h.charges = (h.charges - 1.0).max(0.0); false } else { h.quiver.take(r) };
+                let damage = spec.damage * h.stats.ranged_damage(r) * if imbued { IMBUE_DAMAGE } else { 1.0 };
+                let bolt = Bolt { s: walked + HERO_D as f64 + 0.4, lane: h.lane, x: h.x, ranged: r, damage, stance: spec.stance, left: spec.reach, age: 0, imbued, pierced: 0, keen: h.stats.kit.capped.keen && r != crate::gear::Ranged::Frost };
                 self.bolts.push(bolt);
                 out.push(Event::Shot(r));
             }
@@ -1263,6 +1484,10 @@ impl Fight {
     }
 
     fn strike(&mut self, i: usize, mv: Move, spec: Spec, out: &mut Vec<Event>) {
+        // A parma's ward goes into the riposte.
+        let duel = if mv == Move::Riposte && self.hero.stats.kit.ward == Some(crate::gear::Ward::Parma) { self.hero.bulwark.let_go() } else { None };
+        if let Some(w) = duel { out.push(Event::WardBurst { enemy: i, power: w, ward: crate::gear::Ward::Parma }); }
+        let more = duel.map_or(0.0, |w| DUEL_DAMAGE * w * self.hero.stats.damage());
         let e = &mut self.enemies[i];
         // A shield standing guard turns a light strike aside and throws the hero back a step.
         if mv == Move::Light && e.kind.shielded() && matches!(e.ai, Ai::Wait(_)) {
@@ -1279,14 +1504,18 @@ impl Fight {
         }
         let kit = self.hero.stats.kit;
         let open = match e.ai { Ai::Stumbled(_) => STUMBLE_HURT * kit.opener, Ai::Staggered(_) => kit.opener, _ => 1.0 };
-        let dealt = (spec.damage * self.hero.stats.damage() * open).min(e.hp.max(0.0));
+        let dealt = (spec.damage * self.hero.stats.damage() * open + more).min(e.hp.max(0.0));
         e.hp -= dealt;
+        if more > 0.0 { self.hero.hp = (self.hero.hp + more.min(dealt) * DUEL_DRINK).min(self.hero.stats.max_hp()); }
         // A weapon that drinks gives some of it back.
         let h = &mut self.hero;
         h.hp = (h.hp + dealt * kit.leech).min(h.stats.max_hp());
         // A blow landed up close fills the spell's charges.
         if kit.spell_cast().is_some() { h.charges = (h.charges + CHARGE_PER_HIT).min(h.stats.max_charges()); }
         let e = &mut self.enemies[i];
+        // The weapon's capstone: the blow burns on, or chills.
+        e.burn.light(dealt, kit.capped.burn);
+        e.chill = e.chill.max(kit.capped.rime);
         e.hurt = 12;
         out.push(Event::Hit { enemy: i, mv });
         if e.hp <= 0.0 {
@@ -1312,12 +1541,22 @@ impl Fight {
     fn enemy_tick(&mut self, i: usize, walked: f64, out: &mut Vec<Event>) {
         let e = &mut self.enemies[i];
         if !e.alive() { return; }
+        // Burning: it goes on taking a little, and can die of it.
+        let burnt = e.burn.tick();
+        if burnt > 0.0 {
+            e.hp -= burnt.min(e.hp);
+            if e.hp <= 0.0 {
+                e.ai = Ai::Dead;
+                out.push(Event::Felled { enemy: i });
+                return;
+            }
+        }
         // Chilled: every third tick lost, and no stance back while it lasts. Else stance comes
         // back after a while unhit.
         if e.chill > 0 {
             e.chill -= 1;
             if e.chill % 3 == 0 { return; }
-        } else if e.stance_wait > 0 { e.stance_wait -= 1; } else { e.stance = (e.stance + 13.0 / 60.0).min(e.kind.stance()); }
+        } else if e.stance_wait > 0 { e.stance_wait = e.stance_wait.saturating_sub(e.variant.recovery()); } else { e.stance = (e.stance + 13.0 / 60.0 * e.variant.recovery() as f32).min(e.kind.stance()); }
         let gap = e.gap(walked);
         let (pace, notice) = e.kind.pace();
         // Noticed: back onto its lane's middle, from wherever its idling took it.
@@ -1404,6 +1643,7 @@ impl Fight {
                     // Nothing loosed or cast from closer than 3 m: up close a ranged kind fights hand to hand.
                     .filter(|&k| {
                         let a = self.enemies[i].kind.attacks()[k];
+                        if self.enemies[i].kind == Archetype::Gravecaller && k == RAISE && !self.can_raise(i) { return false; }
                         let close = a.shot.is_none() && !a.area;
                         !a.follow && if behind { close && -gap <= a.reach + 0.2 } else { gap <= a.reach + 0.2 && (gap > 3.0 || close) }
                     }).collect();
@@ -1431,7 +1671,10 @@ impl Fight {
                 let mut landed = landed;
                 if phase(a.frames, t) == Phase::Active && !landed {
                     let (l0, l1) = e.lanes();
-                    if a.shot.is_some() {
+                    if e.kind == Archetype::Gravecaller && ai == RAISE {
+                        landed = true;
+                        self.raise(i, out);
+                    } else if a.shot.is_some() {
                         // Loosed down its lane, from just in front of it.
                         landed = true;
                         let (s, lane) = (e.s - 0.4, e.lane);
@@ -1478,11 +1721,19 @@ impl Fight {
             b.s += step as f64;
             b.left -= step;
             b.x += (b.lane as f32 * LANE_W - b.x) * 0.15;
-            let (s, lane) = (b.s, b.lane);
-            // Passed through this tick (or standing right on it).
-            let reached = |e: &Enemy| e.alive() && e.lane == lane && e.s <= s + 0.2 && e.s > s - step as f64 - 0.4;
-            let hit = (0..self.enemies.len()).filter(|&i| reached(&self.enemies[i])).min_by(|&x, &y| self.enemies[x].s.total_cmp(&self.enemies[y].s));
+            let (s, lane, pierced) = (b.s, b.lane, b.pierced);
+            // Passed through this tick (or standing right on it), and not pierced already.
+            let reached = |i: usize, e: &Enemy| e.alive() && e.lane == lane && e.s <= s + 0.2 && e.s > s - step as f64 - 0.4 && pierced & (1 << i.min(63)) == 0;
+            let hit = (0..self.enemies.len()).filter(|&i| reached(i, &self.enemies[i])).min_by(|&x, &y| self.enemies[x].s.total_cmp(&self.enemies[y].s));
             if let Some(i) = hit {
+                // An imbued bolt goes on through, and on into the next.
+                if self.bolts[k].pierces() {
+                    self.bolts[k].pierced |= 1 << i.min(63);
+                    let b = self.bolts[k];
+                    self.strike_bolt(i, b, out);
+                    k += 1;
+                    continue;
+                }
                 let b = self.bolts.remove(k);
                 self.strike_bolt(i, b, out);
                 continue;
@@ -1504,7 +1755,13 @@ impl Fight {
         let dealt = b.damage.min(e.hp.max(0.0));
         e.hp -= dealt;
         e.hurt = 12;
-        if b.ranged == crate::gear::Ranged::Frost { e.chill = CHILL; }
+        let capped = self.hero.stats.kit.capped;
+        if b.ranged == crate::gear::Ranged::Frost { e.chill = CHILL * capped.winter; } else { e.chill = e.chill.max(capped.shot_chill); }
+        if b.ranged != crate::gear::Ranged::Frost { e.burn.light(dealt, capped.shot_burn); }
+        // An imbued blood bow's arrow drinks back of the blood it was paid for with; a siphoning
+        // catalyst's spell, of what it dealt.
+        let drink = if b.drinks() { IMBUE_DRINK } else if b.ranged == crate::gear::Ranged::Frost { capped.spell_drink } else { 0.0 };
+        self.hero.hp = (self.hero.hp + dealt * drink).min(self.hero.stats.max_hp());
         out.push(Event::Hit { enemy: i, mv: Move::Loose });
         if e.hp <= 0.0 {
             e.ai = Ai::Dead;
@@ -1539,6 +1796,44 @@ impl Fight {
         }
     }
 
+    /// Felled bloaters swell on (`Grave::swell`) and burst at `BURST_AT` over their lanes, on
+    /// whoever stands within its reach.
+    fn swells_tick(&mut self, walked: f64, out: &mut Vec<Event>) {
+        for i in 0..self.enemies.len() {
+            let e = &mut self.enemies[i];
+            if e.alive() || e.grave.swell == 0 || e.grave.swell >= BURST_END { continue; }
+            e.grave.swell += 1;
+            if e.grave.swell != BURST_AT { continue; }
+            let (gap, lanes) = (e.gap(walked), e.burst_lanes());
+            out.push(Event::Popped { enemy: i, at: e.s });
+            if gap.abs() <= BURST.reach { self.strike_hero(i, BURST, lanes, out); }
+        }
+    }
+
+    /// Whether gravecaller `i` can raise now: raises left, room among the enemy objects, and
+    /// fewer than `MOST_RAISED` of the raised standing.
+    fn can_raise(&self, i: usize) -> bool {
+        let standing = self.enemies.iter().filter(|e| e.grave.raised && e.alive()).count();
+        self.enemies[i].grave.raises > 0 && self.enemies.len() < crate::world::MOST_FOES && standing < MOST_RAISED
+    }
+
+    /// Gravecaller `i`'s raise going off: husks out of the ground in front of it, one in each lane
+    /// beside its own, as frail as `RISEN_HP`, as many as there is room for.
+    fn raise(&mut self, i: usize, out: &mut Vec<Event>) {
+        let c = &mut self.enemies[i];
+        c.grave.raises = c.grave.raises.saturating_sub(1);
+        let (s, lane, ratio, power, variant) = (c.s - RISE_AHEAD, c.lane, c.top / c.kind.hp(), c.power, c.variant);
+        let lanes = match lane { -1 => [-1, 0], 1 => [0, 1], _ => [-1, 1] };
+        for (k, lane) in lanes.into_iter().enumerate() {
+            if self.enemies.len() >= crate::world::MOST_FOES { break; }
+            let mut risen = Enemy::new(Archetype::Husk, s - 0.6 * k as f64, lane).scaled((ratio * RISEN_HP, power)).of(variant);
+            risen.grave.raised = true;
+            risen.ai = Ai::Wait(RISE_BEAT);
+            out.push(Event::Raised { enemy: self.enemies.len() });
+            self.enemies.push(risen);
+        }
+    }
+
     /// Enemy `i`'s attack `a`, live now over lanes `lanes`: dodged, parried, blocked or taken.
     fn strike_hero(&mut self, i: usize, a: Attack, lanes: (i32, i32), out: &mut Vec<Event>) { self.strike_hero_from(i, a, lanes, false, out) }
 
@@ -1554,7 +1849,7 @@ impl Fight {
             // and the attacker, swinging through where the hero was, stumbles.
             if h.act.is_some_and(|x| matches!(x.mv, Move::Step(_) | Move::Tumble | Move::Backstep) && x.t <= PERFECT && covers(x.from_lane)) {
                 out.push(Event::JustDodge { enemy: i });
-                self.enemies[i].ai = Ai::Stumbled(STUMBLE);
+                if self.enemies[i].alive() { self.enemies[i].ai = Ai::Stumbled(STUMBLE); }
             }
             return;
         }
@@ -1566,6 +1861,8 @@ impl Fight {
                 true if a.parry => {
                     // A clean parry is over at once, so the riposte can follow.
                     h.act = None;
+                    h.bulwark.parried(&h.stats.kit, a.guard);
+                    h.mend();
                     out.push(Event::Parried { enemy: i });
                     let e = &mut self.enemies[i];
                     e.ai = Ai::Staggered(STAGGER);
@@ -1591,10 +1888,13 @@ impl Fight {
             // Stone Skin: less of it gets through, and nothing staggers or floors the hero.
             let damage = damage * crate::arts::STONE_TAKEN;
             h.hp -= damage;
+            h.spend(self.enemies[i].variant.sap(damage));
             out.push(Event::Struck { damage, heavy: false });
             return;
         }
         h.hp -= damage;
+        // A blighted foe's blow saps stamina too.
+        h.spend(self.enemies[i].variant.sap(damage));
         h.poise -= damage * 1.3;
         h.poise_wait = 0;
         if a.kind != Kind::Physical && a.damage >= KNOCKDOWN {
@@ -1616,10 +1916,14 @@ impl Fight {
 
     fn block(&mut self, i: usize, a: Attack, out: &mut Vec<Event>) {
         let h = &mut self.hero;
-        match guard_blow(&h.stats, h.stamina, &mut h.bulwark, a.guard, a.damage, a.kind == Kind::GuardBreak) {
+        let guarded = guard_blow(&h.stats, h.stamina, &mut h.bulwark, a.guard, a.damage, a.kind == Kind::GuardBreak);
+        if !matches!(guarded, Guarded::Broken { .. }) { self.thorns(i, a.damage, out); }
+        let h = &mut self.hero;
+        match guarded {
             Guarded::Perfect { burst } => {
+                h.mend();
                 out.push(Event::PerfectBlock);
-                if let Some(w) = burst { self.ward_burst(i, w, out); }
+                if let Some(w) = burst { self.ward_let(i, w, a.damage, out); }
             }
             Guarded::Broken { cost, damage } => {
                 h.spend(cost);
@@ -1636,13 +1940,56 @@ impl Fight {
         }
     }
 
-    /// A perfect block's ward let go at enemy `i`, at `w` of a full ward: it staggers, open to a
+    /// A thorned shield's capstone: of a blow blocked, that would have dealt `blow`, its share
+    /// back into enemy `i`.
+    fn thorns(&mut self, i: usize, blow: f32, out: &mut Vec<Event>) {
+        let back = blow * self.hero.stats.kit.capped.thorns;
+        let e = &mut self.enemies[i];
+        if back <= 0.0 || !e.alive() { return; }
+        e.hp -= back.min(e.hp);
+        e.hurt = 12;
+        if e.hp <= 0.0 {
+            e.ai = Ai::Dead;
+            out.push(Event::Felled { enemy: i });
+        }
+    }
+
+    /// A perfect block's ward let go at enemy `i`, at `w` of a full ward, as the shield in hand
+    /// lets it go; `blow`, what the blow blocked would have dealt.
+    fn ward_let(&mut self, i: usize, w: f32, blow: f32, out: &mut Vec<Event>) {
+        use crate::gear::Ward;
+        let ward = self.hero.stats.kit.ward.unwrap_or(Ward::Bulwark);
+        // A reinforced shield lets it go harder.
+        let w = w * self.hero.stats.kit.ward_boost();
+        let (dealt, down) = match ward {
+            Ward::Kite => {
+                let h = &mut self.hero;
+                h.stamina = (h.stamina + BASH_STAMINA * w).min(h.stats.max_stamina());
+                (BASH_DAMAGE * w, STAGGER + (STAGGER as f32 * BASH_DOWN * w) as u32)
+            }
+            Ward::Buckler => (blow * (1.0 + TURN_MORE * w), STAGGER),
+            Ward::Bulwark | Ward::Parma => return self.ward_burst(i, w, out),
+        };
+        out.push(Event::WardBurst { enemy: i, power: w, ward });
+        let e = &mut self.enemies[i];
+        e.hp -= (dealt * self.hero.stats.damage()).min(e.hp.max(0.0));
+        e.hurt = 12;
+        if e.hp <= 0.0 {
+            e.ai = Ai::Dead;
+            out.push(Event::Felled { enemy: i });
+        } else {
+            e.ai = Ai::Staggered(down);
+            out.push(Event::StanceBroken { enemy: i });
+        }
+    }
+
+    /// A bulwark's ward let go at enemy `i`, at `w` of a full ward: it staggers, open to a
     /// riposte, hurt by its share of `BURST_DAMAGE`; foes near it in the lanes beside are hurt by
     /// less and thrown back from it, stumbling.
     fn ward_burst(&mut self, i: usize, w: f32, out: &mut Vec<Event>) {
         let dealt = BURST_DAMAGE * w * self.hero.stats.damage();
         let (at, lane) = (self.enemies[i].s, self.hero.lane);
-        out.push(Event::WardBurst { enemy: i, power: w });
+        out.push(Event::WardBurst { enemy: i, power: w, ward: crate::gear::Ward::Bulwark });
         for (j, e) in self.enemies.iter_mut().enumerate() {
             let near = j == i || ((e.s - at).abs() < BURST_REACH as f64 && (e.lane - lane).abs() <= 1);
             if !e.alive() || !near { continue; }
@@ -2049,6 +2396,71 @@ mod tests {
     }
 
     #[test]
+    fn a_brutes_slam_breaks_a_guard_short_of_its_cost_and_its_stamp_goes_through_any() {
+        let mut f = Fight::new(vec![of(Archetype::Brute, 1.2, 0)]);
+        f.hero.hp = 1_000.0;
+        until_winds_up(&mut f, "slam");
+        f.hero.stamina = 60.0;
+        let ev = run(&mut f, 300, |_, _| Input { guard: true, ..idle() }, |f, _| f.enemies[0].attack().is_none());
+        assert!(ev.iter().any(|e| matches!(e, Event::GuardBroken { .. })), "{ev:?}");
+        // The stamp, against a full guard: nothing stops it.
+        let mut f = Fight::new(vec![of(Archetype::Brute, 1.2, 0)]);
+        f.hero.hp = 1_000.0;
+        until_winds_up(&mut f, "stamp");
+        let ev = run(&mut f, 300, |_, _| Input { guard: true, ..idle() }, |f, _| f.enemies[0].attack().is_none());
+        assert!(f.hero.hp < 1_000.0 && !ev.iter().any(|e| matches!(e, Event::Blocked { .. } | Event::PerfectBlock)), "{ev:?}");
+    }
+
+    #[test]
+    fn a_felled_bloater_bursts_through_a_guard_on_who_stays_beside_it_and_misses_who_is_clear() {
+        // Struck down from its own lane: it swells (a warning over three lanes), then bursts
+        // through the guard held against it. It falls once.
+        let mut f = Fight::new(vec![of(Archetype::Bloater, 1.5, 0)]);
+        (f.hero.hp, f.enemies[0].hp, f.enemies[0].ai) = (1_000.0, 1.0, Ai::Staggered(200));
+        let ev = run(&mut f, 120, |_, t| if t == 0 { Input { light: true, ..idle() } } else { Input { guard: true, ..idle() } }, |f, _| f.enemies[0].grave.swell >= 10);
+        assert_eq!(ev.iter().filter(|e| matches!(e, Event::Felled { .. })).count(), 1, "{ev:?}");
+        assert!(f.threats(0.0).iter().any(|t| t.lanes == (-1, 1) && t.kind == Kind::Unblockable), "the swelling warns");
+        let ev = run(&mut f, 120, |_, _| Input { guard: true, ..idle() }, |_, ev| ev.iter().any(|e| matches!(e, Event::Popped { .. })));
+        assert!(f.hero.hp < 1_000.0 && !ev.iter().any(|e| matches!(e, Event::Blocked { .. })), "{ev:?}");
+        assert!(!f.enemies[0].alive(), "a burst never wakes it");
+        // Fallen two lanes over: the burst reaches its lane and the next, not the hero's.
+        let mut f = Fight::new(vec![of(Archetype::Bloater, 1.5, 1)]);
+        f.hero.lane = -1;
+        (f.enemies[0].hp, f.enemies[0].ai, f.enemies[0].grave.swell) = (0.0, Ai::Dead, 1);
+        let ev = run(&mut f, 120, |_, _| idle(), |_, ev| ev.iter().any(|e| matches!(e, Event::Popped { .. })));
+        assert!(ev.iter().any(|e| matches!(e, Event::Popped { .. })) && f.hero.hp == HP, "{ev:?}");
+    }
+
+    #[test]
+    fn a_gravecaller_raises_two_frail_husks_twice_and_never_past_the_enemy_objects() {
+        let mut f = attacking(Fight::new(vec![of(Archetype::Gravecaller, 8.0, 0)]), RAISE);
+        let ev = run(&mut f, 200, |_, _| idle(), |f, _| f.enemies.len() == 3);
+        assert_eq!(ev.iter().filter(|e| matches!(e, Event::Raised { .. })).count(), 2, "{ev:?}");
+        let risen = &f.enemies[1..];
+        assert!(risen.iter().all(|e| e.kind == Archetype::Husk && e.grave.raised && e.alive() && e.hp < Archetype::Husk.hp()));
+        assert_eq!((risen[0].lane, risen[1].lane), (-1, 1));
+        // Two of its raised stand: no raise until they fall; then its last one.
+        assert!(!f.can_raise(0) && f.enemies[0].grave.raises == 1);
+        for e in &mut f.enemies[1..] { e.ai = Ai::Dead; }
+        assert!(f.can_raise(0));
+        // A full road: no room, no raise.
+        let mut full: Vec<Enemy> = (0..crate::world::MOST_FOES).map(|k| of(Archetype::Husk, 20.0 + k as f32, 0)).collect();
+        full[0] = of(Archetype::Gravecaller, 8.0, 0);
+        let f = Fight::new(full);
+        assert!(!f.can_raise(0));
+    }
+
+    #[test]
+    fn a_hounds_string_snaps_twice_without_a_rest() {
+        let mut f = attacking(Fight::new(vec![of(Archetype::Hound, 1.0, 0)]), 1);
+        f.hero.hp = 1_000.0;
+        let ev = run(&mut f, 200, |_, _| idle(), |f, _| matches!(f.enemies[0].ai, Ai::Wait(_)));
+        let snaps = ev.iter().filter(|e| matches!(e, Event::WindsUp { attack: "snap", .. })).count();
+        let struck = ev.iter().filter(|e| matches!(e, Event::Struck { .. } | Event::Staggered { .. })).count();
+        assert_eq!((snaps, struck), (1, 2), "{ev:?}");
+    }
+
+    #[test]
     fn a_sweep_covers_two_lanes_and_breaks_a_short_guard() {
         let mut f = Fight::new(vec![husk(1.2, 0)]);
         until_winds_up(&mut f, "sweep");
@@ -2083,10 +2495,13 @@ mod tests {
         assert_eq!(seen, Some(Reel::ChipJolt));
     }
 
-    /// A fight against a husk 1.2 m off with the hero holding the Warden's Bulwark.
-    fn warden(enemies: Vec<Enemy>) -> Fight {
+    /// A fight with a Warden holding the Warden's Bulwark.
+    fn warden(enemies: Vec<Enemy>) -> Fight { warden_with("Warden's Bulwark", enemies) }
+    /// A fight with a Warden holding `shield`.
+    fn warden_with(shield: &str, enemies: Vec<Enemy>) -> Fight {
         let mut l = crate::gear::Loadout::starting();
-        let b = crate::gear::find("Warden's Bulwark");
+        l.warden = true;
+        let b = crate::gear::find(shield);
         l.gain(b);
         assert!(l.wear(1, Some(b)));
         let mut f = Fight::new(enemies);
@@ -2129,11 +2544,65 @@ mod tests {
         k.hero.bulwark.ward = 60.0;
         until_winds_up(&mut k, "chop");
         let ev = run(&mut k, 200, |_, t| Input { guard: t + 4 >= lands, ..idle() }, |_, ev| ev.iter().any(|e| matches!(e, Event::WardBurst { .. })));
-        assert!(ev.iter().any(|e| matches!(e, Event::WardBurst { enemy: 0, power } if (*power - 0.6).abs() < 1e-4)), "{ev:?}");
+        assert!(ev.iter().any(|e| matches!(e, Event::WardBurst { enemy: 0, power, ward: crate::gear::Ward::Bulwark } if (*power - 0.6).abs() < 1e-4)), "{ev:?}");
         assert!(matches!(k.enemies[0].ai, Ai::Staggered(_)), "{:?}", k.enemies[0].ai);
         let hurt = Archetype::Husk.hp() - k.enemies[0].hp;
         assert!((hurt - BURST_DAMAGE * 0.6 * k.hero.stats.damage()).abs() < 0.01, "{hurt}");
         assert_eq!(k.hero.bulwark.ward, 0.0);
+    }
+
+    /// The ward is the Warden's, whatever shield is in hand, and each shield lets it go its own
+    /// way: a kite's bash floors the foe longer and gives stamina back, a buckler turns the blow
+    /// back on its thrower, a parma's goes into the riposte instead. Another calling keeps none.
+    #[test]
+    fn a_wardens_ward_goes_with_any_shield_and_each_lets_it_go_its_own_way() {
+        use crate::gear::{find, Loadout, Ward};
+        let mut l = Loadout::starting();
+        let b = find("Warden's Bulwark");
+        l.gain(b);
+        assert!(l.wear(1, Some(b)));
+        assert_eq!(l.kit().ward, None, "the bulwark itself keeps no ward for another calling");
+        l.warden = true;
+        assert_eq!(l.kit().ward, Some(Ward::Bulwark));
+        assert!(l.wear(1, None));
+        assert_eq!(l.kit().ward, None, "no shield in hand, no ward");
+        // A perfect block with 60 stored, through each shield.
+        let lands = chop_lands_after(&warden(vec![husk(1.2, 0)]));
+        let chop = Archetype::Husk.attacks().iter().find(|a| a.name == "chop").map_or(0.0, |a| a.damage);
+        let let_go = |shield: &str| {
+            let mut k = warden_with(shield, vec![husk(1.2, 0)]);
+            (k.hero.bulwark.ward, k.hero.stamina) = (60.0, 20.0);
+            until_winds_up(&mut k, "chop");
+            let ev = run(&mut k, 200, |_, t| Input { guard: t + 4 >= lands, ..idle() }, |f, _| f.enemies[0].attack().is_none());
+            let hurt = Archetype::Husk.hp() - k.enemies[0].hp;
+            (k, ev, hurt)
+        };
+        let released = |ev: &[Event], ward: Ward| ev.iter().any(|e| matches!(e, Event::WardBurst { enemy: 0, ward: w, .. } if *w == ward));
+        let (k, ev, hurt) = let_go("Kite Shield");
+        assert!(released(&ev, Ward::Kite) && k.hero.bulwark.ward == 0.0, "{ev:?}");
+        assert!(matches!(k.enemies[0].ai, Ai::Staggered(t) if t > STAGGER + 50), "floored longer: {:?}", k.enemies[0].ai);
+        assert!((hurt - BASH_DAMAGE * 0.6 * k.hero.stats.damage()).abs() < 0.01 && k.hero.stamina >= 20.0 + BASH_STAMINA * 0.6 - 0.01, "{hurt} {}", k.hero.stamina);
+        let (k, ev, hurt) = let_go("Pilgrim's Buckler");
+        assert!(released(&ev, Ward::Buckler) && matches!(k.enemies[0].ai, Ai::Staggered(_)), "{ev:?}");
+        let turned = (chop * (1.0 + TURN_MORE * 0.6) * k.hero.stats.damage()).min(Archetype::Husk.hp());
+        assert!((hurt - turned).abs() < 0.01, "{hurt} {turned}");
+        // A parma's perfect block only fills it; the riposte after spends it, harder and drinking.
+        let (k, ev, hurt) = let_go("Duelist's Parma");
+        assert!(ev.contains(&Event::PerfectBlock) && !ev.iter().any(|e| matches!(e, Event::WardBurst { .. })) && hurt == 0.0 && k.hero.bulwark.ward > 60.0, "{ev:?}");
+        let riposte = |ward: f32| {
+            let mut d = warden_with("Duelist's Parma", vec![husk(1.0, 0)]);
+            (d.hero.bulwark.ward, d.hero.hp, d.enemies[0].hp, d.enemies[0].ai) = (ward, 50.0, 1000.0, Ai::Staggered(STAGGER));
+            let ev = run(&mut d, 80, |_, t| Input { light: t == 0, ..idle() }, |_, ev| ev.iter().any(|e| matches!(e, Event::Hit { .. })));
+            assert!(ev.contains(&Event::Hit { enemy: 0, mv: Move::Riposte }), "{ev:?}");
+            (1000.0 - d.enemies[0].hp, d.hero.hp - 50.0, d.hero.bulwark.ward, d.hero.stats.damage())
+        };
+        let (plain, healed, _, _) = riposte(0.0);
+        let (duel, drank, left, dmg) = riposte(60.0);
+        assert!(healed == 0.0 && left == 0.0, "{healed} {left}");
+        assert!((duel - plain - DUEL_DAMAGE * 0.6 * dmg).abs() < 0.01 && (drank - DUEL_DAMAGE * 0.6 * dmg * DUEL_DRINK).abs() < 0.01, "{plain} {duel} {drank}");
+        // Parries fill a buckler's and a parma's ward, never a kite's or a bulwark's.
+        let parried = |ward: Ward| { let mut b = Bulwark::default(); b.parried(&crate::gear::Kit { ward: Some(ward), ..Default::default() }, 20.0); b.ward };
+        assert!(parried(Ward::Parma) > parried(Ward::Buckler) && parried(Ward::Buckler) > 0.0 && parried(Ward::Kite) == 0.0 && parried(Ward::Bulwark) == 0.0);
     }
 
     #[test]
@@ -2408,6 +2877,18 @@ mod tests {
     }
 
     #[test]
+    fn held_in_one_hand_a_greatsword_swings_slower_and_strikes_the_same() {
+        use crate::gear::{Arms, Class, Kit, SWORD};
+        let two = Kit { arms: Arms { class: Class::Greatsword, ..SWORD }, off: None, ..Kit::default() };
+        let one = Kit { one_hand: true, off: Some(crate::gear::BUCKLER), ..two };
+        let (a, b) = (Move::Heavy.spec_with(&two), Move::Heavy.spec_with(&one));
+        assert!(b.frames.0 > a.frames.0 && b.frames.2 > a.frames.2 && b.frames.1 == a.frames.1, "{a:?} {b:?}");
+        assert_eq!((b.damage, b.wide, b.reach), (a.damage, a.wide, a.reach));
+        // The shield beside it is what parries.
+        assert_eq!(Move::Parry.spec_with(&one).frames, Move::Parry.spec().frames);
+    }
+
+    #[test]
     fn a_weapon_scales_with_what_it_names_and_is_weak_without_what_it_needs() {
         let mut st = Stats::default();
         let mut l = crate::gear::Loadout::starting();
@@ -2561,6 +3042,77 @@ mod tests {
     }
 
     /// A hero holding `r` in the other hand (no shield), full.
+    #[test]
+    fn blighted_blows_sap_stamina_and_dread_foes_get_their_stance_back_twice_as_fast() {
+        assert_eq!((Variant::of_tier(2), Variant::of_tier(3), Variant::of_tier(5), Variant::of_tier(6)), (Variant::Plain, Variant::Blighted, Variant::Blighted, Variant::Dread));
+        // The same chop landing, from a plain husk and a blighted one.
+        let struck = |v: Variant| {
+            let mut f = Fight::new(vec![husk(1.2, 0).of(v)]);
+            until_winds_up(&mut f, "chop");
+            run(&mut f, 400, |_, _| idle(), |_, ev| ev.iter().any(|e| matches!(e, Event::Struck { .. } | Event::Staggered { .. } | Event::KnockedDown { .. })));
+            (f.hero.stats.max_hp() - f.hero.hp, f.hero.stamina)
+        };
+        let ((plain_hurt, plain_stamina), (blight_hurt, blight_stamina)) = (struck(Variant::Plain), struck(Variant::Blighted));
+        assert!((plain_hurt - blight_hurt).abs() < 1e-3, "the same blow");
+        assert!(blight_stamina < plain_stamina - 0.4 * blight_hurt, "{blight_stamina} against {plain_stamina} after {blight_hurt}");
+        // A broken-into stance, left alone: a gilded foe's is whole again in half the time.
+        let mended = |v: Variant| {
+            let mut f = Fight::new(vec![Enemy { stance: 1.0, stance_wait: 0, ..dummy(1.0, 0).of(v) }]);
+            let mut out = Vec::new();
+            (1..2000).find(|_| { f.enemy_tick(0, 0.0, &mut out); f.enemies[0].stance >= Archetype::Husk.stance() }).unwrap_or(2000)
+        };
+        let (plain, dread) = (mended(Variant::Plain), mended(Variant::Dread));
+        assert!(dread * 2 <= plain + 2, "dread {dread} ticks, plain {plain}");
+    }
+
+    #[test]
+    fn capstones_burn_chill_mend_turn_blows_back_pierce_and_add_a_charge() {
+        use crate::capstone::{Capstone, BURN_SHARE, BURN_TICKS, RIME_CHILL};
+        let spec = Move::Light.spec_for(crate::gear::Class::Sword, None);
+        let mut out = Vec::new();
+        // Ember: the blow, then a third of it again over three seconds.
+        let mut f = Fight::new(vec![Enemy { hp: 500.0, ..dummy(1.0, 0) }]);
+        Capstone::Ember.apply(&mut f.hero.stats.kit, 0);
+        f.strike(0, Move::Light, spec, &mut out);
+        let dealt = 500.0 - f.enemies[0].hp;
+        assert_eq!(f.enemies[0].burn.left, BURN_TICKS);
+        for _ in 0..BURN_TICKS + 30 { f.enemy_tick(0, 0.0, &mut out); }
+        let burnt = 500.0 - dealt - f.enemies[0].hp;
+        assert!((burnt - dealt * BURN_SHARE).abs() < 0.01, "{burnt} of {dealt}");
+        // And it can kill.
+        f.enemies[0].hp = 1.0;
+        f.enemies[0].burn.light(100.0, BURN_SHARE);
+        for _ in 0..60 { f.enemy_tick(0, 0.0, &mut out); }
+        assert!(!f.enemies[0].alive() && out.iter().any(|e| matches!(e, Event::Felled { enemy: 0 })));
+        // Rime: a strike chills.
+        let mut f = Fight::new(vec![Enemy { hp: 500.0, ..dummy(1.0, 0) }]);
+        Capstone::Rime.apply(&mut f.hero.stats.kit, 0);
+        f.strike(0, Move::Light, spec, &mut out);
+        assert_eq!(f.enemies[0].chill, RIME_CHILL);
+        // Thorns: half a blow blocked goes back into its striker; Sanctuary: a perfect block mends.
+        let mut f = warden_with("Pilgrim's Buckler", vec![Enemy { hp: 500.0, ..husk(1.0, 0) }]);
+        Capstone::Thorns.apply(&mut f.hero.stats.kit, 1);
+        Capstone::Sanctuary.apply(&mut f.hero.stats.kit, 1);
+        let a = Archetype::Husk.attacks()[0];
+        f.hero.hp = 50.0;
+        (f.hero.bulwark.fresh, f.hero.bulwark.up) = (true, 0);
+        f.block(0, a, &mut out);
+        assert!((f.enemies[0].hp - (500.0 - 0.5 * a.damage)).abs() < 0.01);
+        assert!((f.hero.hp - (50.0 + 0.06 * f.hero.stats.max_hp())).abs() < 0.01, "{}", f.hero.hp);
+        // Keen: every arrow goes on through.
+        let mut f = holding(crate::gear::Ranged::Bow, vec![dummy(4.0, 0)]);
+        Capstone::Keen.apply(&mut f.hero.stats.kit, 1);
+        run(&mut f, 200, |_, t| if t == 0 { press_loose() } else { idle() }, |f, _| !f.bolts.is_empty());
+        assert!(f.bolts[0].keen && f.bolts[0].pierces());
+        // Wellspring: a charge more; Winter: spells harder.
+        let mut f = holding(crate::gear::Ranged::Frost, Vec::new());
+        let (charges, frost) = (f.hero.stats.max_charges(), f.hero.stats.ranged_damage(crate::gear::Ranged::Frost));
+        Capstone::Wellspring.apply(&mut f.hero.stats.kit, 1);
+        Capstone::Winter.apply(&mut f.hero.stats.kit, 1);
+        assert_eq!(f.hero.stats.max_charges(), charges + 1.0);
+        assert!((f.hero.stats.ranged_damage(crate::gear::Ranged::Frost) / frost - 1.15).abs() < 1e-4);
+    }
+
     fn holding(r: crate::gear::Ranged, enemies: Vec<Enemy>) -> Fight {
         let mut f = Fight::new(enemies);
         f.hero.stats.kit.off = None;
@@ -2570,7 +3122,7 @@ mod tests {
             crate::gear::Ranged::Frost => { f.hero.stats.kit.catalyst = crate::gear::ITEMS[crate::gear::find("Frostweaver's Focus")].catalyst; f.hero.stats.focus = 3; }
             r => f.hero.stats.kit.ranged = Some(r),
         }
-        f.hero = Hero::with(f.hero.stats);
+        f.hero = Hero { quiver: Quiver::SETTING_OUT, ..Hero::with(f.hero.stats) };
         f
     }
     fn press_loose() -> Input { Input { loose: true, ..idle() } }
@@ -2583,7 +3135,7 @@ mod tests {
         for e in &mut f.enemies { e.ai = Ai::Wait(10_000); }
         let ev = run(&mut f, 120, |_, t| if t == 0 { press_loose() } else { idle() }, |_, ev| ev.iter().any(|e| matches!(e, Event::Hit { .. })));
         assert!(ev.contains(&Event::Shot(Ranged::Bow)) && ev.contains(&Event::Hit { enemy: 1, mv: Move::Loose }), "{ev:?}");
-        assert_eq!(f.hero.arrows, QUIVER - 1);
+        assert_eq!(f.hero.quiver.arrows, Quiver::SETTING_OUT.arrows - 1);
         assert!(f.enemies[0].hp == Archetype::Husk.hp(), "the one in the next lane is untouched");
         // A hit in the draw cuts it off, and nothing is spent.
         let mut g = holding(Ranged::Bow, vec![of(Archetype::Husk, 2.0, 0)]);
@@ -2591,10 +3143,10 @@ mod tests {
         g.enemies[0].ai = Ai::Attack { i: 0, t: late, wide: 0, landed: false, aim: HERO_D as f64 };
         let ev = run(&mut g, 90, |_, t| if t == 0 { press_loose() } else { idle() }, |_, ev| hurt(ev));
         assert!(hurt(&ev) && !ev.iter().any(|e| matches!(e, Event::Shot(_))), "{ev:?}");
-        assert_eq!(g.hero.arrows, QUIVER);
+        assert_eq!(g.hero.quiver.arrows, Quiver::SETTING_OUT.arrows);
         // An empty quiver looses nothing.
         let mut h = holding(Ranged::Bow, Vec::new());
-        h.hero.arrows = 0;
+        h.hero.quiver.arrows = 0;
         let ev = run(&mut h, 60, |_, t| if t == 0 { press_loose() } else { idle() }, |_, _| false);
         assert!(h.hero.act.is_none() && !ev.iter().any(|e| matches!(e, Event::Began(Move::Loose))));
     }
@@ -2618,13 +3170,16 @@ mod tests {
         assert!(frost.damage >= 2.0 * light.damage);
         assert!(Move::loose_spec(Ranged::Bow).stance < 0.5 * light.stance);
         assert!(Move::loose_spec(Ranged::Frost).stance > light.stance, "frost cracks a stance");
-        // The smith's levels raise a blow, not a shot.
+        // The main hand's levels raise a blow, not a shot; the bow's own raise the shot.
         let mut st = Stats::default();
         st.kit.shooting = crate::gear::ITEMS[crate::gear::find("Hunter's Shortbow")].shooting.unwrap();
         st.dexterity = 2;
         let before = st.ranged_damage(Ranged::Bow);
-        st.weapon = 5;
+        st.kit.main = 8;
         assert_eq!(st.ranged_damage(Ranged::Bow), before);
+        st.kit.off_level = 8;
+        assert!((st.ranged_damage(Ranged::Bow) / before - 1.64).abs() < 1e-4);
+        st.kit.off_level = 0;
         st.dexterity = 10;
         assert!(st.ranged_damage(Ranged::Bow) > before);
     }
@@ -2650,9 +3205,9 @@ mod tests {
 
     /// F is the hand's ranged attack and C a spell, which needs a catalyst held: a spell attuned
     /// with a shield in hand casts nothing, a catalyst casts its own spell, and the blood
-    /// crossbow's bolt is paid for in health.
+    /// crossbow's bolt is one of those carried, its health untouched.
     #[test]
-    fn a_spell_is_cast_only_through_a_catalyst_and_a_crossbow_bolt_costs_blood() {
+    fn a_spell_is_cast_only_through_a_catalyst_and_a_crossbow_bolt_is_one_carried() {
         use crate::gear::{find, Loadout, Ranged, Spell, ITEMS};
         let cast = |f: &mut Fight, i: Input| run(f, 100, |_, t| if t == 0 { i } else { idle() }, |_, _| false);
         let shot = |ev: &[Event], r: Ranged| ev.contains(&Event::Shot(r));
@@ -2682,11 +3237,14 @@ mod tests {
         assert!(!f.hero.can_cast() && !shot(&cast(&mut f, press_cast()), Ranged::Frost));
         // The focus alone casts its own frost bolt.
         assert_eq!(ITEMS[focus].catalyst.and_then(|c| c.own), Some(Spell::FrostBolt));
-        // The blood crossbow: F, 7 health a bolt.
+        // The blood crossbow: F, a bolt of those carried, no health.
         let mut c = holding(Ranged::BloodCrossbow, Vec::new());
         let hp = c.hero.hp;
         assert!(shot(&cast(&mut c, press_loose()), Ranged::BloodCrossbow));
-        assert_eq!(c.hero.hp, hp - BLOOD_BOLT_COST);
+        assert_eq!((c.hero.hp, c.hero.quiver.bolts, c.hero.quiver.arrows), (hp, Quiver::SETTING_OUT.bolts - 1, Quiver::SETTING_OUT.arrows));
+        // With none left it looses nothing.
+        c.hero.quiver.bolts = 0;
+        assert!(!c.hero.can_loose() && !shot(&cast(&mut c, press_loose()), Ranged::BloodCrossbow));
     }
 
     /// Bows, crossbows, catalysts and spells scale as in the souls games: a bow by its own
@@ -2743,7 +3301,7 @@ mod tests {
     }
 
     #[test]
-    fn a_raised_shield_catches_an_arrow_the_blood_bow_costs_health_and_the_fallen_give_arrows_back() {
+    fn a_raised_shield_catches_an_arrow_a_blood_bow_shoots_carried_arrows_and_the_fallen_give_arrows_back() {
         use crate::gear::Ranged;
         let mut f = holding(Ranged::Bow, vec![of(Archetype::Shieldbearer, 8.0, 0)]);
         f.enemies[0].ai = Ai::Wait(10_000);
@@ -2752,13 +3310,78 @@ mod tests {
         let mut b = holding(Ranged::BloodBow, Vec::new());
         let hp = b.hero.hp;
         run(&mut b, 100, |_, t| if t == 0 { press_loose() } else { idle() }, |f, _| f.hero.act.is_none());
-        assert_eq!(b.hero.hp, hp - BLOOD_COST);
+        assert_eq!((b.hero.hp, b.hero.quiver.arrows), (hp, Quiver::SETTING_OUT.arrows - 1));
         let mut k = holding(Ranged::Bow, vec![of(Archetype::Husk, 8.0, 0)]);
         k.enemies[0].ai = Ai::Wait(10_000);
         k.enemies[0].hp = 1.0;
-        k.hero.arrows = 5;
+        k.hero.quiver.arrows = 5;
         run(&mut k, 120, |_, t| if t == 0 { press_loose() } else { idle() }, |_, ev| ev.iter().any(|e| matches!(e, Event::Felled { .. })));
-        assert_eq!(k.hero.arrows, 5 - 1 + SALVAGE);
+        assert_eq!(k.hero.quiver.arrows, 5 - 1 + SALVAGE);
+        // An archer felled leaves its own arrows and bolts besides.
+        let mut a = holding(Ranged::Bow, vec![of(Archetype::Archer, 8.0, 0)]);
+        (a.enemies[0].ai, a.enemies[0].hp) = (Ai::Wait(10_000), 1.0);
+        let (arrows, bolts) = (a.hero.quiver.arrows, a.hero.quiver.bolts);
+        run(&mut a, 120, |_, t| if t == 0 { press_loose() } else { idle() }, |_, ev| ev.iter().any(|e| matches!(e, Event::Felled { .. })));
+        assert_eq!((a.hero.quiver.arrows, a.hero.quiver.bolts), (arrows - 1 + SALVAGE + ARCHER_ARROWS, bolts + ARCHER_BOLTS));
+    }
+
+    /// The quiver holds at most its own, a crossbow takes bolts back and a bow arrows, and only
+    /// a blood bow's shot goes imbued.
+    #[test]
+    fn the_quiver_holds_its_most_and_gives_back_what_the_hand_shoots() {
+        use crate::gear::Ranged;
+        let mut q = Quiver::default();
+        q.add(100, 100);
+        assert_eq!((q.arrows, q.bolts), (Quiver::ARROWS, Quiver::BOLTS));
+        let mut q = Quiver::default();
+        q.salvage(Some(Ranged::BloodCrossbow), 3, 0);
+        q.salvage(Some(Ranged::Frost), 3, 0);
+        q.salvage(None, 1, 1);
+        assert_eq!((q.arrows, q.bolts), (ARCHER_ARROWS, 3 + ARCHER_BOLTS));
+        q.imbued = 2;
+        assert!(!q.take(Ranged::Bow) && q.imbued == 2 && q.arrows == ARCHER_ARROWS - 1);
+        assert!(q.take(Ranged::BloodCrossbow) && q.imbued == 1 && q.bolts == 2 + ARCHER_BOLTS);
+    }
+
+    /// Blood Imbue (C, a blood bow and no spell): an eighth of health for five shots half again as
+    /// hard; a blood bow's arrow drinks back of what it deals, a blood crossbow's bolt goes on
+    /// through every foe in the lane.
+    #[test]
+    fn blood_imbue_pays_health_for_five_harder_shots_that_drink_or_pierce() {
+        use crate::gear::Ranged;
+        let mut f = holding(Ranged::BloodBow, Vec::new());
+        let top = f.hero.stats.max_hp();
+        assert!(f.hero.stats.kit.imbues() && f.hero.can_cast());
+        let ev = run(&mut f, 100, |_, t| if t == 0 { press_cast() } else { idle() }, |f, _| f.hero.act.is_none());
+        assert!(ev.contains(&Event::Imbued) && !ev.iter().any(|e| matches!(e, Event::Shot(_))), "{ev:?}");
+        assert_eq!((f.hero.hp, f.hero.quiver.imbued, f.hero.quiver.arrows), (top - top * IMBUE_COST, IMBUE_SHOTS, Quiver::SETTING_OUT.arrows));
+        // Called again with all five still imbued: nothing.
+        assert!(!f.hero.can_cast());
+        // The arrows: one plain, then one imbued.
+        let mut g = holding(Ranged::BloodBow, vec![of(Archetype::Husk, 9.0, 0)]);
+        g.enemies[0].hp = 1000.0;
+        let shoot = |f: &mut Fight| {
+            f.enemies[0].ai = Ai::Wait(10_000);
+            let (foe, hp) = (f.enemies[0].hp, f.hero.hp);
+            run(f, 120, |_, t| if t == 0 { press_loose() } else { idle() }, |_, ev| ev.iter().any(|e| matches!(e, Event::Hit { .. })));
+            (foe - f.enemies[0].hp, f.hero.hp - hp)
+        };
+        let (plain, healed) = shoot(&mut g);
+        assert!(plain > 0.0 && healed == 0.0, "{plain} {healed}");
+        (g.hero.hp, g.hero.quiver.imbued) = (0.5 * g.hero.stats.max_hp(), IMBUE_SHOTS);
+        let (imbued, drank) = shoot(&mut g);
+        assert!((imbued - plain * IMBUE_DAMAGE).abs() < 1e-3 && (drank - imbued * IMBUE_DRINK).abs() < 1e-3, "{plain} {imbued} {drank}");
+        assert_eq!(g.hero.quiver.imbued, IMBUE_SHOTS - 1);
+        // The crossbow's bolt: stopped by the first foe, unless imbued.
+        let lane_of_two = |imbued: u32| {
+            let mut c = holding(Ranged::BloodCrossbow, vec![of(Archetype::Husk, 6.0, 0), of(Archetype::Husk, 10.0, 0)]);
+            for e in &mut c.enemies { (e.ai, e.hp) = (Ai::Wait(10_000), 1000.0); }
+            c.hero.quiver.imbued = imbued;
+            run(&mut c, 200, |_, t| if t == 0 { press_loose() } else { idle() }, |f, _| f.hero.act.is_none() && f.bolts.is_empty());
+            c.enemies.iter().map(|e| e.hp < 1000.0).collect::<Vec<_>>()
+        };
+        assert_eq!(lane_of_two(0), [true, false]);
+        assert_eq!(lane_of_two(1), [true, true]);
     }
 
 

@@ -50,31 +50,18 @@ type Spot = ((f32, f32), (f32, f32));
 /// How a strike's effect lies on the road.
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Lie {
-    /// Upright across the road: its width in metres, and how far past the hero and how high its
-    /// middle is; or, where the blade as drawn is known, with the picture's point `land` (fractions
-    /// of it) where the blade's tip is at the blow, or on the ground under it when `ground`.
+    /// Upright across the road where the blow lands: in the hero's lane, `ahead` metres past them
+    /// and `high` up (on the ground when `ground`), its width in metres (at least the lanes the
+    /// blow sweeps). The picture's point `land` (fractions of it) goes there; else its middle.
     /// `mirror`: drawn swinging the other way from the hero's blows.
     Across { width: f32, ahead: f32, high: f32, land: Option<(f32, f32)>, ground: bool, mirror: bool },
-    /// A streak along the blade as drawn, from its middle to `past` blade lengths beyond the
-    /// point; or, with no blade to follow, along the road from the hand (`from` metres past the
-    /// hero) to the strike's reach at these heights. Drawn pointing up, its base `BASE` and its
-    /// tip `TIP` of the way down the picture, in frames padded square so it can be turned.
+    /// A streak straight up the hero's lane, from the hand (`from` metres past the hero) to
+    /// `past` metres beyond the strike's reach, rising or falling between these heights. Drawn
+    /// pointing up, its base `BASE` and its tip `TIP` of the way down the picture, in frames
+    /// padded square so it can be turned.
     Along { past: f32, from: f32, high: (f32, f32) },
 }
 
-/// The hero's weapon as drawn at the height of the blow: the grip, the blade's angle on screen
-/// (degrees, 0 = right, 90 = down) and its length as it shows, canvas units; where the hero's
-/// feet are and canvas units to the metre where they stand.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Blade { pub grip: (f32, f32), pub angle: f32, pub length: f32, pub feet: (f32, f32), pub ppm: f32 }
-
-impl Blade {
-    /// `k` blade lengths from the grip along it (1 = the tip).
-    fn along(&self, k: f32) -> (f32, f32) {
-        let (s, c) = self.angle.to_radians().sin_cos();
-        (self.grip.0 + c * k * self.length, self.grip.1 + s * k * self.length)
-    }
-}
 const TIP: f32 = 0.08;
 const BASE: f32 = 0.95;
 
@@ -84,9 +71,9 @@ struct Strike { clip: Clip, lie: Lie }
 /// Every strike's picture and lie: (kind of weapon, heavy) -> (file, lie).
 fn strike_lie(class: Class, heavy: bool) -> (&'static str, Lie) {
     let across = |width, ahead, high| Lie::Across { width, ahead, high, land: None, ground: false, mirror: false };
-    // Every chop comes from overhead down to the hero's right as drawn (the figure faces up the
-    // road and to the right): landing where the blade's tip is at the blow.
-    let chop = |width, at, ground, mirror| Lie::Across { width, ahead: 1.5, high: 1.0, land: Some(at), ground, mirror };
+    // Every chop comes from overhead down in front of the hero, landing in their lane where a
+    // foe stands at the blow (at its waist, or on the ground a little farther out).
+    let chop = |width, at, ground, mirror| Lie::Across { width, ahead: if ground { 2.0 } else { 1.6 }, high: 0.9, land: Some(at), ground, mirror };
     match (class, heavy) {
         // The sword swings in clips with the blade drawn in, so it has no hold track to follow.
         (Class::Sword, false) => ("light_slash", across(2.6, 2.0, 1.3)),
@@ -97,12 +84,12 @@ fn strike_lie(class: Class, heavy: bool) -> (&'static str, Lie) {
         // The light pushes up from the hip; the heavy drives down from over the shoulder.
         (Class::Spear, false) => ("spear_light", Lie::Along { past: 0.8, from: 0.2, high: (1.05, 1.3) }),
         (Class::Spear, true) => ("spear_heavy", Lie::Along { past: 1.2, from: 0.2, high: (1.6, 1.1) }),
-        // (The points are where each picture's swing ends; a light is drawn going down to the
-        // left, so it is mirrored.)
-        (Class::Axe, false) => ("axe_light", chop(1.5, (0.75, 0.85), false, true)),
+        // A light chop's arc is centred on the lane, crossing it; the axe's comes down from over
+        // the right shoulder as its swing does, the greatsword's (mirrored) from over the left.
+        (Class::Axe, false) => ("axe_light", Lie::Across { width: 1.6, ahead: 1.6, high: 1.0, land: None, ground: false, mirror: false }),
         // The dust (0.89 down) on the ground under the bit.
         (Class::Axe, true) => ("axe_heavy", chop(1.6, (0.55, 0.89), true, false)),
-        (Class::Greatsword, false) => ("greatsword_light", chop(2.6, (0.92, 0.87), false, true)),
+        (Class::Greatsword, false) => ("greatsword_light", Lie::Across { width: 2.6, ahead: 1.6, high: 1.5, land: None, ground: false, mirror: true }),
         // Its shockwave (0.82 down) on the ground, about as wide as the three lanes it sweeps.
         (Class::Greatsword, true) => ("greatsword_heavy", chop(3.8, (0.53, 0.82), true, false)),
         // The ultra's light is a flat sweep at the hip across all three lanes; its heavy lands the
@@ -199,6 +186,8 @@ impl Fx {
                 // The hero's own: a flick off the string or the hand, and a shot caught on a shield.
                 Event::Shot(r) => Some(burst(hero_x + 0.25, At::Near(hd + fw * 0.6), 1.35, 0.6, if r == crate::gear::Ranged::Frost { [150, 210, 255] } else { [240, 230, 200] }, ImpactSide::Dealt, 10)),
                 Event::Glanced { enemy } => on_enemy(enemy).map(|(x, at)| burst(x - 0.2, at, 1.1, 0.8, [200, 222, 255], ImpactSide::Dealt, 12)),
+                // Blood Imbue: a red welling round the hero's hands.
+                Event::Imbued => Some(burst(hero_x + 0.2, At::Near(hd + fw * 0.4), 1.2, 1.1, [210, 24, 36], ImpactSide::Dealt, 22)),
                 // A weapon art going off: a wide blast in its colour round the hero (a scream or a
                 // slam fills the road about them); Sentence's blow, a gold strike on the marked.
                 Event::Art { art } => {
@@ -210,13 +199,27 @@ impl Fx {
                 // The bell rung on the stones: a wide bronze blast low where the ring sets out; a
                 // boss's blow meeting the ground: dust and grit thrown up.
                 Event::Rung { at, .. } => Some(burst(0.0, At::Road(at), 0.35, 3.4, [255, 206, 150], ImpactSide::Dealt, 42)),
+                // A bloater bursting: a wide sickly spray; the dead clawing up out of the ground.
+                Event::Popped { enemy, at } => on_enemy(enemy).map(|(x, _)| burst(x, At::Road(at), 0.6, 3.2, [168, 196, 74], ImpactSide::Dealt, 40)),
+                Event::Raised { enemy } => on_enemy(enemy).map(|(x, at)| burst(x, at, 0.3, 1.6, [126, 150, 112], ImpactSide::Dealt, 30)),
                 Event::Slam { at, heavy, .. } => Some(burst(0.0, At::Road(at), 0.2, if heavy { 2.4 } else { 1.6 }, [214, 196, 168], ImpactSide::Dealt, if heavy { 30 } else { 22 })),
                 Event::Sentenced { enemy } => on_enemy(enemy).map(|(x, at)| burst(x, at, 1.6, 2.8, [255, 214, 110], ImpactSide::Dealt, 40)),
                 Event::Parried { .. } => Some(burst(hero_x + 0.2, At::Near(hd + fw * 0.8), 1.25, 1.4, [255, 214, 110], ImpactSide::Dealt, 26)),
                 // A bulwark's last-moment block rings white on the shield; its ward bursting is a
                 // wide white-gold blast on the attacker, as big as the ward was full.
                 Event::PerfectBlock => Some(burst(hero_x + 0.15, At::Near(hd + fw * 0.45), 1.15, 1.3, [246, 240, 222], ImpactSide::Dealt, 20)),
-                Event::WardBurst { enemy, power } => on_enemy(enemy).map(|(x, at)| burst(x, at, 1.0, 1.8 + 1.8 * power, [255, 232, 160], ImpactSide::Dealt, 36)),
+                // A ward let go, in its shield's way: a bulwark's wide gold blast, a kite's tight
+                // white bash, a buckler's blow turned back in steel blue, a parma's riposte in red.
+                Event::WardBurst { enemy, power, ward } => on_enemy(enemy).map(|(x, at)| {
+                    use crate::gear::Ward;
+                    let (size, rgb, n) = match ward {
+                        Ward::Bulwark => (1.8 + 1.8 * power, [255, 232, 160], 36),
+                        Ward::Kite => (0.9 + 0.9 * power, [240, 240, 236], 24),
+                        Ward::Buckler => (1.0 + 1.2 * power, [170, 200, 255], 28),
+                        Ward::Parma => (0.8 + 1.0 * power, [230, 60, 60], 26),
+                    };
+                    burst(x, at, 1.0, size, rgb, ImpactSide::Dealt, n)
+                }),
                 // Met on the buckler: pale sparks for a guard that held, hot ones for one that let
                 // some through, a big orange crack for one smashed open, grey for a fumbled parry.
                 Event::Blocked { chip } if chip <= 0.0 => Some(burst(hero_x + 0.15, At::Near(hd + fw * 0.45), 1.1, 0.9, [190, 215, 255], ImpactSide::Dealt, 14)),
@@ -251,7 +254,7 @@ impl Fx {
         let a = fight.hero.act?;
         // A riposte is the heavy, a little larger.
         let (heavy, grow) = match a.mv { Move::Light => (false, 1.0), Move::Heavy => (true, 1.0), Move::Riposte => (true, 1.2), _ => return None };
-        let class = fight.hero.stats.kit.arms.class;
+        let class = fight.hero.stats.kit.swung_as();
         let kind = CLASSES.iter().position(|&c| c == class).filter(|&k| self.strikes.get(k).is_some_and(|s| s[heavy as usize].is_some())).unwrap_or(0);
         let strike = self.strikes.get(kind)?[heavy as usize].as_ref()?;
         let since = a.t.checked_sub(a.spec.frames.0)?;
@@ -260,36 +263,30 @@ impl Fx {
         Some((strike, kind, frame, heavy, grow))
     }
 
-    /// The strike's picture now and where it goes (top-left and size, canvas units).
-    fn strike_spot(&self, c: &Canvas, pf: &PathForgePlugin, fight: &Fight, blade: Option<Blade>) -> Option<(Spot, Arc<image::RgbaImage>)> {
+    /// The strike's picture now and where it goes (top-left and size, canvas units): where the
+    /// blow goes, in the hero's lane ahead of them, whichever side the weapon is drawn on.
+    fn strike_spot(&self, c: &Canvas, pf: &PathForgePlugin, fight: &Fight) -> Option<(Spot, Arc<image::RgbaImage>)> {
         let (strike, kind, i, heavy, grow) = self.strike_now(fight)?;
         let frame = &strike.clip.frames[i];
-        let x = fight.hero.x + SHOULDER + 0.1;
+        let spec = fight.hero.act?.spec;
+        let x = fight.hero.x;
         match strike.lie {
             Lie::Across { width, ahead, high, land, ground, mirror } => {
                 let frame = if mirror { &strike.clip.mirrored[i] } else { frame };
-                if let (Some(b), Some(at)) = (blade, land) {
-                    let w = width * grow * b.ppm;
-                    let h = w * frame.height() as f32 / frame.width() as f32;
-                    let tip = b.along(1.0);
-                    let spot = (tip.0, if ground { b.feet.1 } else { tip.1 });
-                    return Some((((spot.0 - at.0 * w, spot.1 - at.1 * h), (w, h)), frame.clone()));
-                }
                 let d = HERO_D + ahead;
-                let (cx, cy) = pf.project_on(c, x, high, d)?;
+                let (px, py) = pf.project_on(c, x, if ground { 0.0 } else { high }, d)?;
                 let ppm = pf.scale_on(c, d)?;
-                // At the picture's own aspect, so none of it is cropped.
-                let (w, h) = (width * grow * ppm, width * grow * ppm * frame.height() as f32 / frame.width() as f32);
-                Some((((cx - 0.5 * w, cy - 0.5 * h), (w, h)), frame.clone()))
+                // At the picture's own aspect, so none of it is cropped; as wide as the lanes it sweeps.
+                let wide = width.max(LANE_W * (2 * spec.wide + 1) as f32);
+                let (w, h) = (wide * grow * ppm, wide * grow * ppm * frame.height() as f32 / frame.width() as f32);
+                let at = land.unwrap_or((0.5, 0.5));
+                Some((((px - at.0 * w, py - at.1 * h), (w, h)), frame.clone()))
             }
             Lie::Along { past, from, high } => {
-                let (near, far) = match blade {
-                    Some(b) => (b.along(0.5), b.along(1.0 + past * grow)),
-                    None => {
-                        let reach = fight.hero.act?.spec.reach;
-                        (pf.project_on(c, x, high.0, HERO_D + from)?, pf.project_on(c, x, high.1, HERO_D + reach)?)
-                    }
-                };
+                // From the weapon's shoulder, as the point goes out.
+                let x = x + SHOULDER;
+                let near = pf.project_on(c, x, high.0, HERO_D + from)?;
+                let far = pf.project_on(c, x, high.1, HERO_D + spec.reach + past * grow)?;
                 let (vx, vy) = (far.0 - near.0, far.1 - near.1);
                 let side = frame.height() as f32;
                 // Canvas units a picture pixel: the streak, BASE to TIP, spans hand to point.
@@ -312,10 +309,9 @@ impl Fx {
     }
 
     /// Put the slash and the bursts where the road drawn now says they are.
-    /// `blade`: the hero's weapon as drawn at the blow, which a thrust's streak runs along.
     /// `yard`: the camera turned side-on, where the whole arena is in view, either side of its
     /// middle (on the road, nothing behind the camera is drawn).
-    pub fn place(&self, c: &mut Canvas, walked: f64, fight: &Fight, blade: Option<Blade>, yard: bool) {
+    pub fn place(&self, c: &mut Canvas, walked: f64, fight: &Fight, yard: bool) {
         let Some(pf) = c.get_plugin::<PathForgePlugin>() else { return };
         // Centred on a point `y` metres up: its top-left and size, in canvas units.
         let around = |x: f32, y: f32, d: f32, (w, h): (f32, f32)| -> Option<Spot> {
@@ -324,7 +320,7 @@ impl Fx {
             let ppm = pf.scale_on(c, d)?;
             Some(((cx - 0.5 * w * ppm, cy - 0.5 * h * ppm), (w * ppm, h * ppm)))
         };
-        let slash = self.strike_spot(c, pf, fight, blade);
+        let slash = self.strike_spot(c, pf, fight);
         let bursts: Vec<Option<(Spot, Burst)>> = (0..BURSTS).map(|i| {
             let b = *self.bursts.get(i)?;
             let d = match b.at { At::Near(d) => d, At::Road(s) => (s - walked) as f32 };
@@ -337,7 +333,7 @@ impl Fx {
                     o.visible = true;
                     o.position = pos;
                     o.size = size;
-                    o.set_image(Image { shape: ShapeType::Rectangle(0.0, size, 0.0), image: img, color: None });
+                    o.set_image(Image { shape: ShapeType::Rectangle(0.0, size, 0.0), image: img, color: None, recolor: None });
                 }
                 None => o.visible = false,
             }

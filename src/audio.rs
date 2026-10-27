@@ -151,7 +151,11 @@ impl Audio {
                 Event::Sentenced { .. } => { self.play_at(c, Sfx::Knell, 0.8, 1.2); self.play(c, Sfx::HitHeavy); }
                 Event::Caught => self.play_at(c, Sfx::Block, 0.5, 1.4),
                 Event::Rung { .. } => { self.play_at(c, Sfx::Knell, 0.9, 0.8); self.play_at(c, Sfx::GuardBreak, 0.6, 0.6); }
+                Event::Popped { .. } => { self.play_at(c, Sfx::Felled, 1.0, 0.6); self.play_at(c, Sfx::GuardBreak, 0.7, 0.7); }
+                Event::Raised { .. } => self.play_at(c, Sfx::Knell, 0.5, 0.6),
                 Event::Slam { heavy, .. } => self.play_at(c, Sfx::Felled, if heavy { 0.7 } else { 0.45 }, 0.75),
+                // Blood drawn across the bow: a low hiss of it and a dull pulse.
+                Event::Imbued => { self.play_at(c, Sfx::Frost, 0.6, 0.55); self.play_at(c, Sfx::StruckHeavy, 0.5, 0.7); }
                 Event::Shot(r) => match r {
                     crate::gear::Ranged::Frost => self.play(c, Sfx::Frost),
                     // A crossbow's prod is shorter and stiffer than a bow's limbs.
@@ -169,7 +173,13 @@ impl Audio {
                 Event::Blocked { chip } if chip <= 0.0 => self.play(c, Sfx::Block),
                 Event::Blocked { .. } => self.play(c, Sfx::BlockChip),
                 Event::PerfectBlock => self.play_at(c, Sfx::Parry, 0.8, 0.85),
-                Event::WardBurst { .. } => { self.play_at(c, Sfx::Parry, 1.0, 0.7); self.play(c, Sfx::GuardBreak); }
+                Event::WardBurst { ward, .. } => match ward {
+                    crate::gear::Ward::Bulwark => { self.play_at(c, Sfx::Parry, 1.0, 0.7); self.play(c, Sfx::GuardBreak); }
+                    // A kite's bash: a dull slam of wood; a buckler's ring as the blow goes back; a parma's riposte, a bright deep cut.
+                    crate::gear::Ward::Kite => { self.play_at(c, Sfx::Block, 1.0, 0.7); self.play_at(c, Sfx::Felled, 0.8, 0.9); }
+                    crate::gear::Ward::Buckler => { self.play_at(c, Sfx::Parry, 1.0, 1.25); self.play(c, Sfx::HitHeavy); }
+                    crate::gear::Ward::Parma => { self.play_at(c, Sfx::Parry, 0.8, 1.1); self.play_at(c, Sfx::StruckHeavy, 0.8, 0.9); }
+                },
                 Event::Parried { .. } => { self.play(c, Sfx::Parry); self.play_at(c, Sfx::Block, 0.6, 1.2); }
                 Event::ParryMissed { .. } => self.play_at(c, Sfx::BlockChip, 0.8, 0.85),
                 Event::GuardBroken { .. } => self.play(c, Sfx::GuardBreak),

@@ -5,7 +5,7 @@
 //!
 //! On the road and in the side-on fight the left of the screen is a stick: a thumb put down
 //! anywhere there is its middle, and pushed from it is a way (walk on, back, a lane; left and
-//! right in the yard; up there is a jump), pushed far is a run. The right holds the buttons, the
+//! right in the yard, where a jump is its own button), pushed far is a run. The right holds the buttons, the
 //! strike under the thumb where it rests. In a menu a tap on a choice picks it; in a cutscene a
 //! tap skips it.
 //!
@@ -196,7 +196,7 @@ impl Pad {
     }
 
     /// What is held now; and a way newly held this tick is pressed, as a key would be (a lane
-    /// stepped across on the road, a jump in the yard).
+    /// stepped across on the road).
     pub fn tick(&mut self, out: &mut Vec<Out>) -> Held {
         let mut h = Held { guard: self.pressed(Btn::Guard), ..Held::default() };
         if let Some((mid, at)) = self.stick() {

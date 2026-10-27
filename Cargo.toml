@@ -26,9 +26,12 @@ log = "0.4"
 [package.metadata.android]
 package = "com.synful.hollowroad"
 build_targets = ["aarch64-linux-android"]
+# The launcher icon (from tools/package/HollowRoad.icns, the Mac app's).
+resources = "android/res"
 
 [package.metadata.android.application]
 label = "Hollow Road"
+icon = "@mipmap/ic_launcher"
 theme = "@android:style/Theme.NoTitleBar.Fullscreen"
 
 # The canvas is CanvasMode::Landscape.

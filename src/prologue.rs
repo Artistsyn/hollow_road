@@ -93,7 +93,7 @@ impl Prologue {
             // From where it stands to the far end of a shot.
             Lesson::Hand => {
                 if let Some(e) = fight.enemies.first_mut() { e.s = walked + (HERO_D + 7.0) as f64; e.lane = h.lane; e.ai = Ai::Wait(u32::MAX); }
-                (h.arrows, h.charges) = (h.arrows.max(3), h.stats.max_charges());
+                (h.quiver.arrows, h.charges) = (h.quiver.arrows.max(3), h.stats.max_charges());
             }
             _ => {}
         }
@@ -287,11 +287,12 @@ impl Prologue {
                 vec![format!("Parry  {}", if self.got > 0 || self.also > 0 { "done" } else { "-" }), format!("Riposte  {}", n(self.also, 1))]),
             Lesson::Flask => ("Flask", self.k("R", "FLASK").to_owned() + " drinks a flask to heal. Drinking takes a moment and leaves you open: step back out of reach first.", vec![]),
             Lesson::Hand => {
-                let what = if fight.hero.stats.kit.spell_cast().is_some() { self.k("C", "CAST").to_owned() + " casts the spell your catalyst holds; two blows landed up close fill a charge." } else { self.k("F", "SHOOT").to_owned() + " is your ranged attack: it flies down your lane to the first foe in it." };
+                let what = if fight.hero.stats.kit.spell_cast().is_some() { self.k("C", "CAST").to_owned() + " casts the spell your catalyst holds; two blows landed up close fill a charge." }
+                    else if fight.hero.stats.kit.imbues() { self.k("F", "SHOOT").to_owned() + " looses an arrow down your lane. " + self.k("C", "CAST") + " draws your own blood into the next five: harder, and they drink it back." } else { self.k("F", "SHOOT").to_owned() + " is your ranged attack: it flies down your lane to the first foe in it." };
                 ("From afar", what, vec![format!("Shots  {}", n(self.got, 2))])
             }
-            Lesson::Turn => ("Side-on", "Some fights turn the road to the side: ".to_owned() + self.k("A and D move, W or Space jumps", "the left thumb moves, JUMP jumps") + ", the same strikes, guard, rolls and parries. Fell the husk to finish.", vec![]),
-            Lesson::Side => ("Side-on", self.k("A / D move   W / Space jump", "Left thumb move   JUMP jump").to_owned() + "   strike, guard, roll and parry as before", vec![]),
+            Lesson::Turn => ("Side-on", "Some fights turn the road to the side: ".to_owned() + self.k("A and D move, Space jumps", "the left thumb moves, JUMP jumps") + ", the same strikes, guard, rolls and parries. Fell the husk to finish.", vec![]),
+            Lesson::Side => ("Side-on", self.k("A / D move   Space jump", "Left thumb move   JUMP jump").to_owned() + "   strike, guard, roll and parry as before", vec![]),
             Lesson::End => ("The memory fades", "The old soldier's road is long behind you. You wake on the road to Hollowmere.".into(), vec![]),
         };
         let hint = if self.lesson.card() { format!("{}   {skip}", self.k("E go on", "Tap to go on")) } else if self.word.1 > 0 && !self.word.0.is_empty() { self.word.0.clone() } else { skip };

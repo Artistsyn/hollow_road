@@ -73,7 +73,13 @@ pub struct SideInput {
 /// The hero's arrow or frost bolt in flight across the yard: where it is, which way it goes,
 /// how high, what loosed it, what it deals, metres left.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct SideBolt { pub s: f32, pub dir: f32, pub y: f32, pub ranged: crate::gear::Ranged, pub damage: f32, pub stance: f32, pub left: f32, pub age: u32 }
+pub struct SideBolt { pub s: f32, pub dir: f32, pub y: f32, pub ranged: crate::gear::Ranged, pub damage: f32, pub stance: f32, pub left: f32, pub age: u32, pub imbued: bool, pub pierced: u64, pub keen: bool }
+
+impl SideBolt {
+    /// As the road's (`fight::Bolt::pierces`, `fight::Bolt::drinks`).
+    pub fn pierces(&self) -> bool { self.imbued && self.ranged == crate::gear::Ranged::BloodCrossbow }
+    pub fn drinks(&self) -> bool { self.imbued && self.ranged == crate::gear::Ranged::BloodBow }
+}
 
 /// The thrown Hatchet across the yard (`arts::WeaponArt::Hatchet`): where it is, which way it
 /// flew out, metres left before it turns, coming back, and the foes it has bitten each way.
@@ -96,13 +102,20 @@ impl Act {
         s
     }
 
+    /// `strike_spec` as `kit` swings it: slower held one-handed (`Spec::one_handed`).
+    pub fn struck(self, kit: &Kit) -> Spec {
+        let s = self.strike_spec(kit.arms.class);
+        if kit.one_hand { s.one_handed() } else { s }
+    }
+
     /// Windup, live and recovery ticks, with what `kit` holds (its weapon's class; the parry, its
     /// offhand).
     pub fn frames(self, kit: &Kit) -> (u32, u32, u32) {
         match self {
-            Act::Light | Act::Heavy => self.strike_spec(kit.arms.class).frames,
+            Act::Light | Act::Heavy => self.struck(kit).frames,
             Act::Roll(_) => (0, ROLL_T, 0),
             Act::Parry | Act::Flask => self.as_move().spec_for(kit.arms.class, kit.off.map(|o| o.guard)).frames,
+            Act::Cast if kit.imbues() => Move::imbue_spec().frames,
             Act::Loose | Act::Cast => Move::loose_spec(self.shot(kit).unwrap_or(crate::gear::Ranged::Bow)).frames,
             Act::Art => Act::art_spec(kit).frames,
         }
@@ -148,8 +161,9 @@ pub struct SideHero {
     pub walking: bool,
     /// The last press, and how many ticks it has waited for the hero to be free.
     buffer: Option<(SideInput, u32)>,
-    /// Arrows in the quiver and frost charges, brought in from the road and taken back to it.
-    pub arrows: u32,
+    /// Arrows and bolts carried (`fight::Quiver`) and frost charges, brought in from the road and
+    /// taken back to it.
+    pub quiver: crate::fight::Quiver,
     pub charges: f32,
     /// A Warden's ward, brought in from the road and taken back to it.
     pub bulwark: Bulwark,
@@ -162,6 +176,8 @@ pub struct SideHero {
 }
 
 impl SideHero {
+    /// As the road's (`fight::Hero::mend`).
+    pub fn mend(&mut self) { self.hp = (self.hp + self.stats.kit.capped.mend * self.stats.max_hp()).min(self.stats.max_hp()); }
     pub fn airborne(&self) -> bool { self.y > 0.0 }
     pub fn rising(&self) -> bool { self.vy > 0.0 }
     fn free(&self) -> bool { self.act.is_none() && self.reeling == 0 && !self.dead }
@@ -176,14 +192,17 @@ impl SideHero {
     pub fn can_art(&self) -> bool { self.stats.kit.art.is_some_and(|a| self.art >= a.cost()) }
     /// Whether a ranged attack or a cast has a shot to give (as `fight::Hero::can_shoot`).
     fn can_shoot(&self, a: Act) -> bool {
-        use crate::gear::Ranged;
+        if a == Act::Cast && self.stats.kit.imbues() { return self.can_imbue(); }
         if a == Act::Cast && !self.stats.spell_ready() { return false; }
         match a.shot(&self.stats.kit) {
-            Some(Ranged::Bow) => self.arrows > 0,
-            Some(r @ (Ranged::BloodBow | Ranged::BloodCrossbow)) => self.hp > r.blood() + 1.0,
-            Some(Ranged::Frost) => self.charges >= 1.0,
+            Some(crate::gear::Ranged::Frost) => self.charges >= 1.0,
+            Some(r) => self.quiver.has(r),
             None => false,
         }
+    }
+    /// Whether Blood Imbue can be called (as `fight::Hero::can_imbue`).
+    pub fn can_imbue(&self) -> bool {
+        self.stats.kit.imbues() && self.quiver.imbued < crate::fight::IMBUE_SHOTS && self.hp > self.stats.max_hp() * crate::fight::IMBUE_COST + 1.0
     }
 }
 
@@ -205,6 +224,9 @@ pub enum Motion {
     /// Cast onto the ground where the hero stood at its tell (followed until then), opening over
     /// its `reach` around that spot; the foe does not move.
     Rune,
+    /// The dead called up out of the ground beside the foe (`RISEN`, `SideFight::raise_risen`):
+    /// it strikes nothing itself.
+    Raise,
 }
 
 /// What may follow a blow at once, as the next of a string: blow `to`, started `at` ticks into
@@ -535,7 +557,8 @@ pub static STALKER: Breed = elite(&WRETCH_BASE, "The Void Stalker", 420.0, 3.0,
 
 /// The breed a road enemy fights as when it springs an ambush (shieldbearers do not).
 pub fn breed_of(kind: Archetype) -> &'static Breed {
-    match kind { Archetype::Lancer => &LANCER, Archetype::Wretch => &WRETCH, Archetype::Archer => &ARCHER, Archetype::Hexer => &HEXER, _ => &HUSK }
+    match kind { Archetype::Lancer => &LANCER, Archetype::Wretch => &WRETCH, Archetype::Archer => &ARCHER, Archetype::Hexer => &HEXER, Archetype::Brute => &BRUTE, Archetype::Hound => &HOUND,
+        Archetype::Bloater => &BLOATER, Archetype::Gravecaller => &GRAVECALLER, _ => &HUSK }
 }
 
 /// The road's dead, as they spring an ambush: weaker than the Warden and quicker to fall, each
@@ -596,6 +619,62 @@ pub static HEXER: Breed = Breed {
     ],
     pick: |near, r, _| match (near, r) { (true, 0..=6) => 2, (_, 0..=5) => 0, _ => 1 }, near: 1.8, walk: 0.8, keep: 5.5, rest: 80, open: 100, enrages: false, power: 1.0, wake: None, reply: None, grab: None, sprite: None,
 };
+/// Slow, huge and hard to stop: a slam no guard holds (roll it), a sweep at the shins (jump it, or
+/// parry), and the slam held aloft before it falls. Its recoveries are long: punish them.
+pub static BRUTE: Breed = Breed {
+    name: "Brute", kind: Some(Archetype::Brute), hp: 140.0, stance: 60.0, half: 0.55, height: 2.5,
+    blows: &[
+        blow("slam", (50, 6, 50), (0.2, 2.4), (0.0, 2.6), 26.0, GuardBreak, false, 50.0, Motion::Strike).stuck(30),
+        blow("sweep", (42, 6, 40), (0.2, 2.6), (0.0, 0.8), 18.0, Physical, true, 30.0, Motion::Strike),
+        blow("late slam", (78, 6, 50), (0.2, 2.4), (0.0, 2.6), 28.0, GuardBreak, false, 50.0, Motion::Strike).art("slam").tell(0.35).stuck(30),
+    ],
+    pick: |_, r, _| match r { 0..=4 => 0, 5..=7 => 1, _ => 2 }, near: 2.2, walk: 0.6, keep: 1.8, rest: 90, open: 130, enrages: false, power: 1.0, wake: None, reply: None, grab: None, sprite: None,
+};
+/// Low and quick: a bite (and sometimes a second), and from afar a leap onto where the hero
+/// stood (step aside late and it sprawls).
+pub static HOUND: Breed = Breed {
+    name: "Hound", kind: Some(Archetype::Hound), hp: 34.0, stance: 14.0, half: 0.45, height: 1.25,
+    blows: &[
+        blow("bite", (16, 5, 20), (0.1, 1.3), (0.0, 1.1), 9.0, Physical, true, 12.0, Motion::Strike).then(1, 10, 4),
+        blow("snap", (12, 5, 22), (0.1, 1.3), (0.0, 1.1), 9.0, Physical, true, 12.0, Motion::Strike).art("bite"),
+        blow("pounce", (34, 6, 22), (-0.7, 0.7), (0.0, 1.3), 13.0, GuardBreak, false, 22.0, Motion::Leap).tell(0.5).stuck(40),
+    ],
+    pick: |near, r, _| match (near, r) { (true, 0..=6) => 0, (true, _) | (false, _) => 2 }, near: 1.4, walk: 2.0, keep: 1.0, rest: 40, open: 80, enrages: false, power: 1.0, wake: None, reply: None, grab: None, sprite: None,
+};
+
+/// Swollen and slow: bile at the chest (roll it, or pay to block it) and a belly slam to parry.
+/// Felled, it swells and bursts (`SIDE_BURST`): get clear, or roll through it.
+pub static BLOATER: Breed = Breed {
+    name: "Bloater", kind: Some(Archetype::Bloater), hp: 80.0, stance: 34.0, half: 0.5, height: 1.95,
+    blows: &[
+        blow("belch", (46, 8, 36), (0.2, 2.4), (0.4, 1.9), 16.0, GuardBreak, false, 30.0, Motion::Strike),
+        blow("slam", (36, 5, 40), (0.1, 1.6), (0.0, 1.6), 18.0, Physical, true, 24.0, Motion::Strike),
+    ],
+    pick: |near, r, _| match (near, r) { (true, 0..=5) => 1, _ => 0 }, near: 1.6, walk: 0.6, keep: 1.4, rest: 80, open: 110, enrages: false, power: 1.0, wake: None, reply: None, grab: None, sprite: None,
+};
+/// A felled bloater's burst, `SIDE_BURST_AT` ticks after it falls, all round it.
+const SIDE_BURST: Blow = blow("burst", (0, 6, 0), (-2.4, 2.4), (0.0, 2.6), 26.0, Unblockable, false, 0.0, Motion::Strike);
+const SIDE_BURST_AT: u32 = 48;
+/// Hangs back and calls up the dead (`RISEN`, either side of it), opens grave-hands under the
+/// hero (move off the mark), and swipes whoever closes.
+pub static GRAVECALLER: Breed = Breed {
+    name: "Gravecaller", kind: Some(Archetype::Gravecaller), hp: 60.0, stance: 22.0, half: 0.4, height: 2.1,
+    blows: &[
+        blow("raise", (56, 10, 36), (0.0, 0.0), (0.0, 0.0), 0.0, Physical, false, 0.0, Motion::Raise),
+        blow("grasp", (60, 10, 40), (-0.9, 0.9), (0.0, 2.0), 20.0, Unblockable, false, 0.0, Motion::Rune).tell(0.55),
+        blow("swipe", (26, 6, 32), (0.2, 1.8), (0.0, 1.9), 14.0, GuardBreak, false, 22.0, Motion::Strike),
+    ],
+    pick: |near, r, _| match (near, r) { (true, 0..=6) => 2, (_, 0..=2) => 0, _ => 1 }, near: 1.8, walk: 0.8, keep: 5.5, rest: 80, open: 100, enrages: false, power: 1.0, wake: None, reply: None, grab: None, sprite: None,
+};
+/// A husk a gravecaller called up: frail, drawn as a husk, and leaving nothing when it falls.
+pub static RISEN: Breed = Breed {
+    name: "Risen", kind: Some(Archetype::Husk), hp: 40.0, stance: 20.0, half: 0.4, height: 1.9,
+    blows: &[HUSK_CHOP, HUSK_SWEEP],
+    pick: |_, r, _| if r < 6 { 0 } else { 1 }, near: 1.8, walk: 0.8, keep: 1.3, rest: 80, open: 110, enrages: false, power: 1.0, wake: None, reply: None, grab: None, sprite: None,
+};
+/// How many of the risen may stand at once, and the beat before one moves.
+const MOST_RISEN: usize = 2;
+const RISE_WAIT: u32 = 50;
 
 /// What a foe is doing.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -631,8 +710,11 @@ pub struct Foe {
     pub power: f32,
     /// Whether it has opened its second phase.
     pub woke: bool,
-    /// Ticks left of a frost bolt's chill (`fight::CHILL`).
+    /// Ticks left of a frost bolt's chill (`fight::CHILL`), and of a capstone's burn.
     pub chill: u32,
+    pub burn: crate::fight::Burn,
+    /// What its region has made of a road kind (`fight::Variant`).
+    pub variant: crate::fight::Variant,
     /// Hits taken while squared up since its last blow (`TEMPER` of them and it answers).
     pressed: u32,
 }
@@ -640,7 +722,7 @@ pub struct Foe {
 impl Foe {
     /// A foe of `breed` at `s`, facing `facing`, squaring up for `wait` ticks.
     pub fn new(breed: &'static Breed, s: f32, facing: f32, wait: u32) -> Foe {
-        Foe { breed, s, facing, hp: breed.hp, stance: breed.stance, stance_wait: 0, ai: Ai::Wait(wait), hurt: 0, count: 0, down: 0, top: breed.hp, power: breed.power, woke: false, chill: 0, pressed: 0 }
+        Foe { breed, s, facing, hp: breed.hp, stance: breed.stance, stance_wait: 0, ai: Ai::Wait(wait), hurt: 0, count: 0, down: 0, top: breed.hp, power: breed.power, woke: false, chill: 0, burn: crate::fight::Burn::default(), variant: crate::fight::Variant::Plain, pressed: 0 }
     }
     /// As strong as the region it is met in makes it: (health, blows) times its breed's.
     pub fn scaled(mut self, (hp, power): (f32, f32)) -> Foe {
@@ -649,6 +731,8 @@ impl Foe {
         self.power *= power;
         self
     }
+    /// As its region breeds it (`fight::Variant`).
+    pub fn of(self, variant: crate::fight::Variant) -> Foe { Foe { variant, ..self } }
     pub fn max_hp(&self) -> f32 { self.top }
     pub fn max_stance(&self) -> f32 { self.breed.stance }
     pub fn alive(&self) -> bool { self.ai != Ai::Dead }
@@ -714,6 +798,7 @@ impl Foe {
             }
             // Where it will open (followed until its tell).
             Motion::Rune => { let Ai::Blow { aim, .. } = self.ai else { return None }; (aim + b.reach.0, aim + b.reach.1) }
+            Motion::Raise => return None,
             // Its whole flight while it winds up; itself once loosed.
             Motion::Shot(_) => match self.shot() {
                 Some(at) => (at - SHOT_HALF, at + SHOT_HALF),
@@ -762,7 +847,7 @@ impl SideFight {
             hero: SideHero {
                 stats, hp, stamina, rested: 30, flasks, s, y: 0.0, vy: 0.0, facing: 1.0, act: None, guarding: false,
                 reel: Reel::None, reeling: 0, poise: stats.poise(), poise_wait: 0, from: 0.0, landed: false, dead: false, walking: false, buffer: None,
-                arrows: crate::fight::QUIVER, charges: stats.max_charges(), bulwark: Bulwark::default(),
+                quiver: crate::fight::Quiver::default(), charges: stats.max_charges(), bulwark: Bulwark::default(),
                 art: 0.0, stone: 0, mark: None, pierced: 0,
             },
             foes,
@@ -791,7 +876,14 @@ impl SideFight {
         let mut out = Vec::new();
         self.ticks += 1;
         if !self.hero.dead { self.hero_tick(input, &mut out); }
-        for i in 0..self.foes.len() { if self.foes[i].alive() { self.foe_tick(i, &mut out); } else { self.foes[i].down += 1; } }
+        for i in 0..self.foes.len() {
+            if self.foes[i].alive() { self.foe_tick(i, &mut out); continue; }
+            self.foes[i].down += 1;
+            if self.foes[i].down == SIDE_BURST_AT && self.foes[i].breed.kind == Some(crate::fight::Archetype::Bloater) {
+                out.push(Event::Popped { enemy: i, at: self.foes[i].s as f64 });
+                self.blow_lands(i, SIDE_BURST, &mut out);
+            }
+        }
         self.bolts_tick(&mut out);
         self.hatchets_tick(&mut out);
         // Sentence's blow falls when its count runs out.
@@ -806,9 +898,11 @@ impl SideFight {
         if self.hero.stats.kit.art.is_some() {
             self.hero.art = (self.hero.art + crate::arts::gained(&out)).min(crate::arts::ART_MAX);
         }
-        if self.hero.stats.kit.ranged == Some(crate::gear::Ranged::Bow) {
-            let felled = out.iter().filter(|e| matches!(e, Event::Felled { .. })).count() as u32;
-            self.hero.arrows = (self.hero.arrows + crate::fight::SALVAGE * felled).min(crate::fight::QUIVER);
+        // Arrows pulled back out of the fallen, and archers' own.
+        let felled: Vec<usize> = out.iter().filter_map(|e| if let Event::Felled { enemy } = e { Some(*enemy) } else { None }).collect();
+        if !felled.is_empty() {
+            let archers = felled.iter().filter(|&&i| self.foes.get(i).is_some_and(|f| f.breed.kind == Some(crate::fight::Archetype::Archer))).count() as u32;
+            self.hero.quiver.salvage(self.hero.stats.kit.ranged, felled.len() as u32, archers);
         }
         if self.hero.hp <= 0.0 && !self.hero.dead {
             self.hero.dead = true;
@@ -846,10 +940,10 @@ impl SideFight {
                 if h.stamina <= 0.0 { out.push(Event::Spent); } else { h.spend(h.stats.cost(Move::Backstep, JUMP_COST)); h.vy = JUMP_V; h.y = 1e-4; }
             } else if let Some(a) = want.filter(|a| !h.airborne() || matches!(a, Act::Light | Act::Heavy)) {
                 h.buffer = None;
-                let class = h.stats.kit.arms.class;
                 let cost = h.stats.cost(a.as_move(), match a {
-                    Act::Light | Act::Heavy => a.strike_spec(class).stamina,
+                    Act::Light | Act::Heavy => a.struck(&h.stats.kit).stamina,
                     Act::Roll(_) => 12.0,
+                    Act::Cast if h.stats.kit.imbues() => 0.0,
                     Act::Loose | Act::Cast => Move::loose_spec(a.shot(&h.stats.kit).unwrap_or(crate::gear::Ranged::Bow)).stamina,
                     Act::Art => Act::art_spec(&h.stats.kit).stamina,
                     _ => 0.0,
@@ -909,16 +1003,18 @@ impl SideFight {
                     out.push(Event::Healed);
                 }
                 // Loosed at the end of the draw, from the chest, the way the hero faces.
+                // Blood Imbue: paid for in health as it goes off.
+                Act::Cast if t == f.0 && kit.imbues() => {
+                    h.hp = (h.hp - h.stats.max_hp() * crate::fight::IMBUE_COST).max(1.0);
+                    h.quiver.imbued = crate::fight::IMBUE_SHOTS;
+                    out.push(Event::Imbued);
+                }
                 Act::Loose | Act::Cast if t == f.0 => {
                     if let Some(r) = a.shot(&kit) {
-                        use crate::gear::Ranged;
-                        match r {
-                            Ranged::Bow => h.arrows = h.arrows.saturating_sub(1),
-                            Ranged::BloodBow | Ranged::BloodCrossbow => h.hp = (h.hp - r.blood()).max(1.0),
-                            Ranged::Frost => h.charges = (h.charges - 1.0).max(0.0),
-                        }
+                        let imbued = if r == crate::gear::Ranged::Frost { h.charges = (h.charges - 1.0).max(0.0); false } else { h.quiver.take(r) };
                         let spec = Move::loose_spec(r);
-                        let bolt = SideBolt { s: h.s + h.facing * 0.4, dir: h.facing, y: h.y + 1.3, ranged: r, damage: spec.damage * h.stats.ranged_damage(r), stance: spec.stance, left: crate::fight::BOLT_RANGE, age: 0 };
+                        let damage = spec.damage * h.stats.ranged_damage(r) * if imbued { crate::fight::IMBUE_DAMAGE } else { 1.0 };
+                        let bolt = SideBolt { s: h.s + h.facing * 0.4, dir: h.facing, y: h.y + 1.3, ranged: r, damage, stance: spec.stance, left: crate::fight::BOLT_RANGE, age: 0, imbued, pierced: 0, keen: kit.capped.keen && r != crate::gear::Ranged::Frost };
                         self.bolts.push(bolt);
                         out.push(Event::Shot(r));
                     }
@@ -950,7 +1046,7 @@ impl SideFight {
     /// The hero's strike `a` in its live frames: the nearest foe in front within reach takes it;
     /// a heavy cleaves through every one there.
     fn strike(&mut self, a: Act, out: &mut Vec<Event>) {
-        let reach = a.strike_spec(self.hero.stats.kit.arms.class).reach;
+        let reach = a.struck(&self.hero.stats.kit).reach;
         let cleave = a == Act::Heavy;
         let (hs, hf) = (self.hero.s, self.hero.facing);
         let mut struck: Vec<usize> = (0..self.foes.len()).filter(|&i| {
@@ -966,13 +1062,57 @@ impl SideFight {
     }
 
     /// Foe `i` takes the hero's strike `a`.
-    /// A perfect block's ward let go at foe `i`, at `w` of a full ward: it is thrown open, hurt
+    /// A perfect block's ward let go at foe `i`, at `w` of a full ward, as the shield in hand lets
+    /// it go (as the road's, `fight::Fight::ward_let`); `blow`, what the blow blocked would have dealt.
+    fn ward_let(&mut self, i: usize, w: f32, blow: f32, out: &mut Vec<Event>) {
+        use crate::gear::Ward;
+        let ward = self.hero.stats.kit.ward.unwrap_or(Ward::Bulwark);
+        // A reinforced shield lets it go harder.
+        let w = w * self.hero.stats.kit.ward_boost();
+        let open = self.foes[i].breed.open;
+        let (dealt, down) = match ward {
+            Ward::Kite => {
+                let h = &mut self.hero;
+                h.stamina = (h.stamina + crate::fight::BASH_STAMINA * w).min(h.stats.max_stamina());
+                (crate::fight::BASH_DAMAGE * w, open + (open as f32 * crate::fight::BASH_DOWN * w) as u32)
+            }
+            Ward::Buckler => (blow * (1.0 + crate::fight::TURN_MORE * w), open),
+            Ward::Bulwark | Ward::Parma => return self.ward_burst(i, w, out),
+        };
+        out.push(Event::WardBurst { enemy: i, power: w, ward });
+        let b = &mut self.foes[i];
+        b.hp -= (dealt * self.hero.stats.damage()).min(b.hp.max(0.0));
+        b.hurt = 10;
+        if b.hp <= 0.0 {
+            b.hp = 0.0;
+            b.ai = Ai::Dead;
+            out.push(Event::Felled { enemy: i });
+        } else {
+            b.ai = Ai::Open(down);
+            out.push(Event::StanceBroken { enemy: i });
+        }
+    }
+
+    /// As the road's (`fight::Fight::thorns`): of a blow blocked, its share back into foe `i`.
+    fn thorns(&mut self, i: usize, blow: f32, out: &mut Vec<Event>) {
+        let back = blow * self.hero.stats.kit.capped.thorns;
+        let b = &mut self.foes[i];
+        if back <= 0.0 || b.ai == Ai::Dead { return; }
+        b.hp -= back.min(b.hp);
+        b.hurt = 10;
+        if b.hp <= 0.0 {
+            (b.hp, b.ai) = (0.0, Ai::Dead);
+            out.push(Event::Felled { enemy: i });
+        }
+    }
+
+    /// A bulwark's ward let go at foe `i`, at `w` of a full ward: it is thrown open, hurt
     /// by its share of `fight::BURST_DAMAGE`; foes near it are hurt by less and thrown back.
     fn ward_burst(&mut self, i: usize, w: f32, out: &mut Vec<Event>) {
         use crate::fight::{BURST_DAMAGE, BURST_REACH, BURST_SHOVE, BURST_SPLASH};
         let dealt = BURST_DAMAGE * w * self.hero.stats.damage();
         let (at, hero) = (self.foes[i].s, self.hero.s);
-        out.push(Event::WardBurst { enemy: i, power: w });
+        out.push(Event::WardBurst { enemy: i, power: w, ward: crate::gear::Ward::Bulwark });
         for (j, b) in self.foes.iter_mut().enumerate() {
             if b.ai == Ai::Dead || (j != i && (b.s - at).abs() >= BURST_REACH) { continue; }
             b.hp -= (if j == i { dealt } else { dealt * BURST_SPLASH }).min(b.hp.max(0.0));
@@ -993,17 +1133,29 @@ impl SideFight {
 
     fn hit(&mut self, i: usize, a: Act, out: &mut Vec<Event>) {
         let h = &self.hero;
-        let Spec { damage, stance, .. } = a.strike_spec(h.stats.kit.arms.class);
+        let Spec { damage, stance, .. } = a.struck(&h.stats.kit);
         let b = &mut self.foes[i];
         let open = matches!(b.ai, Ai::Open(_));
-        let dealt = (damage * h.stats.damage() * if open { OPEN_DAMAGE * h.stats.kit.opener } else { 1.0 }).min(b.hp.max(0.0));
+        // A parma's ward goes into the first blow on an open foe (the yard's riposte).
+        let duel = if open && h.stats.kit.ward == Some(crate::gear::Ward::Parma) && h.bulwark.ward >= crate::fight::WARD_BURST { Some(h.bulwark.share()) } else { None };
+        let more = duel.map_or(0.0, |w| crate::fight::DUEL_DAMAGE * w * h.stats.damage());
+        let dealt = (damage * h.stats.damage() * if open { OPEN_DAMAGE * h.stats.kit.opener } else { 1.0 } + more).min(b.hp.max(0.0));
         b.hp -= dealt;
         // A weapon that drinks gives some of it back.
         let h = &mut self.hero;
         h.hp = (h.hp + dealt * h.stats.kit.leech).min(h.stats.max_hp());
+        if let Some(w) = duel {
+            h.bulwark.let_go();
+            h.hp = (h.hp + more.min(dealt) * crate::fight::DUEL_DRINK).min(h.stats.max_hp());
+            out.push(Event::WardBurst { enemy: i, power: w, ward: crate::gear::Ward::Parma });
+        }
         // A blow landed up close fills the catalyst.
         if h.stats.kit.spell_cast().is_some() { h.charges = (h.charges + crate::fight::CHARGE_PER_HIT).min(h.stats.max_charges()); }
+        let capped = h.stats.kit.capped;
         let b = &mut self.foes[i];
+        // The weapon's capstone: the blow burns on, or chills.
+        b.burn.light(dealt, capped.burn);
+        b.chill = b.chill.max(capped.rime);
         b.hurt = 10;
         b.stance_wait = 0;
         if matches!(b.ai, Ai::Wait(_)) { b.pressed += 1; }
@@ -1033,10 +1185,18 @@ impl SideFight {
             b.age += 1;
             b.s += b.dir * step;
             b.left -= step;
-            let (s, y, dir) = (b.s, b.y, b.dir);
-            let reached = |f: &Foe| f.alive() && y < f.breed.height + f.lift() && y > f.lift() && ((f.s - s) * dir) <= f.breed.half && ((f.s - s) * dir) > -f.breed.half - step;
-            let hit = (0..self.foes.len()).filter(|&i| reached(&self.foes[i])).min_by(|&a, &c| ((self.foes[a].s - s) * dir).total_cmp(&((self.foes[c].s - s) * dir)));
+            let (s, y, dir, pierced) = (b.s, b.y, b.dir, b.pierced);
+            let reached = |i: usize, f: &Foe| f.alive() && y < f.breed.height + f.lift() && y > f.lift() && ((f.s - s) * dir) <= f.breed.half && ((f.s - s) * dir) > -f.breed.half - step && pierced & (1 << i.min(63)) == 0;
+            let hit = (0..self.foes.len()).filter(|&i| reached(i, &self.foes[i])).min_by(|&a, &c| ((self.foes[a].s - s) * dir).total_cmp(&((self.foes[c].s - s) * dir)));
             if let Some(i) = hit {
+                // An imbued bolt goes on through, and on into the next.
+                if self.bolts[k].pierces() {
+                    self.bolts[k].pierced |= 1 << i.min(63);
+                    let b = self.bolts[k];
+                    self.bolt_hit(i, b, out);
+                    k += 1;
+                    continue;
+                }
                 let b = self.bolts.remove(k);
                 self.bolt_hit(i, b, out);
                 continue;
@@ -1056,9 +1216,15 @@ impl SideFight {
             return;
         }
         let open = matches!(f.ai, Ai::Open(_));
-        f.hp -= b.damage.min(f.hp.max(0.0));
+        let dealt = b.damage.min(f.hp.max(0.0));
+        f.hp -= dealt;
         f.hurt = 10;
-        if b.ranged == crate::gear::Ranged::Frost { f.chill = crate::fight::CHILL; }
+        let capped = self.hero.stats.kit.capped;
+        if b.ranged == crate::gear::Ranged::Frost { f.chill = crate::fight::CHILL * capped.winter; } else { f.chill = f.chill.max(capped.shot_chill); }
+        if b.ranged != crate::gear::Ranged::Frost { f.burn.light(dealt, capped.shot_burn); }
+        let drink = if b.drinks() { crate::fight::IMBUE_DRINK } else if b.ranged == crate::gear::Ranged::Frost { capped.spell_drink } else { 0.0 };
+        self.hero.hp = (self.hero.hp + dealt * drink).min(self.hero.stats.max_hp());
+        let f = &mut self.foes[i];
         f.stance_wait = 0;
         if matches!(f.ai, Ai::Wait(_)) { f.pressed += 1; }
         out.push(Event::Hit { enemy: i, mv: Move::Loose });
@@ -1079,8 +1245,18 @@ impl SideFight {
     }
 
     fn foe_tick(&mut self, i: usize, out: &mut Vec<Event>) {
-        // Chilled by frost: every third tick lost, and no stance back while it lasts.
         let f = &mut self.foes[i];
+        // Burning: it goes on taking a little, and can die of it.
+        let burnt = f.burn.tick();
+        if burnt > 0.0 && f.ai != Ai::Dead {
+            f.hp -= burnt.min(f.hp);
+            if f.hp <= 0.0 {
+                (f.hp, f.ai) = (0.0, Ai::Dead);
+                out.push(Event::Felled { enemy: i });
+                return;
+            }
+        }
+        // Chilled by frost: every third tick lost, and no stance back while it lasts.
         if f.chill > 0 {
             (f.chill, f.stance_wait) = (f.chill - 1, 0);
             if f.chill % 3 == 0 { f.hurt = f.hurt.saturating_sub(1); return; }
@@ -1124,8 +1300,8 @@ impl SideFight {
         let leap_held = in_way(leap);
         let b = &mut self.foes[i];
         b.hurt = b.hurt.saturating_sub(1);
-        b.stance_wait += 1;
-        if b.stance_wait > 120 { b.stance = (b.stance + 0.4).min(b.breed.stance); }
+        b.stance_wait += b.variant.recovery();
+        if b.stance_wait > 120 { b.stance = (b.stance + 0.4 * b.variant.recovery() as f32).min(b.breed.stance); }
         match b.ai {
             Ai::Dead => {}
             Ai::Open(0) => b.ai = Ai::Wait(30),
@@ -1203,6 +1379,7 @@ impl SideFight {
                     }
                 }
                 b.ai = Ai::Blow { i: k, t, hit, from, aim };
+                if t == w && blow.motion == Motion::Raise { self.raise_risen(i, out); }
                 let live_now = t >= w && t < w + live;
                 let mut hit = hit;
                 if live_now && !hit { hit = self.blow_lands(i, blow, out); }
@@ -1393,6 +1570,20 @@ impl SideFight {
         }
     }
 
+    /// Foe `i`'s raise going off: the risen out of the ground either side of it, as many as the
+    /// foe objects have room for and no more than `MOST_RISEN` standing.
+    fn raise_risen(&mut self, i: usize, out: &mut Vec<Event>) {
+        let c = &self.foes[i];
+        let (s, facing, ratio, power, variant) = (c.s, c.facing, c.top / c.breed.hp, c.power, c.variant);
+        let standing = self.foes.iter().filter(|f| std::ptr::eq(f.breed, &RISEN) && f.alive()).count();
+        for side in [1.0_f32, -1.0].into_iter().take(MOST_RISEN.saturating_sub(standing)) {
+            if self.foes.len() >= crate::world::MOST_FOES { break; }
+            let at = (s + facing * side * 1.6).clamp(-HALF + RISEN.half, HALF - RISEN.half);
+            out.push(Event::Raised { enemy: self.foes.len() });
+            self.foes.push(Foe::new(&RISEN, at, facing, RISE_WAIT).scaled((ratio, power)).of(variant));
+        }
+    }
+
     /// Foe `i`'s blow live now: does it meet the hero, and how? True once it has struck (one hit a
     /// blow).
     fn blow_lands(&mut self, i: usize, blow: Blow, out: &mut Vec<Event>) -> bool {
@@ -1405,6 +1596,7 @@ impl SideFight {
             Motion::Strike | Motion::Leap => { let ahead = (h.s - b.s) * b.facing; ahead >= blow.reach.0 - HERO_HALF && ahead <= blow.reach.1 + HERO_HALF }
             Motion::Shot(_) => b.shot().is_some_and(|at| (h.s - at).abs() < SHOT_HALF + HERO_HALF),
             Motion::Rune => match b.ai { Ai::Blow { aim, .. } => h.s >= aim + blow.reach.0 - HERO_HALF && h.s <= aim + blow.reach.1 + HERO_HALF, _ => false },
+            Motion::Raise => false,
         };
         let high_enough = h.y + 1.7 >= blow.height.0 && h.y <= blow.height.1;
         if !reaches || !high_enough || h.dead { return false; }
@@ -1421,6 +1613,8 @@ impl SideFight {
             let live = t >= f.0 && t < f.0 + f.1 + h.stats.kit.parry;
             if live && blow.parry && facing_it {
                 h.act = None;
+                h.bulwark.parried(&h.stats.kit, blow.guard);
+                h.mend();
                 out.push(Event::Parried { enemy: i });
                 let f = &mut self.foes[i];
                 f.ai = Ai::Open(f.breed.open);
@@ -1435,10 +1629,14 @@ impl SideFight {
             return true;
         }
         if h.guarding && facing_it && blow.kind != Kind::Unblockable {
-            match crate::fight::guard_blow(&h.stats, h.stamina, &mut h.bulwark, blow.guard, blow.damage, blow.kind == Kind::GuardBreak) {
+            let guarded = crate::fight::guard_blow(&h.stats, h.stamina, &mut h.bulwark, blow.guard, blow.damage, blow.kind == Kind::GuardBreak);
+            if !matches!(guarded, Guarded::Broken { .. }) { self.thorns(i, blow.damage, out); }
+            let h = &mut self.hero;
+            match guarded {
                 Guarded::Perfect { burst } => {
+                    h.mend();
                     out.push(Event::PerfectBlock);
-                    if let Some(w) = burst { self.ward_burst(i, w, out); }
+                    if let Some(w) = burst { self.ward_let(i, w, blow.damage, out); }
                 }
                 Guarded::Broken { cost, damage } => {
                     h.spend(cost);
@@ -1460,10 +1658,13 @@ impl SideFight {
             // Stone Skin: less gets through, and nothing knocks the hero about.
             let damage = damage * crate::arts::STONE_TAKEN;
             h.hp -= damage;
+            h.spend(self.foes[i].variant.sap(damage));
             out.push(Event::Struck { damage, heavy: false });
             return true;
         }
         h.hp -= damage;
+        // A blighted foe's blow saps stamina too.
+        h.spend(self.foes[i].variant.sap(damage));
         h.poise -= damage * 1.3;
         h.poise_wait = 0;
         // Knocked away from the foe, and out of the air.
@@ -1482,7 +1683,7 @@ impl SideFight {
             let heavy = blow.damage >= crate::fight::HEAVY_HIT;
             // An armoured swing (an ultra greatsword's) rides it out.
             let armoured = match h.act {
-                Some((a @ (Act::Light | Act::Heavy), t)) => t < a.strike_spec(h.stats.kit.arms.class).armour,
+                Some((a @ (Act::Light | Act::Heavy), t)) => t < a.struck(&h.stats.kit).armour,
                 Some((Act::Art, t)) => t < Act::art_spec(&h.stats.kit).armour,
                 _ => false,
             };
@@ -1526,7 +1727,7 @@ mod tests {
         let mut i = SideInput::default();
         let toward = if b.s >= h.s { 1.0 } else { -1.0 };
         let gap = (b.s - h.s).abs() - b.breed.half;
-        let reach = Act::Light.strike_spec(h.stats.kit.arms.class).reach;
+        let reach = Act::Light.struck(&h.stats.kit).reach;
         let walk = |i: &mut SideInput, dir: f32| if dir > 0.0 { i.right = true } else { i.left = true };
         let low = h.hp < 0.4 * h.stats.max_hp();
         let open = matches!(b.ai, Ai::Open(_));
@@ -1589,10 +1790,12 @@ mod tests {
     /// `bot` against `breed` as the world scales it at `tier`, the hero levelled for that tier:
     /// (won, seconds, hero health left of full, flasks drunk).
     fn bout(breed: &'static Breed, tier: u32, bot: Bot, seed: u32) -> (bool, f32, f32, u32) {
-        let t = tier as f32 - 1.0;
-        let scale = ((1.0 + 0.3 * t).max(0.8), (1.0 + 0.22 * t).max(0.85));
+        let scale = crate::world::World::scale_at(tier, 0);
         let l = 2 * tier;
-        let stats = Stats { vigor: l, endurance: l, might: l, weapon: tier / 2, armour: tier / 2, ..Stats::default() };
+        let mut stats = Stats { vigor: l, endurance: l, might: l, ..Stats::default() };
+        // As reinforced as a hero is expected to be by then.
+        let (main, armour) = crate::world::World::forged_at(tier);
+        (stats.kit.main, stats.kit.forged_armour) = (main, armour as f32 * crate::gear::ARMOUR_STEP);
         let mut f = SideFight::boss(stats, stats.max_hp(), stats.max_stamina(), 3, breed, scale);
         f.seed = seed;
         let mut n = 0;
@@ -1772,6 +1975,27 @@ mod tests {
     }
 
     #[test]
+    fn in_the_yard_a_bloater_bursts_where_it_fell_and_a_gravecaller_raises_the_risen() {
+        // Felled beside the hero, it bursts on them; felled across the yard, it misses.
+        for (at, near) in [(1.0, true), (5.0, false)] {
+            let mut f = SideFight::ambush(Stats::default(), 100.0, 100.0, 3, &[(&BLOATER, at)]);
+            (f.foes[0].hp, f.foes[0].ai) = (0.0, Ai::Dead);
+            let mut popped = false;
+            assert!(run(&mut f, 80, idle(), |_, e| { popped |= e.iter().any(|e| matches!(e, Event::Popped { .. })); popped }));
+            assert_eq!(f.hero.hp < 100.0, near, "burst at {at}");
+        }
+        // The raise: two of the risen either side of it, and no more while they stand.
+        let mut f = SideFight::ambush(Stats::default(), 100.0, 100.0, 3, &[(&GRAVECALLER, 3.0)]);
+        f.foes[0].ai = Ai::Blow { i: 0, t: 0, hit: false, from: 3.0, aim: 0.0 };
+        assert!(run(&mut f, 120, idle(), |f, _| f.foes.len() == 3));
+        assert!(f.foes[1..].iter().all(|r| std::ptr::eq(r.breed, &RISEN) && r.alive()));
+        f.foes[0].ai = Ai::Blow { i: 0, t: 0, hit: false, from: 3.0, aim: 0.0 };
+        run(&mut f, 120, idle(), |_, _| false);
+        assert_eq!(f.foes.len(), 3, "two standing already");
+        assert!(!f.won());
+    }
+
+    #[test]
     fn an_ambush_never_has_two_foes_winding_up_at_once() {
         let mut f = ambushed();
         f.hero.hp = 1e9;
@@ -1893,8 +2117,9 @@ mod tests {
 
     #[test]
     fn every_breed_picks_and_follows_only_blows_it_has() {
-        let all: [&Breed; 23] = [&WARDEN, &SCREAMER, &CHIEF, &MAGISTRATE, &WRAITH, &PRIEST, &STATUE, &ARCHANGEL,
-            &COLLECTOR, &ALPHA, &AGENT, &SENTINEL, &BUTCHER, &STALKER, &HUSK, &LANCER, &WRETCH, &ARCHER, &HEXER, &LANCER, &WRETCH, &HUSK, &WARDEN];
+        let all: [&Breed; 28] = [&WARDEN, &SCREAMER, &CHIEF, &MAGISTRATE, &WRAITH, &PRIEST, &STATUE, &ARCHANGEL,
+            &COLLECTOR, &ALPHA, &AGENT, &SENTINEL, &BUTCHER, &STALKER, &HUSK, &LANCER, &WRETCH, &ARCHER, &HEXER, &LANCER, &WRETCH, &HUSK, &WARDEN,
+            &BRUTE, &HOUND, &BLOATER, &GRAVECALLER, &RISEN];
         for b in all {
             for near in [false, true] { for wild in [false, true] { for r in 0..10 { assert!((b.pick)(near, r, wild) < b.blows.len(), "{} picks past its blows", b.name); } } }
             for bl in b.blows {
@@ -1997,6 +2222,7 @@ mod tests {
     #[test]
     fn in_the_yard_a_last_moment_block_on_the_bulwark_bursts_its_ward_into_the_boss() {
         let mut l = crate::gear::Loadout::starting();
+        l.warden = true;
         let b = crate::gear::find("Warden's Bulwark");
         l.gain(b);
         assert!(l.wear(1, Some(b)));
@@ -2014,6 +2240,27 @@ mod tests {
         assert!(matches!(f.foes[0].ai, Ai::Open(_)), "{:?}", f.foes[0].ai);
         assert!(f.foes[0].hp < WARDEN.hp && f.hero.hp == f.hero.stats.max_hp(), "{} {}", f.foes[0].hp, f.hero.hp);
         assert_eq!(f.hero.bulwark.ward, 0.0);
+    }
+
+    /// The kite's ward in the yard: a perfect block bashes the boss open longer than a stagger.
+    #[test]
+    fn in_the_yard_a_kites_ward_bashes_the_boss_open_longer() {
+        let mut l = crate::gear::Loadout::starting();
+        l.warden = true;
+        let k = crate::gear::find("Kite Shield");
+        l.gain(k);
+        assert!(l.wear(1, Some(k)));
+        let mut f = throwing(0, 2.0);
+        f.hero.stats.kit = l.kit();
+        f.hero.bulwark.ward = 60.0;
+        let lands = BLOWS[0].frames.0;
+        let mut seen = Vec::new();
+        for t in 0..lands + 20 {
+            seen.extend(f.tick(&SideInput { guard: t + 4 >= lands, ..idle() }));
+            if seen.iter().any(|e| matches!(e, Event::WardBurst { .. })) { break; }
+        }
+        assert!(seen.iter().any(|e| matches!(e, Event::WardBurst { enemy: 0, ward: crate::gear::Ward::Kite, .. })), "{seen:?}");
+        assert!(matches!(f.foes[0].ai, Ai::Open(t) if t > f.foes[0].breed.open), "{:?}", f.foes[0].ai);
     }
 
     #[test]
@@ -2082,7 +2329,7 @@ mod tests {
             let mut f = fight();
             match r {
                 Ranged::Frost => { f.hero.stats.kit.catalyst = crate::gear::ITEMS[crate::gear::find("Frostweaver's Focus")].catalyst; f.hero.stats.focus = 3; }
-                r => f.hero.stats.kit.ranged = Some(r),
+                r => { f.hero.stats.kit.ranged = Some(r); f.hero.quiver.arrows = 12; }
             }
             f.foes[0].ai = Ai::Wait(10_000);
             f.hero.facing = if f.foes[0].s > f.hero.s { 1.0 } else { -1.0 };
@@ -2095,12 +2342,30 @@ mod tests {
             }
             assert!(hit && f.foes[0].hp < hp, "{r:?}");
             match r {
-                Ranged::Bow => assert_eq!(f.hero.arrows, crate::fight::QUIVER - 1),
+                Ranged::Bow => assert_eq!(f.hero.quiver.arrows, 11),
                 _ => assert!(f.foes[0].stance <= stance - Move::loose_spec(r).stance + 0.5 && f.hero.charges < f.hero.stats.max_charges()),
             }
         }
     }
 
+
+    /// Blood Imbue in the yard as on the road: health for five imbued shots, the next loosed one of them.
+    #[test]
+    fn blood_imbue_in_the_yard_pays_health_and_imbues_the_next_shots() {
+        use crate::gear::Ranged;
+        let mut f = fight();
+        f.hero.stats.kit.ranged = Some(Ranged::BloodCrossbow);
+        f.hero.quiver = crate::fight::Quiver::SETTING_OUT;
+        f.foes.clear();
+        let hp = f.hero.hp;
+        let mut imbued = false;
+        for t in 0..80 { imbued |= f.tick(&SideInput { cast: t == 0, ..idle() }).contains(&Event::Imbued); }
+        assert!(imbued && (f.hero.hp - (hp - f.hero.stats.max_hp() * crate::fight::IMBUE_COST)).abs() < 1e-3, "{}", f.hero.hp);
+        assert_eq!(f.hero.quiver.imbued, crate::fight::IMBUE_SHOTS);
+        for t in 0..60 { f.tick(&SideInput { loose: t == 0, ..idle() }); if !f.bolts.is_empty() { break; } }
+        assert!(f.bolts.first().is_some_and(|b| b.imbued && b.pierces()));
+        assert_eq!((f.hero.quiver.imbued, f.hero.quiver.bolts), (crate::fight::IMBUE_SHOTS - 1, crate::fight::Quiver::SETTING_OUT.bolts - 1));
+    }
 
     /// The Warden squaring up `gap` in front of a hero holding forged weapon `name`, the meter at `meter`.
     fn forged(name: &str, meter: f32, gap: f32) -> SideFight {

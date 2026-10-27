@@ -10,7 +10,7 @@
 //! The keeper (Maren) and the smith (Brannoc) are stand-ins: their names and lines wait on the
 //! story (the design doc's wanderers, its open question 11).
 
-use crate::fight::{Fight, Stats, GEAR_MAX};
+use crate::fight::{Fight, Stats};
 use crate::gear::{Arms, Grade, ATTRIBUTES, ITEMS, SLOTS};
 use crate::profile::Slot;
 use crate::world::{Note, World};
@@ -27,8 +27,8 @@ impl Calling {
     pub fn blurb(self) -> &'static str {
         match self {
             Calling::Wayfarer => "Sword and buckler. Rolls, parries and ripostes: the road's fight as it stands.",
-            Calling::Warden => "Sword and a tall bulwark, the steadiest on their feet: blocks fill a ward, and a block raised at the last moment lets it burst into the foe.",
-            Calling::Bloodrunner => "Sword and a bow, no shield: arrows drawn from their own blood (F, ranged attack). Wear a foe down from afar, finish it up close.",
+            Calling::Warden => "Sword and a tall bulwark, the steadiest on their feet: blocks fill a ward that any shield in hand keeps, and a block raised at the last moment lets it go, each shield its own way.",
+            Calling::Bloodrunner => "Sword and a bow, no shield: arrows from afar (F), and their own blood drawn into them (C, Blood Imbue) to strike harder and drink it back. Wear a foe down from afar, finish it up close.",
             Calling::Frostweaver => "Sword and a frost focus, a catalyst, no shield: frost bolts that crack a foe's stance and chill it (C, cast), their charges filled by blows landed up close.",
         }
     }
@@ -57,6 +57,9 @@ impl Calling {
 /// The keys these screens listen to, from whatever device.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Key { Left, Right, Up, Down, Use, Back }
+
+/// Starts a line of a choice that the menu draws in red: a warning about it.
+pub const WARN: char = '\u{1}';
 
 /// What to draw: a heading (who speaks, or where), the words, the choices with whether each can be
 /// taken and which is picked, and a line of keys.
@@ -258,6 +261,8 @@ enum View {
     Travel(usize),
     /// What the smith can forge from the bosses' remnants.
     Craft(usize),
+    /// The capstones the piece worn at place `p`, at its top, could be given.
+    Capstone(usize, usize),
 }
 
 /// The hero at rest.
@@ -311,7 +316,7 @@ impl Sanctum {
             }
             (View::Choices(_), Station::Smith) => vec![("Forge".into(), true), ("Craft from a remnant".into(), !w.craftable().is_empty()), ("Talk".into(), true), ("Step away".into(), true)],
             (View::Craft(_), _) => w.craftable().into_iter()
-                .map(|(r, can)| (format!("{}   {}\n      from the {}   {} {}, {} shards", r.item, ITEMS[crate::gear::find(r.item)].text, r.remnant, r.echoes, crate::world::CURRENCY, r.shards), can))
+                .map(|(r, can)| (format!("{}\t{} {}, {}\n{}\nfrom the {}", r.item, r.echoes, crate::world::CURRENCY, World::shards_named(r.grade, r.shards), ITEMS[crate::gear::find(r.item)].text, r.remnant), can))
                 .chain([("Back".to_string(), true)]).collect(),
             (View::Levels(_), _) => {
                 let can = w.souls >= st.level_cost();
@@ -328,23 +333,33 @@ impl Sanctum {
                 ]
             }
             (View::Forge(_), _) => {
-                let line = |what: &str, lvl: u32| match World::forge_cost(lvl) {
-                    Some((souls, shards)) => (format!("{what} +{lvl} to +{}   {souls} {}, {shards} shards", lvl + 1, crate::world::CURRENCY), w.souls >= souls && w.shards >= shards),
-                    None => (format!("{what} +{GEAR_MAX}   as good as it gets"), false),
-                };
-                vec![line("Weapon", st.weapon), line("Armour", st.armour), ("Back".into(), true)]
+                let q = f.hero.quiver;
+                let fletch = World::FLETCH.iter().zip([(q.arrows, crate::fight::Quiver::ARROWS), (q.bolts, crate::fight::Quiver::BOLTS)])
+                    .map(|(&(what, n, price), (have, most))| (format!("Fletch {n} {what}\t{price} {}\tcarrying {have} of {most}", crate::world::CURRENCY), w.souls >= price && have < most));
+                w.forgeable().into_iter().map(|p| Self::reinforce_row(w, &st, p)).chain(fletch).chain([("Back".into(), true)]).collect()
             }
+            (View::Capstone(p, _), _) => w.gear.worn[*p].map_or(&[][..], |i| crate::capstone::Capstone::choices(&ITEMS[i])).iter()
+                .map(|c| (format!("{}\n{}", c.name(), c.text()), true))
+                .chain([("Back".to_string(), true)]).collect(),
             (View::Gear(_), _) => SLOTS.iter().zip(&w.gear.worn)
                 .map(|((_, place), worn)| (format!("{place}\t{}", worn.map_or("nothing", |i| ITEMS[i].name)), true))
+                .chain(Self::grip_row(w, &st))
                 .chain([("Back".to_string(), true)]).collect(),
             (View::Wear(p, _), _) => Self::wearable(w, *p).into_iter()
                 .map(|i| (match i {
-                    Some(i) => match (ITEMS[i].arms, held_line(&ITEMS[i], &st)) {
-                        // The name and what it does, and under it what it is.
-                        (Some(a), _) => format!("{}   {}\n      {}", ITEMS[i].name, ITEMS[i].text, arms_line(&a, &st)),
-                        (None, Some(line)) => format!("{}   {}\n      {}", ITEMS[i].name, ITEMS[i].text, line),
-                        (None, None) => format!("{}   {}", ITEMS[i].name, ITEMS[i].text),
-                    },
+                    Some(i) => {
+                        // The name; under it what it does and what it is, and in red what it wants
+                        // that the hero has not got.
+                        let what = match (ITEMS[i].arms, held_line(&ITEMS[i], &st)) {
+                            (Some(a), _) => format!("{}\n{}\n{}", ITEMS[i].name, ITEMS[i].text, arms_line(&a, &st)),
+                            (None, Some(line)) => format!("{}\n{}\n{}", ITEMS[i].name, ITEMS[i].text, line),
+                            (None, None) => format!("{}\n{}", ITEMS[i].name, ITEMS[i].text),
+                        };
+                        match Self::too_weak(&ITEMS[i], &st) {
+                            Some(wants) => format!("{what}\n{WARN}Too weak to wield it well: it wants {wants}. Its blows land weak and cost more stamina."),
+                            None => what,
+                        }
+                    }
                     None => "Nothing".into(),
                 }, true))
                 .chain([("Back".to_string(), true)]).collect(),
@@ -369,8 +384,8 @@ impl Sanctum {
             }
             (View::Words { pages, page }, Key::Use | Key::Right) if page + 1 < pages.len() => self.view = View::Words { pages, page: page + 1 },
             (View::Words { .. }, Key::Use | Key::Right | Key::Back) => self.view = View::Choices(0),
-            (View::Choices(i) | View::Levels(i) | View::Forge(i) | View::Gear(i) | View::Wear(_, i) | View::Travel(i) | View::Craft(i), Key::Up) => self.set_choice(i.saturating_sub(1)),
-            (View::Choices(i) | View::Levels(i) | View::Forge(i) | View::Gear(i) | View::Wear(_, i) | View::Travel(i) | View::Craft(i), Key::Down) => self.set_choice((i + 1).min(n.saturating_sub(1))),
+            (View::Choices(i) | View::Levels(i) | View::Forge(i) | View::Gear(i) | View::Wear(_, i) | View::Travel(i) | View::Craft(i) | View::Capstone(_, i), Key::Up) => self.set_choice(i.saturating_sub(1)),
+            (View::Choices(i) | View::Levels(i) | View::Forge(i) | View::Gear(i) | View::Wear(_, i) | View::Travel(i) | View::Craft(i) | View::Capstone(_, i), Key::Down) => self.set_choice((i + 1).min(n.saturating_sub(1))),
             (View::Choices(_), Key::Back) => self.view = View::Walk,
             (View::Levels(_) | View::Forge(_), Key::Back) => self.view = View::Choices(0),
             (View::Gear(_), Key::Back) => self.view = View::Choices(1),
@@ -387,17 +402,36 @@ impl Sanctum {
             },
             (View::Wear(p, _), Key::Back) => self.view = View::Gear(p),
             (View::Gear(i), Key::Use) if i < SLOTS.len() => self.view = View::Wear(i, 0),
+            // The grip, under the places, while a weapon made for both hands is worn.
+            (View::Gear(i), Key::Use) if i == SLOTS.len() && Self::grip_row(w, &f.hero.stats).is_some() => {
+                let one = !w.gear.one_hand;
+                if !w.gear.set_grip(one, f.hero.stats.might) { return None; }
+                Self::refit(w, f);
+                return w.gear.worn[0].map(|i| Outcome::Note(Note::Grip(ITEMS[i].name, one)));
+            }
             (View::Gear(_), Key::Use) => self.view = View::Choices(1),
             (View::Wear(p, i), Key::Use) => {
                 self.view = View::Gear(p);
                 let item = *Self::wearable(w, p).get(i)?;
                 if !w.gear.wear(p, item) { return None; }
                 Self::refit(w, f);
-                return Some(Outcome::Note(Note::Wore(item.map_or("nothing", |i| ITEMS[i].name))));
+                let name = item.map_or("nothing", |i| ITEMS[i].name);
+                return Some(Outcome::Note(match item.and_then(|i| Self::too_weak(&ITEMS[i], &f.hero.stats)) {
+                    Some(wants) => Note::WoreWeak(name, wants),
+                    None => Note::Wore(name),
+                }));
             }
             (View::Choices(i), Key::Use) => return self.choose(i, w),
             (View::Levels(i), Key::Use) if i < 5 => return w.rise(f, i).map(Outcome::Note),
-            (View::Forge(i), Key::Use) if i < 2 => return w.forge(f, i).map(Outcome::Note),
+            (View::Forge(i), Key::Use) if i < w.forgeable().len() && w.cappable(w.forgeable()[i]) => self.view = View::Capstone(w.forgeable()[i], 0),
+            (View::Forge(i), Key::Use) if i < w.forgeable().len() => return w.reinforce(f, w.forgeable()[i]).map(Outcome::Note),
+            (View::Capstone(p, i), Key::Use) => {
+                self.view = View::Forge(w.forgeable().iter().position(|&q| q == p).unwrap_or(0));
+                let cap = w.gear.worn[p].and_then(|item| crate::capstone::Capstone::choices(&ITEMS[item]).get(i).copied())?;
+                return w.cap(f, p, cap).map(Outcome::Note);
+            }
+            (View::Capstone(p, _), Key::Back) => self.view = View::Forge(w.forgeable().iter().position(|&q| q == p).unwrap_or(0)),
+            (View::Forge(i), Key::Use) if i < w.forgeable().len() + World::FLETCH.len() => return w.fletch(f, i - w.forgeable().len()).map(Outcome::Note),
             (View::Levels(_), Key::Use) => self.view = View::Choices(0),
             (View::Forge(_), Key::Use) => self.view = View::Choices(0),
             _ => {}
@@ -405,10 +439,48 @@ impl Sanctum {
         None
     }
 
+    /// The forge's row for the piece worn at `place`: its name and level, the price of the next,
+    /// and under it what that level changes, as the hero is now equipped.
+    fn reinforce_row(w: &World, st: &Stats, place: usize) -> (String, bool) {
+        let Some(i) = w.gear.worn[place] else { return (String::new(), false) };
+        let (item, n) = (&ITEMS[i], w.gear.level(i));
+        let Some((grade, shards, souls)) = w.reinforce_cost(place) else {
+            return match w.gear.capstones.get(&i) {
+                Some(cap) => (format!("{} +{n}\t{}\n{}", item.name, cap.name(), cap.text()), false),
+                None => (format!("{} +{n}\tchoose its capstone\nat its top: one power of three, and a look of its own, for good", item.name), true),
+            };
+        };
+        let mut gear = w.gear.clone();
+        gear.reinforce(i);
+        let next = Stats { kit: gear.kit(), ..*st };
+        let cost = format!("{souls} {}, {}", crate::world::CURRENCY, World::shards_named(grade, shards));
+        let can = w.souls >= souls && w.shards[grade] >= shards;
+        (format!("{} +{n} to +{}\t{cost}\n{}", item.name, n + 1, Self::reinforce_does(item.slot, st, &next)), can)
+    }
+
+    /// What a level more on a piece in `slot` changes, from `st` to `next`.
+    fn reinforce_does(slot: crate::gear::Slot, st: &Stats, next: &Stats) -> String {
+        use crate::gear::{Ranged, Slot};
+        let (k, m) = (&st.kit, &next.kit);
+        match slot {
+            Slot::Weapon => format!("strikes x{:.2} -> x{:.2} (+7% a level)", st.damage(), next.damage()),
+            Slot::Offhand if k.off.is_some() => {
+                let ward = if k.ward.is_some() { format!("; ward x{:.2} -> x{:.2}", k.ward_boost(), m.ward_boost()) } else { String::new() };
+                format!("blocks cost x{:.2} -> x{:.2} stamina, let x{:.2} -> x{:.2} through{ward}", k.guard, m.guard, k.chip, m.chip)
+            }
+            Slot::Offhand => match k.ranged {
+                Some(Ranged::Frost) => format!("spells hit {:.0} -> {:.0} (+8% a level)", st.ranged_damage(Ranged::Frost), next.ranged_damage(Ranged::Frost)),
+                Some(r) => format!("shots hit {:.0} -> {:.0} (+8% a level)", st.ranged_damage(r), next.ranged_damage(r)),
+                None => "a level stronger".into(),
+            },
+            _ => format!("damage taken {:.1}% -> {:.1}% (1.5% less a level)", 100.0 * st.taken(), 100.0 * next.taken()),
+        }
+    }
+
     fn set_choice(&mut self, i: usize) {
         self.view = match self.view {
             View::Choices(_) => View::Choices(i), View::Levels(_) => View::Levels(i), View::Forge(_) => View::Forge(i),
-            View::Gear(_) => View::Gear(i), View::Wear(p, _) => View::Wear(p, i), View::Travel(_) => View::Travel(i), View::Craft(_) => View::Craft(i), ref v => v.clone(),
+            View::Gear(_) => View::Gear(i), View::Wear(p, _) => View::Wear(p, i), View::Travel(_) => View::Travel(i), View::Craft(_) => View::Craft(i), View::Capstone(p, _) => View::Capstone(p, i), ref v => v.clone(),
         };
     }
 
@@ -417,6 +489,26 @@ impl Sanctum {
         let mut v: Vec<Option<usize>> = w.gear.fits(p).into_iter().map(Some).collect();
         if p != 0 { v.push(None); }
         v
+    }
+
+    /// The grip line under the places, for a weapon made for both hands: held in one with
+    /// enough might (the offhand free, its swings slower), else what one hand would want.
+    fn grip_row(w: &World, st: &Stats) -> Option<(String, bool)> {
+        let need = w.gear.grip_might()?;
+        let slower = ((crate::fight::ONE_HAND_SLOW - 1.0) * 100.0).round();
+        Some(match (w.gear.one_hand, st.might >= need) {
+            (true, _) => ("Grip\tone hand   (E: both hands again)".into(), true),
+            (false, true) => (format!("Grip\tboth hands   (E: one hand, an offhand beside it, swings {slower}% slower)"), true),
+            (false, false) => (format!("Grip\tboth hands   (one hand wants Might {need})"), false),
+        })
+    }
+
+    /// What a weapon, bow or catalyst wants that the hero is short of ("Might 10, Dexterity 3"), if
+    /// anything: held so, it is wielded weakly (`Stats::weak`, `fight::WEAK`).
+    fn too_weak(item: &crate::gear::Item, st: &Stats) -> Option<String> {
+        let needs = item.arms.map(|a| a.needs).or(item.shooting.map(|s| s.needs)).or(item.catalyst.map(|c| c.scaling.needs))?;
+        let short = st.short_of(needs);
+        (!short.is_empty()).then(|| short.iter().map(|&a| format!("{} {}", ATTRIBUTES[a], needs[a])).collect::<Vec<_>>().join(", "))
     }
 
     /// The hero as now dressed: the kit's changes, health and stamina kept within their new tops.
@@ -483,15 +575,22 @@ impl Sanctum {
             }
             View::Forge(i) => {
                 p.title = "The forge".into();
-                p.text = format!("{} {}.   Shards {}.", crate::world::CURRENCY_TITLE, w.souls, w.shards);
+                p.text = format!("{} {}.   {}.", crate::world::CURRENCY_TITLE, w.souls, w.shards_text());
                 p.choice = *i;
                 p.hint = "W/S choose   E forge   Esc back".into();
             }
             View::Craft(i) => {
                 p.title = "Forge from a remnant".into();
-                p.text = format!("{} {}.   Shards {}.   \"Bring me what's left of a thing that should not have lived, and I'll make you a weapon worth the name.\"", crate::world::CURRENCY_TITLE, w.souls, w.shards);
+                p.text = format!("{} {}.   {}.   \"Bring me what's left of a thing that should not have lived, and I'll make you a weapon worth the name.\"", crate::world::CURRENCY_TITLE, w.souls, w.shards_text());
                 p.choice = *i;
                 p.hint = "W/S choose   E forge   Esc back".into();
+            }
+            View::Capstone(place, i) => {
+                let name = w.gear.worn[*place].map_or("", |item| ITEMS[item].name);
+                p.title = "A capstone".into();
+                p.text = format!("\"{name} will take no more. But I can give it one thing more, for good.\"");
+                p.choice = *i;
+                p.hint = "W/S choose   E give it   Esc back".into();
             }
             View::Travel(i) => {
                 p.title = "Travel".into();
@@ -527,7 +626,10 @@ pub fn arms_line(a: &Arms, st: &Stats) -> String {
     let needs: Vec<String> = (0..3).filter(|&i| a.needs[i] > 0).map(|i| format!("{} {}{}", SHORT[i], a.needs[i], if at[i] < a.needs[i] { "!" } else { "" })).collect();
     let grades: Vec<String> = (0..3).filter(|&i| a.scales[i] != Grade::No).map(|i| format!("{} {}", SHORT[i], a.scales[i].letter())).collect();
     let held = Stats { kit: crate::gear::Kit { arms: *a, ..st.kit }, ..*st };
-    let kind = if a.class.two_handed() { format!("{}, both hands", a.class.name()) } else { a.class.name().to_string() };
+    let kind = match a.class.one_hand_might(a.needs) {
+        Some(one) => format!("{}, both hands (one at Mt {one})", a.class.name()),
+        None => a.class.name().to_string(),
+    };
     format!("{kind}  needs {}  scales {}  x{:.2}", if needs.is_empty() { "nothing".into() } else { needs.join(" ") }, grades.join(" "), held.damage())
 }
 
@@ -655,6 +757,47 @@ mod tests {
     }
 
     #[test]
+    fn a_weapon_too_heavy_to_wield_well_is_marked_red_and_wearing_it_warns() {
+        let (mut s, mut w, mut f) = setup();
+        let great = crate::gear::find("Executioner's Greatsword");
+        w.gear.gain(great);
+        // Equipment, the weapon place: the greatsword offered with what it wants, in red.
+        s.press(Key::Use, &mut w, &mut f);
+        s.press(Key::Down, &mut w, &mut f);
+        s.press(Key::Use, &mut w, &mut f);
+        s.press(Key::Use, &mut w, &mut f);
+        let opts = s.panel(&w, &f).options;
+        let k = opts.iter().position(|o| o.0.starts_with("Executioner's Greatsword")).expect("offered");
+        assert!(opts[k].0.contains(&format!("\n{WARN}Too weak to wield it well: it wants Might 8")), "{}", opts[k].0);
+        assert!(!opts.iter().any(|o| o.0.starts_with("Wayfarer's Sword") && o.0.contains(WARN)), "the sword needs nothing");
+        // Worn anyway (the souls games' rule): allowed, and said.
+        for _ in 0..k { s.press(Key::Down, &mut w, &mut f); }
+        let out = s.press(Key::Use, &mut w, &mut f);
+        assert!(matches!(&out, Some(Outcome::Note(Note::WoreWeak("Executioner's Greatsword", wants))) if wants.starts_with("Might 8")), "{out:?}");
+        assert!(f.hero.stats.weak());
+    }
+
+    #[test]
+    fn the_grip_line_holds_a_greatsword_in_one_hand_once_strong_enough() {
+        let (mut s, mut w, mut f) = setup();
+        let great = crate::gear::find("Executioner's Greatsword");
+        w.gear.gain(great);
+        w.gear.wear(0, Some(great));
+        Sanctum::refit(&w, &mut f);
+        s.press(Key::Use, &mut w, &mut f);
+        s.press(Key::Down, &mut w, &mut f);
+        s.press(Key::Use, &mut w, &mut f);
+        for _ in 0..SLOTS.len() { s.press(Key::Down, &mut w, &mut f); }
+        let row = &s.panel(&w, &f).options[SLOTS.len()];
+        assert!(row.0.starts_with("Grip") && row.0.contains("Might 16") && !row.1, "{row:?}");
+        assert_eq!(s.press(Key::Use, &mut w, &mut f), None, "too weak: nothing changes");
+        f.hero.stats.might = 16;
+        assert_eq!(s.press(Key::Use, &mut w, &mut f), Some(Outcome::Note(Note::Grip("Executioner's Greatsword", true))));
+        assert!(f.hero.stats.kit.one_hand && !w.gear.fits(1).is_empty(), "an offhand can go beside it");
+        assert_eq!(s.press(Key::Use, &mut w, &mut f), Some(Outcome::Note(Note::Grip("Executioner's Greatsword", false))));
+    }
+
+    #[test]
     fn the_shrine_dresses_the_hero_in_what_the_dead_left() {
         let (mut s, mut w, mut f) = setup();
         let _ = w.felled([crate::fight::Archetype::Shieldbearer]);
@@ -687,17 +830,35 @@ mod tests {
         w.met_smith = true;
         s.press(Key::Right, &mut w, &mut f);
         assert_eq!(s.station(), Station::Smith);
-        (w.souls, w.shards) = (500, 3);
+        (w.souls, w.shards) = (500, [3, 0, 0]);
         s.press(Key::Use, &mut w, &mut f);
         s.press(Key::Use, &mut w, &mut f);
+        // A row for each piece worn that the smith can take further, the weapon first.
+        let places = w.forgeable();
+        let (weapon, before) = (w.gear.worn[0].unwrap(), f.hero.stats.damage());
         let out = s.press(Key::Use, &mut w, &mut f);
-        assert_eq!(out, Some(Outcome::Note(Note::Forged("Weapon", 1))));
-        assert_eq!((f.hero.stats.weapon, w.souls, w.shards), (1, 420, 2));
-        assert!(f.hero.stats.damage() > 1.07);
-        // Armour next: +1 costs the same as the weapon's first.
+        assert_eq!(out, Some(Outcome::Note(Note::Forged(ITEMS[weapon].name, 1))));
+        assert_eq!((w.gear.level(weapon), f.hero.stats.kit.main, w.souls, w.shards), (1, 1, 420, [2, 0, 0]));
+        assert!((f.hero.stats.damage() / before - 1.07).abs() < 1e-4);
+        // A piece of armour next: its first level is cheaper, and turns a little of every blow.
+        let at = places.iter().position(|&p| p >= 2).expect("armour worn");
+        for _ in 0..at { s.press(Key::Down, &mut w, &mut f); }
+        let piece = w.gear.worn[places[at]].unwrap();
+        assert_eq!(s.press(Key::Use, &mut w, &mut f), Some(Outcome::Note(Note::Forged(ITEMS[piece].name, 1))));
+        assert!((f.hero.stats.taken() - 0.985 * f.hero.stats.kit.taken).abs() < 1e-4 && w.souls == 370);
+        // Out of ash shards, nothing more is forged.
+        w.shards = [0, 0, 0];
+        assert_eq!(s.press(Key::Use, &mut w, &mut f), None);
+        // Fletching under the forging: a bundle of arrows, then bolts, for souls, as many as are carried.
+        let (souls, arrows) = (w.souls, f.hero.quiver.arrows);
+        for _ in at..places.len() { s.press(Key::Down, &mut w, &mut f); }
+        assert_eq!(s.press(Key::Use, &mut w, &mut f), Some(Outcome::Note(Note::Fletched(10, "arrows"))));
+        assert_eq!((w.souls, f.hero.quiver.arrows, w.ammo.arrows), (souls - 40, arrows + 10, arrows + 10));
         s.press(Key::Down, &mut w, &mut f);
-        assert_eq!(s.press(Key::Use, &mut w, &mut f), Some(Outcome::Note(Note::Forged("Armour", 1))));
-        assert!(f.hero.stats.taken() < 1.0);
+        assert_eq!(s.press(Key::Use, &mut w, &mut f), Some(Outcome::Note(Note::Fletched(6, "bolts"))));
+        f.hero.quiver.bolts = crate::fight::Quiver::BOLTS;
+        assert_eq!(s.press(Key::Use, &mut w, &mut f), None, "no room for more");
+        assert_eq!(w.souls, souls - 100);
     }
 
     #[test]
@@ -736,7 +897,7 @@ mod tests {
         s.press(Key::Down, &mut w, &mut f);
         assert_eq!(s.press(Key::Use, &mut w, &mut f), None, "nothing to forge from yet");
         w.remnants.push("Bell Warden's Clapper");
-        (w.souls, w.shards) = (2000, 10);
+        (w.souls, w.shards) = (2000, [10, 0, 0]);
         s.press(Key::Use, &mut w, &mut f);
         let opts = s.panel(&w, &f).options;
         assert!(opts[0].0.starts_with("Bell-Hammer") && !opts[0].1, "too dear yet: {opts:?}");
@@ -744,7 +905,7 @@ mod tests {
         w.souls = 2600;
         assert_eq!(s.press(Key::Use, &mut w, &mut f), Some(Outcome::Note(Note::Crafted("Bell-Hammer"))));
         assert!(w.gear.owns(crate::gear::find("Bell-Hammer")) && w.remnants.is_empty());
-        assert_eq!((w.souls, w.shards), (100, 4));
+        assert_eq!((w.souls, w.shards), (100, [4, 0, 0]));
     }
 
     #[test]

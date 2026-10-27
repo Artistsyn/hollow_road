@@ -11,6 +11,39 @@ use crate::fight::Archetype;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Slot { Weapon, Offhand, Head, Body, Hands, Legs, Ring, Talisman, Spell }
 
+/// The smith's shards, by grade: the common one off the first regions' dead, and rarer ones that
+/// only deeper regions give (`world::World::felled`).
+pub const SHARDS: [&str; 3] = ["Ash Shard", "Ember Shard", "Star Shard"];
+/// What a level of the smith's reinforcement adds: the main hand's strikes, the offhand's shots
+/// and spells (or a shield's ward), and of a blow, what each level of armour turns.
+pub const MAIN_STEP: f32 = 0.07;
+pub const OFF_STEP: f32 = 0.08;
+pub const ARMOUR_STEP: f32 = 0.015;
+/// What a level takes off a reinforced shield's blocks: stamina, and what gets through.
+const SHIELD_STEP: (f32, f32) = (0.06, 0.08);
+
+impl Slot {
+    /// How far the smith reinforces a piece worn here: a weapon or an offhand to +8, armour to
+    /// +4, a ring, a talisman or a spell not at all.
+    pub fn most(self) -> u32 {
+        match self { Slot::Weapon | Slot::Offhand => 8, Slot::Head | Slot::Body | Slot::Hands | Slot::Legs => 4, _ => 0 }
+    }
+    /// The shards (grade, how many) and echoes the smith asks to take a piece here to +`n`: the
+    /// common shard for the first levels, the rarer ones for the last.
+    pub fn reinforcing(self, n: u32) -> (usize, u32, u32) {
+        match self {
+            Slot::Weapon | Slot::Offhand => {
+                let (grade, count) = match n { 0..=3 => (0, n), 4..=6 => (1, n - 3), _ => (2, n - 6) };
+                (grade, count, 80 * n)
+            }
+            _ => {
+                let (grade, count) = match n { 0..=2 => (0, n), 3 => (1, 1), _ => (2, 1) };
+                (grade, count, 50 * n)
+            }
+        }
+    }
+}
+
 /// The places to wear things, in the order the shrine lists them (two for rings).
 /// The spell's is last, so a pilgrimage kept before there were spells reads as it was.
 pub const SLOTS: [(Slot, &str); 10] = [
@@ -62,10 +95,49 @@ pub struct Kit {
     pub leech: f32,
     /// Strike damage against a foe that is open, stumbling or staggered.
     pub opener: f32,
-    /// A bulwark's ward (`fight::Bulwark`): how fast blocks fill it; 0, a shield with none.
-    pub ward: f32,
+    /// A Warden's ward (`fight::Bulwark`) as the shield in hand shapes it; None for any other
+    /// calling, or no shield.
+    pub ward: Option<Ward>,
     /// The weapon's art (Q: `fight::Move::Art`), a smith-forged weapon's own.
     pub art: Option<crate::arts::WeaponArt>,
+    /// A weapon made for both hands held in one (`Loadout::set_grip`): swung slower
+    /// (`fight::Move::spec_with`), drawn as a one-handed weapon is (`Kit::swung_as`).
+    pub one_hand: bool,
+    /// The smith's levels on what is worn (`Loadout::levels`): the main hand's, the offhand's,
+    /// and of a blow, the share the armour's together turn.
+    pub main: u32,
+    pub off_level: u32,
+    pub forged_armour: f32,
+    /// Spell charges more than the catalyst's own.
+    pub charges: f32,
+    /// What the capstones on what is worn give (`capstone::Capstone`).
+    pub capped: crate::capstone::Capped,
+}
+
+/// What a Warden's ward (`fight::Bulwark`) is through the shield in their hand: what fills it,
+/// and what letting it go does. A shield in any other calling's hand has none.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Ward {
+    /// Filled by parries and blocks; a perfect block lets it go, turning the blow back on the
+    /// foe that threw it, its stance broken.
+    Buckler,
+    /// Filled by parries most; let go by the next riposte (in the yard, the next blow on an open
+    /// foe), much harder and drinking back of it.
+    Parma,
+    /// Filled by blocks; a perfect block lets it go in a bash that floors the foe a long while,
+    /// stamina back.
+    Kite,
+    /// Filled by blocks; a perfect block lets it go in a burst into the foe and all near it.
+    Bulwark,
+}
+
+impl Ward {
+    /// Of what a blocked blow asked of the guard, and of a parried one, the share that fills it.
+    pub fn fills(self) -> (f32, f32) {
+        match self { Ward::Buckler => (0.7, 1.2), Ward::Parma => (0.4, 1.8), Ward::Kite | Ward::Bulwark => (1.0, 0.0) }
+    }
+    /// Whether a perfect block lets it go (a parma's goes into a riposte instead).
+    pub fn on_block(self) -> bool { self != Ward::Parma }
 }
 
 /// How much a level of an attribute raises a weapon's damage, by the weapon's letter for it.
@@ -121,6 +193,12 @@ impl Class {
     pub fn family(self) -> &'static str {
         match self { Class::Spear | Class::Greatsword | Class::Ultra => "two", _ => "one" }
     }
+    /// The might it takes to hold it in one hand (souls games' way: twice what it needs, and
+    /// never less than twice its kind's least), for one made for both; None for one that is not.
+    pub fn one_hand_might(self, needs: [u32; 3]) -> Option<u32> {
+        let least = match self { Class::Spear => 4, Class::Greatsword => 8, Class::Ultra => 14, _ => return None };
+        Some(2 * needs[0].max(least))
+    }
 }
 
 /// A weapon's side of a strike: its damage at no attribute, the levels of might, dexterity and
@@ -149,16 +227,17 @@ pub enum Guard {
 pub struct Off { pub guard: Guard, pub art: &'static str }
 
 /// What flies down the lane from the hero: from a bow or a crossbow held in the other hand (F,
-/// `fight::Move::Loose`), or a spell's (C, `fight::Move::Cast`). Each is paid for differently,
-/// and none of them does what melee does: see `fight::Move::loose_spec`.
+/// `fight::Move::Loose`), an arrow or a bolt carried (`fight::Quiver`), or a spell's (C,
+/// `fight::Move::Cast`), a charge. None of them does what melee does: see `fight::Move::loose_spec`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Ranged {
-    /// Arrows from a quiver: refilled at the shrine, and a few taken back from each foe felled.
+    /// A hunter's bow, its arrows carried.
     Bow,
-    /// The Bloodrunner's: every arrow is drawn from their own health.
+    /// The Bloodrunner's: arrows as a bow's, and Blood Imbue (C) for arrows that drink back of what
+    /// they deal.
     BloodBow,
-    /// A hand crossbow whose bolts are drawn from health too: quick to aim, slow to wind again,
-    /// each bolt heavier.
+    /// A hand crossbow, its bolts carried: quick to aim, slow to wind again, each bolt heavier;
+    /// Blood Imbue (C) for bolts that pierce every foe in the lane.
     BloodCrossbow,
     /// A frost bolt (`Spell::FrostBolt`), one charge each: charges come back at the shrine and from
     /// blows landed up close.
@@ -171,8 +250,10 @@ impl Ranged {
     /// Its picture in the other hand (`assets/pixellab/offhand/<art>.png`); a spell's, the
     /// catalyst's.
     pub fn art(self) -> &'static str { match self { Ranged::Bow => "hunters_bow", Ranged::BloodBow => "blood_bow", Ranged::BloodCrossbow => "blood_crossbow", Ranged::Frost => "frost_focus" } }
-    /// What each costs in health, for those drawn from blood.
-    pub fn blood(self) -> f32 { match self { Ranged::BloodBow => crate::fight::BLOOD_COST, Ranged::BloodCrossbow => crate::fight::BLOOD_BOLT_COST, _ => 0.0 } }
+    /// Whether it shoots bolts (a crossbow) rather than arrows; a spell shoots neither.
+    pub fn bolts(self) -> bool { self == Ranged::BloodCrossbow }
+    /// Whether its shots can be imbued with the hero's blood (`fight::Quiver::imbued`).
+    pub fn imbues(self) -> bool { matches!(self, Ranged::BloodBow | Ranged::BloodCrossbow) }
 }
 
 /// What a bow, a crossbow or a catalyst needs and how it scales, as a weapon's `Arms` do, in the
@@ -214,6 +295,19 @@ impl Kit {
     pub fn spell_cast(&self) -> Option<Spell> { self.catalyst.and_then(|c| self.spell.or(c.own)) }
     /// What a shot of the hand's (F) or a cast (C) sends, if anything.
     pub fn shot(&self, cast: bool) -> Option<Ranged> { if cast { self.spell_cast().map(Spell::shot) } else { self.ranged } }
+    /// How much harder a reinforced shield makes a Warden's ward: filling, and let go.
+    pub fn ward_boost(&self) -> f32 { 1.0 + OFF_STEP * self.off_level as f32 }
+    /// Whether C is Blood Imbue: a blood bow or crossbow held, and no spell to cast instead.
+    pub fn imbues(&self) -> bool { self.ranged.is_some_and(Ranged::imbues) && self.spell_cast().is_none() }
+    /// The kind of weapon its swings are drawn as: its own, or held in one hand a spear's thrusts
+    /// as a rapier's and a greatsword's cuts as a sword's (its damage and sweep still its own).
+    pub fn swung_as(&self) -> Class {
+        match (self.one_hand, self.arms.class) {
+            (true, Class::Spear) => Class::Thrust,
+            (true, Class::Greatsword | Class::Ultra) => Class::Sword,
+            (_, c) => c,
+        }
+    }
 }
 
 /// The Pilgrim's Buckler: what a kit holds beside the sword when nothing is named.
@@ -221,7 +315,7 @@ pub const BUCKLER: Off = Off { guard: Guard::Buckler, art: "pilgrim_buckler" };
 
 impl Default for Kit {
     fn default() -> Kit {
-        Kit { damage: 1.0, taken: 1.0, poise: 0.0, guard: 1.0, chip: 1.0, parry: 0, roll: 1.0, strike: 1.0, regen: 1.0, heal: 1.0, hp: 0.0, stamina: 0.0, souls: 1.0, load: 0.0, arms: SWORD, off: Some(BUCKLER), leech: 0.0, opener: 1.0, ranged: None, shooting: UNSCALED, catalyst: None, spell: None, ward: 0.0, art: None }
+        Kit { damage: 1.0, taken: 1.0, poise: 0.0, guard: 1.0, chip: 1.0, parry: 0, roll: 1.0, strike: 1.0, regen: 1.0, heal: 1.0, hp: 0.0, stamina: 0.0, souls: 1.0, load: 0.0, arms: SWORD, off: Some(BUCKLER), leech: 0.0, opener: 1.0, ranged: None, shooting: UNSCALED, catalyst: None, spell: None, ward: None, art: None, one_hand: false, main: 0, off_level: 0, forged_armour: 0.0, charges: 0.0, capped: crate::capstone::Capped::NONE }
     }
 }
 
@@ -275,7 +369,7 @@ use Grade::{A, B, C, D, E, No, S};
 pub const ITEMS: &[Item] = &[
     // What the hero sets out with.
     weapon("Wayfarer's Sword", 3.0, SWORD, "balanced", |_| {}),
-    shield("Pilgrim's Buckler", 1.5, BUCKLER, "quick parries", |_| {}),
+    shield("Pilgrim's Buckler", 1.5, BUCKLER, "quick parries. A Warden's ward: parries and blocks fill it; a perfect block turns the blow back on its thrower", |k| k.ward = Some(Ward::Buckler)),
     item("Wayfarer's Hood", Slot::Head, 0.5, "light", |_| {}),
     item("Wayfarer's Cloak", Slot::Body, 2.0, "light", |_| {}),
     item("Leather Wraps", Slot::Hands, 0.5, "light", |_| {}),
@@ -283,9 +377,9 @@ pub const ITEMS: &[Item] = &[
     // Off the dead.
     weapon("Husk Cleaver", 6.0, Arms { base: 1.0, needs: [4, 0, 0], scales: [A, No, No], class: Class::Axe, art: "husk_cleaver" }, "chops that break a guard", |_| {}),
     weapon("Lancer's Shortspear", 4.0, Arms { base: 1.0, needs: [1, 3, 0], scales: [D, B, No], class: Class::Spear, art: "lancer_spear" }, "reaches past their blades", |_| {}),
-    shield("Kite Shield", 6.0, Off { guard: Guard::Kite, art: "kite_shield" }, "blocks cost 35% less, half the chip; slower parries", |k| { k.guard *= 0.65; k.chip *= 0.5; }),
-    shield("Warden's Bulwark", 7.0, Off { guard: Guard::Kite, art: "warden_bulwark" }, "a ward: blocks fill it, a block raised at the last moment lets it go; blocks cost 30% less, +20 poise", |k| { k.ward = 1.0; k.guard *= 0.7; k.chip *= 0.5; k.poise += 20.0; }),
-    shield("Duelist's Parma", 1.0, Off { guard: Guard::Parma, art: "duelist_parma" }, "parry live 4 ticks longer", |k| k.parry += 4),
+    shield("Kite Shield", 6.0, Off { guard: Guard::Kite, art: "kite_shield" }, "blocks cost 35% less, half the chip; slower parries. A Warden's ward: blocks fill it; a perfect block bashes the foe flat, stamina back", |k| { k.guard *= 0.65; k.chip *= 0.5; k.ward = Some(Ward::Kite); }),
+    shield("Warden's Bulwark", 7.0, Off { guard: Guard::Kite, art: "warden_bulwark" }, "blocks cost 30% less, +20 poise. A Warden's ward: blocks fill it; a perfect block bursts it into the foe and all near it", |k| { k.ward = Some(Ward::Bulwark); k.guard *= 0.7; k.chip *= 0.5; k.poise += 20.0; }),
+    shield("Duelist's Parma", 1.0, Off { guard: Guard::Parma, art: "duelist_parma" }, "parry live 4 ticks longer. A Warden's ward: parries fill it most; the next riposte spends it, far harder and drinking", |k| { k.parry += 4; k.ward = Some(Ward::Parma); }),
     item("Iron Helm", Slot::Head, 3.0, "-5% damage taken, +5 poise", |k| { k.taken *= 0.95; k.poise += 5.0; }),
     item("Chain Hauberk", Slot::Body, 9.0, "-12% damage taken, +12 poise", |k| { k.taken *= 0.88; k.poise += 12.0; }),
     item("Shieldbearer's Gauntlets", Slot::Hands, 2.5, "blocks cost 12% less, -3% damage taken", |k| { k.guard *= 0.88; k.taken *= 0.97; }),
@@ -316,26 +410,26 @@ pub const ITEMS: &[Item] = &[
     weapon("Gravewarden's Slab", 18.0, Arms { base: 1.0, needs: [16, 0, 0], scales: [A, No, No], class: Class::Ultra, art: "gravewarden_slab" }, "both hands; every swing sweeps the lanes beside and rides out a flinch", |_| {}),
     // In the other hand instead of a shield (F: a ranged attack; a catalyst, C: a spell): no
     // parry flick, blocks on the blade.
-    ranged("Hunter's Shortbow", 1.5, Ranged::Bow, Scaling { base: 1.0, needs: [0, 2, 0], scales: [E, B, No] }, "F: an arrow down the lane, 12 to a quiver, two taken back from each foe felled; a long draw any blow cuts off; dexterity"),
-    ranged("Bloodrunner's Bow", 1.5, Ranged::BloodBow, Scaling { base: 1.0, needs: [0, 3, 0], scales: [No, B, D] }, "F: an arrow drawn from your own blood, 5 health each; a long draw any blow cuts off; dexterity, a little focus"),
+    ranged("Hunter's Shortbow", 1.5, Ranged::Bow, Scaling { base: 1.0, needs: [0, 2, 0], scales: [E, B, No] }, "F: an arrow down the lane, from the arrows you carry (two pulled back out of each foe felled); a long draw any blow cuts off; dexterity"),
+    ranged("Bloodrunner's Bow", 1.5, Ranged::BloodBow, Scaling { base: 1.0, needs: [0, 3, 0], scales: [No, B, D] }, "F: an arrow down the lane, from the arrows you carry. C, Blood Imbue: an eighth of your health for five arrows that strike half again as hard and drink a third of it back; a long draw any blow cuts off; dexterity, a little focus"),
     catalyst("Frostweaver's Focus", 1.0, Catalyst { scaling: Scaling { base: 1.0, needs: [0, 0, 2], scales: [No, No, B] }, charges: 0.0, own: Some(Spell::FrostBolt), art: "frost_focus" }, "a catalyst, C: the spell attuned, else its own frost bolt; a charge each, filled by blows landed up close and at the shrine; focus"),
     // Found later.
-    ranged("Blood Crossbow", 2.5, Ranged::BloodCrossbow, Scaling { needs: [4, 2, 0], ..UNSCALED }, "F: a heavy bolt drawn from your own blood, 7 health each; quick to aim, slow to wind again; raised by no attribute, as a crossbow is"),
+    ranged("Blood Crossbow", 2.5, Ranged::BloodCrossbow, Scaling { needs: [4, 2, 0], ..UNSCALED }, "F: a heavy bolt, from the bolts you carry. C, Blood Imbue: an eighth of your health for five bolts that strike half again as hard and pierce every foe in the lane; quick to aim, slow to wind again; raised by no attribute, as a crossbow is"),
     spell("Frost Bolt", Spell::FrostBolt, "a spell (focus 3 to cast), C through a catalyst: a frost bolt that cracks a stance and chills a foe (a third slower, its stance held) for four seconds; a charge"),
 ];
 
 /// What the smith forges from a boss's remnant: the remnant, the piece, and its price in echoes
 /// and shards. A large sum: a remnant is the start of a weapon, not the whole of it.
-pub struct Recipe { pub remnant: &'static str, pub item: &'static str, pub echoes: u32, pub shards: u32 }
+pub struct Recipe { pub remnant: &'static str, pub item: &'static str, pub echoes: u32, pub shards: u32, pub grade: usize }
 pub const RECIPES: &[Recipe] = &[
-    Recipe { remnant: "Bell Warden's Clapper", item: "Bell-Hammer", echoes: 2500, shards: 6 },
-    Recipe { remnant: "Screamer's Drowned Voice", item: "Drowned Wail", echoes: 3500, shards: 8 },
-    Recipe { remnant: "Chief's Notched Axe-Head", item: "Chieftain's Cleaver", echoes: 4500, shards: 10 },
-    Recipe { remnant: "Magistrate's Seal", item: "Gavel of Sentence", echoes: 6000, shards: 12 },
-    Recipe { remnant: "Wraith Lord's Hollow Crown", item: "Reaper's Glaive", echoes: 7500, shards: 14 },
-    Recipe { remnant: "Shard of the Priest's Halo", item: "Lance of Light", echoes: 9000, shards: 16 },
-    Recipe { remnant: "The Statue's Stone Heart", item: "Stoneheart Greatsword", echoes: 11000, shards: 18 },
-    Recipe { remnant: "A Feather of the Archangel", item: "Feather of the Fallen Light", echoes: 15000, shards: 20 },
+    Recipe { remnant: "Bell Warden's Clapper", item: "Bell-Hammer", echoes: 2500, shards: 6, grade: 0 },
+    Recipe { remnant: "Screamer's Drowned Voice", item: "Drowned Wail", echoes: 3500, shards: 8, grade: 0 },
+    Recipe { remnant: "Chief's Notched Axe-Head", item: "Chieftain's Cleaver", echoes: 4500, shards: 10, grade: 0 },
+    Recipe { remnant: "Magistrate's Seal", item: "Gavel of Sentence", echoes: 6000, shards: 4, grade: 1 },
+    Recipe { remnant: "Wraith Lord's Hollow Crown", item: "Reaper's Glaive", echoes: 7500, shards: 5, grade: 1 },
+    Recipe { remnant: "Shard of the Priest's Halo", item: "Lance of Light", echoes: 9000, shards: 6, grade: 1 },
+    Recipe { remnant: "The Statue's Stone Heart", item: "Stoneheart Greatsword", echoes: 11000, shards: 3, grade: 2 },
+    Recipe { remnant: "A Feather of the Archangel", item: "Feather of the Fallen Light", echoes: 15000, shards: 4, grade: 2 },
 ];
 
 /// The index of the piece called `name`.
@@ -351,6 +445,10 @@ pub fn drops(k: Archetype) -> &'static [&'static str] {
         Archetype::Wretch => &["Ember Ring", "Duelist's Parma", "Vigil Ring", "Keeper's Sigil", "Rimed Sabre"],
         Archetype::Archer => &["Hunter's Shortbow", "Ring of the Quiet Step", "Bloodrunner's Bow", "Lancer's Greaves", "Blood Crossbow", "Vigil Ring"],
         Archetype::Hexer => &["Frostweaver's Focus", "Frost Bolt", "Keeper's Sigil", "Ember Ring", "Pilgrim's Token"],
+        Archetype::Brute => &["Executioner's Greatsword", "Iron Helm", "Chain Hauberk", "Shieldbearer's Gauntlets", "Hoarder's Ring"],
+        Archetype::Hound => &["Ring of the Quiet Step", "Vigil Ring", "Bloodrunner's Bow", "Pilgrim's Token"],
+        Archetype::Bloater => &["Ember Ring", "Husk Cleaver", "Vigil Ring", "Pilgrim's Token"],
+        Archetype::Gravecaller => &["Keeper's Sigil", "Frostweaver's Focus", "Ring of the Quiet Step", "Frost Bolt"],
     }
 }
 
@@ -359,12 +457,21 @@ pub fn drops(k: Archetype) -> &'static [&'static str] {
 pub struct Loadout {
     pub owned: Vec<usize>,
     pub worn: [Option<usize>; 10],
+    /// The weapon worn, made for both hands, held in one (`set_grip`).
+    pub one_hand: bool,
+    /// Worn by a Warden: any shield in hand keeps a ward (`Kit::ward`).
+    pub warden: bool,
+    /// The smith's level on each piece reinforced, by piece: it stays with the piece when it is
+    /// put away.
+    pub levels: std::collections::BTreeMap<usize, u32>,
+    /// The capstone chosen for each piece taken to its top, by piece (`capstone::Capstone`).
+    pub capstones: std::collections::BTreeMap<usize, crate::capstone::Capstone>,
 }
 
 impl Loadout {
     /// What the hero sets out with, all worn.
     pub fn starting() -> Loadout {
-        let mut l = Loadout { owned: (0..6).collect(), worn: [None; 10] };
+        let mut l = Loadout { owned: (0..6).collect(), worn: [None; 10], one_hand: false, warden: false, levels: Default::default(), capstones: Default::default() };
         for i in 0..6 { l.worn[i] = Some(i); }
         l
     }
@@ -385,11 +492,76 @@ impl Loadout {
         }
         // Nothing in the other hand: a blow is blocked on the weapon, worse than on a shield.
         if k.off.is_none() { k.guard *= 1.25; k.chip *= 1.5; }
+        k.one_hand = self.one_hand && k.arms.class.two_handed();
+        if !self.warden || k.off.is_none() { k.ward = None; }
+        // The smith's levels on what is worn: a reinforced shield blocks cheaper and lets less
+        // through; the armour's levels together turn a share of every blow.
+        let lv = |p: usize| self.worn[p].map_or(0, |i| self.level(i));
+        (k.main, k.off_level) = (lv(0), lv(1));
+        k.forged_armour = (0..SLOTS.len()).filter(|&p| matches!(SLOTS[p].0, Slot::Head | Slot::Body | Slot::Hands | Slot::Legs)).map(lv).sum::<u32>() as f32 * ARMOUR_STEP;
+        if k.off.is_some() {
+            k.guard *= 1.0 - SHIELD_STEP.0 * k.off_level as f32;
+            k.chip *= 1.0 - SHIELD_STEP.1 * k.off_level as f32;
+        }
+        // A piece at its top gives its capstone.
+        for p in 0..6 {
+            if let Some(cap) = self.worn[p].and_then(|i| self.capstone(i)) { cap.apply(&mut k, p); }
+        }
         k
     }
 
-    /// Whether the weapon worn takes both hands.
-    pub fn two_handed(&self) -> bool { self.worn[0].and_then(|i| ITEMS[i].arms).is_some_and(|a| a.class.two_handed()) }
+    /// The capstone piece `i` gives: the one chosen for it, while it is at its top.
+    pub fn capstone(&self, i: usize) -> Option<crate::capstone::Capstone> {
+        self.capstones.get(&i).copied().filter(|_| self.level(i) >= ITEMS[i].slot.most())
+    }
+
+    /// Give piece `i`, at its top, capstone `cap`, once and of its own kind's. False if it cannot.
+    pub fn cap(&mut self, i: usize, cap: crate::capstone::Capstone) -> bool {
+        let fits = crate::capstone::Capstone::choices(&ITEMS[i]).contains(&cap);
+        if !fits || self.level(i) < ITEMS[i].slot.most() || self.capstones.contains_key(&i) { return false; }
+        self.capstones.insert(i, cap);
+        true
+    }
+
+    /// The smith's level on piece `i`.
+    pub fn level(&self, i: usize) -> u32 { self.levels.get(&i).copied().unwrap_or(0) }
+
+    /// Piece `i` one level stronger, if it can go further. False if it cannot.
+    pub fn reinforce(&mut self, i: usize) -> bool {
+        let n = self.level(i);
+        if n >= ITEMS[i].slot.most() { return false; }
+        self.levels.insert(i, n + 1);
+        true
+    }
+
+    /// A save from before levels were the pieces' own: the hero's weapon level onto the weapon
+    /// worn, and their armour level spread over the armour worn as near the same share turned.
+    pub fn take_old_levels(&mut self, weapon: u32, armour: u32) {
+        if !self.levels.is_empty() { return; }
+        if let Some(i) = self.worn[0] { self.levels.insert(i, weapon.min(ITEMS[i].slot.most())); }
+        let pieces: Vec<usize> = (2..6).filter_map(|p| self.worn[p]).collect();
+        let mut left = (armour as f32 * 0.05 / ARMOUR_STEP).round() as u32;
+        while left > 0 && pieces.iter().any(|&i| self.level(i) < ITEMS[i].slot.most()) {
+            for &i in &pieces { if left > 0 && self.reinforce(i) { left -= 1; } }
+        }
+        self.levels.retain(|_, n| *n > 0);
+    }
+
+    /// Whether the weapon worn takes both hands (not when one made for both is held in one).
+    pub fn two_handed(&self) -> bool { !self.one_hand && self.worn[0].and_then(|i| ITEMS[i].arms).is_some_and(|a| a.class.two_handed()) }
+
+    /// The might it takes to hold the weapon worn in one hand, if it is made for both.
+    pub fn grip_might(&self) -> Option<u32> { self.worn[0].and_then(|i| ITEMS[i].arms).and_then(|a| a.class.one_hand_might(a.needs)) }
+
+    /// Hold the weapon worn in one hand (`one`), with `might`, or in both again (the offhand put
+    /// away). False if it is not made for both, or one hand wants more might than that.
+    pub fn set_grip(&mut self, one: bool, might: u32) -> bool {
+        let Some(needs) = self.grip_might() else { return false };
+        if one && might < needs { return false; }
+        self.one_hand = one;
+        if !one { self.worn[1] = None; }
+        true
+    }
 
     pub fn owns(&self, i: usize) -> bool { self.owned.contains(&i) }
 
@@ -405,6 +577,8 @@ impl Loadout {
     pub fn wear(&mut self, p: usize, item: Option<usize>) -> bool {
         if let Some(i) = item { if !self.fits(p).contains(&i) { return false; } }
         self.worn[p] = item;
+        // A weapon taken up is held as it was made to be: in both hands, if made for them.
+        if p == 0 { self.one_hand = false; }
         // Taking up a weapon in both hands puts the offhand away.
         if p == 0 && self.two_handed() { self.worn[1] = None; }
         true
@@ -508,6 +682,30 @@ mod tests {
         assert!(l.fits(1).is_empty() && !l.wear(1, Some(find("Pilgrim's Buckler"))));
         assert!(l.kit().guard > 1.2, "blocking on the blade costs more");
         assert!(l.wear(0, Some(find("Wayfarer's Sword"))) && l.wear(1, Some(find("Pilgrim's Buckler"))));
+    }
+
+    #[test]
+    fn twice_its_might_holds_a_greatsword_in_one_hand_with_a_shield_beside_it() {
+        let mut l = Loadout::starting();
+        let great = find("Executioner's Greatsword");
+        l.gain(great);
+        assert!(l.wear(0, Some(great)) && l.worn[1].is_none());
+        assert_eq!(l.grip_might(), Some(16), "twice its 8");
+        assert!(!l.set_grip(true, 15), "short of it");
+        assert!(l.set_grip(true, 16));
+        let buckler = find("Pilgrim's Buckler");
+        assert!(l.wear(1, Some(buckler)), "the other hand is free");
+        let k = l.kit();
+        assert!(k.one_hand && k.off.is_some() && k.arms.class == Class::Greatsword);
+        assert_eq!(k.swung_as(), Class::Sword, "drawn as a one-handed cut");
+        // Both hands again puts the shield away; a weapon taken up starts in both.
+        assert!(l.set_grip(false, 16) && l.worn[1].is_none() && !l.kit().one_hand);
+        assert!(l.set_grip(true, 16) && l.wear(0, Some(great)) && !l.one_hand);
+        // A spear's least is its kind's; a sword is not made for both hands.
+        let spear = find("Lancer's Shortspear");
+        l.gain(spear);
+        assert!(l.wear(0, Some(spear)) && l.grip_might() == Some(8));
+        assert!(l.wear(0, Some(find("Wayfarer's Sword"))) && l.grip_might().is_none() && !l.set_grip(true, 99));
     }
 
     #[test]

@@ -311,7 +311,8 @@ fn gear_panels() {
     // The first shrine, on the Warrens' narrow street: standing on its floor, inside the wall.
     p.ticks(20);
     p.shot("g00_shrine_on_the_street");
-    for name in ["Husk Cleaver", "Lancer's Shortspear"] { let i = crate::gear::find(name); p.game().world.gear.gain(i); }
+    // Every weapon there is, so the list is longer than the screen and scrolls.
+    for (i, _) in crate::gear::ITEMS.iter().enumerate().filter(|(_, it)| it.arms.is_some()) { p.game().world.gear.gain(i); }
     p.tap("e");
     assert!(p.until_mode(400, |m| matches!(m, Mode::Sanctum(_))), "never sat down");
     p.ticks(40);
@@ -324,19 +325,34 @@ fn gear_panels() {
     p.tap("e");
     p.ticks(2);
     p.shot("g02_weapons");
-    for _ in 0..2 { p.tap("s"); }
+    for _ in 0..9 { p.tap("s"); }
+    p.ticks(2);
+    p.shot("g03_weapons_scrolled");
+    for _ in 0..40 { p.tap("s"); }
     p.ticks(2);
     p.shot("g03_weapons_last_picked");
-    // The Warrens' shrine, by its narrow street's wall.
-    p.tap("q");
-    p.tap("q");
-    for _ in 0..4 { p.tap("w"); }
+    for _ in 0..40 { p.tap("w"); }
+    // The smith's forge: a row for each piece worn, its level, its price and what the next does.
+    { let w = &mut p.game().world; (w.met_smith, w.souls, w.shards) = (true, 5000, [9, 2, 0]); w.gear.levels.insert(w.gear.worn[0].unwrap(), 3); }
+    p.game().fight.hero.stats.kit = p.game().world.gear.kit();
+    for k in ["q", "q", "q", "d"] { p.tap(k); p.ticks(2); }
+    p.ticks(30);
+    p.tap("e");
+    p.ticks(2);
+    p.tap("e");
+    p.ticks(2);
+    p.shot("g04_forge");
+    // Back to the shrine, and up from it to the Warrens' shrine, by its narrow street's wall.
+    for k in ["q", "q", "a"] { p.tap(k); p.ticks(2); }
+    p.ticks(30);
+    p.tap("e");
+    p.ticks(2);
     p.tap("e");
     assert!(p.until_playing(400), "never rose");
     p.game().world.warping = Some("warrens@warrens_lane".into());
     p.canvas.run(Action::RunPlugin { name: "path_forge".into(), data: "warp:warrens@warrens_lane".into() });
     p.ticks(120);
-    p.shot("g04_warrens_shrine");
+    p.shot("g05_warrens_shrine");
     // Rested at it walking the Warrens back from the guild hall: the shrine is near the walk's far
     // end, and waking stands the hero by it there.
     let at = "warrens@guild_hall";
@@ -349,7 +365,7 @@ fn gear_panels() {
     let walked = p.canvas.get_plugin::<quartz_path_forge::PathForgePlugin>().unwrap().walked_ahead();
     let g = p.game();
     assert!(g.world.can_rest(&g.fight, walked), "woke {} m from the shrine", g.world.shrine().unwrap() - walked);
-    p.shot("g05_warrens_shrine_walked_back");
+    p.shot("g06_warrens_shrine_walked_back");
 }
 
 /// The journey: rest at the road's shrine, walk to the fork, step left into the marsh, on to the
@@ -1198,6 +1214,97 @@ fn movesets() {
     }
 }
 
+/// Each weapon's light and heavy caught at four frames of its strike effect, a picture each:
+/// `cargo test --release strike_effects -- --ignored` writes target/shots/fx_<weapon>_<move>_<k>.png.
+#[test]
+#[ignore]
+fn strike_effects() {
+    use crate::fight::{Act, Move};
+    let mut p = Play::started();
+    p.ticks(240);
+    for name in ["Wayfarer's Sword", "Duelist's Rapier", "Lancer's Shortspear", "Husk Cleaver", "Executioner's Greatsword", "Gravewarden's Slab"] {
+        let g = p.game();
+        let i = crate::gear::find(name);
+        g.world.gear.gain(i);
+        assert!(g.world.gear.wear(0, Some(i)), "{name} would not go on");
+        g.fight.hero.stats.kit = g.world.gear.kit();
+        for e in g.fight.enemies.iter_mut() { e.ai = crate::fight::Ai::Dead; }
+        let class = g.fight.hero.stats.kit.arms.class;
+        for (mv, label) in [(Move::Light, "light"), (Move::Heavy, "heavy")] {
+            let spec = mv.spec_for(class, None);
+            for k in 0..4 {
+                let h = &mut p.game().fight.hero;
+                h.act = Some(Act { mv, spec, t: spec.frames.0 + 3 * k + 1, landed: true, from_lane: h.lane, from_x: h.x });
+                p.ticks(1);
+                p.shot(&format!("fx_{}_{label}_{k}", class.slug()));
+            }
+        }
+        p.game().fight.hero.act = None;
+    }
+}
+
+/// The capstones' looks on the hero, on the road: each weapon's with a shield's, a bow's and a
+/// catalyst's, armour's across the body, standing and mid-swing.
+/// `cargo test --release capstone_looks -- --ignored --nocapture` writes target/shots/cap_*.png.
+#[test]
+#[ignore]
+fn capstone_looks() {
+    use crate::capstone::Capstone;
+    use crate::fight::{Act, Move};
+    let mut p = Play::started();
+    p.ticks(240);
+    let sets = [
+        ("Wayfarer's Sword", "Pilgrim's Buckler", Capstone::Ember, Capstone::Bastion),
+        ("Husk Cleaver", "Warden's Bulwark", Capstone::Rime, Capstone::Sanctuary),
+        ("Duelist's Rapier", "Pilgrim's Buckler", Capstone::Thirst, Capstone::Thorns),
+        ("Wayfarer's Sword", "Hunter's Shortbow", Capstone::Ember, Capstone::Searing),
+        ("Husk Cleaver", "Frostweaver's Focus", Capstone::Rime, Capstone::Winter),
+    ];
+    for (weapon, off, main_cap, off_cap) in sets {
+        let g = p.game();
+        let (wi, oi) = (crate::gear::find(weapon), crate::gear::find(off));
+        g.world.gear.gain(wi);
+        g.world.gear.gain(oi);
+        assert!(g.world.gear.wear(0, Some(wi)) && g.world.gear.wear(1, Some(oi)), "{weapon} and {off} would not go on");
+        let gear = &mut g.world.gear;
+        gear.capstones.clear();
+        for p in 0..6 { if let Some(i) = gear.worn[p] { gear.levels.insert(i, crate::gear::ITEMS[i].slot.most()); } }
+        let caps = [main_cap, off_cap, Capstone::Stalwart, Capstone::Vigil, Capstone::Fleet, Capstone::Fleet];
+        for p in 0..6 { if let Some(i) = gear.worn[p] { gear.capstones.insert(i, caps[p]); } }
+        g.fight.hero.stats.kit = g.world.gear.kit();
+        for e in g.fight.enemies.iter_mut() { e.ai = crate::fight::Ai::Dead; }
+        p.ticks(90);
+        let name = format!("cap_{}", main_cap.name().split(' ').next().unwrap_or("x").to_lowercase());
+        let tag = off_cap.name().split(' ').next().unwrap_or("x").to_lowercase();
+        p.shot(&format!("{name}_{tag}_stand"));
+        let class = p.game().fight.hero.stats.kit.arms.class;
+        let spec = Move::Light.spec_for(class, None);
+        let h = &mut p.game().fight.hero;
+        h.act = Some(Act { mv: Move::Light, spec, t: spec.frames.0 + 2, landed: true, from_lane: h.lane, from_x: h.x });
+        p.ticks(1);
+        p.shot(&format!("{name}_{tag}_swing"));
+        p.game().fight.hero.act = None;
+    }
+}
+
+/// Each road kind as its regions breed it, plain, blighted and dread, side by side in the three
+/// lanes: `cargo test --release variant_looks -- --ignored --nocapture` writes target/shots/var_*.png.
+#[test]
+#[ignore]
+fn variant_looks() {
+    use crate::fight::{Ai, Archetype, Enemy, Variant};
+    let mut p = Play::started();
+    p.ticks(240);
+    for kind in Archetype::ALL {
+        let walked = p.canvas.get_plugin::<quartz_path_forge::PathForgePlugin>().unwrap().walked_ahead();
+        let at = walked + (crate::fight::HERO_D + 3.2) as f64;
+        p.game().fight.enemies = [(-1, Variant::Plain), (0, Variant::Blighted), (1, Variant::Dread)].into_iter()
+            .map(|(lane, v)| Enemy { ai: Ai::Wait(u32::MAX), ..Enemy::new(kind, at, lane).of(v) }).collect();
+        p.ticks(4);
+        p.shot(&format!("var_{kind:?}").to_lowercase());
+    }
+}
+
 /// `cargo test --release ambush -- --ignored --nocapture` writes target/shots/a*.png.
 #[test]
 #[ignore]
@@ -1252,6 +1359,72 @@ fn ambush() {
     assert!(matches!(p.mode(), Mode::Play));
 }
 
+/// On the road: a felled bloater swelling (its warning on the ground) and bursting, then a
+/// gravecaller's raise and its risen. `cargo test --release plague_road -- --ignored` writes
+/// target/shots/pl_*.png.
+#[test]
+#[ignore]
+fn plague_road() {
+    use crate::fight::{Ai, Archetype, Enemy};
+    let mut p = Play::started();
+    p.ticks(240);
+    let walked = p.canvas.get_plugin::<quartz_path_forge::PathForgePlugin>().unwrap().walked_ahead();
+    let near = walked + (crate::fight::HERO_D + 1.8) as f64;
+    let far = walked + (crate::fight::HERO_D + 7.0) as f64;
+    let mut bloater = Enemy::new(Archetype::Bloater, near, 0);
+    (bloater.hp, bloater.ai, bloater.grave.swell) = (0.0, Ai::Dead, 1);
+    let caller = Enemy { ai: Ai::Wait(u32::MAX), ..Enemy::new(Archetype::Gravecaller, far, 1) };
+    p.game().fight.enemies = vec![bloater, caller];
+    p.game().fight.hero.hp = 1_000.0;
+    p.ticks(30);
+    p.shot("pl_swell");
+    p.ticks(21);
+    p.shot("pl_burst");
+    // Its raise (the gravecaller's first attack).
+    p.game().fight.enemies[1].ai = Ai::Attack { i: 0, t: 0, wide: 0, landed: false, aim: far };
+    for _ in 0..200 { if p.game().fight.enemies.len() == 4 { break; } p.ticks(1); }
+    assert_eq!(p.game().fight.enemies.len(), 4, "the raise called up two");
+    p.ticks(12);
+    p.shot("pl_risen");
+}
+
+/// The newer kinds side-on: the bandits' hounds sprung in the Bandit Hollows, the brute in the
+/// Violet Road's yard, and a bloater and a gravecaller on the Sunken Steps. `cargo test --release new_kinds_yard -- --ignored` writes target/shots/nk_*.png.
+#[test]
+#[ignore]
+fn new_kinds_yard() {
+    use crate::game::Mode;
+    for (stop, tag) in [("bandit_hollows@ridge_camp", "hounds"), ("violet_road@magistrate", "brute"), ("sunken_steps@bridge_ward", "plague")] {
+        let mut p = Play::started();
+        p.game().world.warping = Some(stop.into());
+        p.canvas.run(Action::RunPlugin { name: "path_forge".into(), data: format!("warp:{stop}") });
+        assert!(p.walk_until(3000, false, |s| s.stop.as_deref() == Some(stop)), "never reached {stop}");
+        p.ticks(10);
+        p.key("w", KeyboardState::Pressed);
+        let mut sprung = false;
+        for _ in 0..8000 {
+            for e in p.game().fight.enemies.iter_mut() { e.ai = crate::fight::Ai::Dead; }
+            p.ticks(1);
+            if matches!(p.mode(), Mode::Side(_)) { sprung = true; break; }
+        }
+        p.key("w", KeyboardState::Released);
+        assert!(sprung, "the ambush at {stop} never sprang");
+        assert!(p.until_mode(400, |m| matches!(m, Mode::Side(a) if a.t >= 140)));
+        { let a = arena(&mut p); a.side.hero.hp = 1_000.0; }
+        p.ticks(30);
+        p.shot(&format!("nk_{tag}_yard"));
+        eprintln!("[new_kinds] {stop} foes {:?}", arena(&mut p).side.foes.iter().map(|f| (f.breed.name, f.s)).collect::<Vec<_>>());
+        for _ in 0..600 {
+            if arena(&mut p).side.foes.iter().any(|f| f.blow().is_some_and(|b| b.1 == crate::fight::Phase::Active)) { break; }
+            p.ticks(1);
+        }
+        p.shot(&format!("nk_{tag}_blow"));
+        for f in &mut arena(&mut p).side.foes { (f.hp, f.ai) = (0.0, crate::side::Ai::Dead); }
+        p.ticks(30);
+        p.shot(&format!("nk_{tag}_fallen"));
+    }
+}
+
 /// The ranged kinds on the road and in the yard: an archer's drawn bow and its lane, the arrow in
 /// flight; a hexer's hex coming down the lane and its rune drawing itself in under the hero and
 /// going off; then the Violet Road's ambush, a hexer behind husks.
@@ -1277,7 +1450,7 @@ fn ranged() {
     for (piece, key, name) in [("Hunter's Shortbow", "f", "h01_arrow_away"), ("Frostweaver's Focus", "c", "h02_frost_away"), ("Blood Crossbow", "f", "h04_crossbow_away")] {
         road(&mut p, Archetype::Husk, 10.0, 0);
         p.game().fight.enemies[0].ai = crate::fight::Ai::Wait(10_000);
-        { let h = &mut p.game().fight.hero; h.stats.kit = holding(piece); levelled(&mut h.stats); *h = crate::fight::Hero::with(h.stats); }
+        { let h = &mut p.game().fight.hero; h.stats.kit = holding(piece); levelled(&mut h.stats); *h = crate::fight::Hero { quiver: crate::fight::Quiver::SETTING_OUT, ..crate::fight::Hero::with(h.stats) }; }
         let r = p.fight().hero.stats.kit.shot(key == "c").expect("nothing to shoot");
         p.tap(key);
         p.until(30, |f| f.hero.act.is_some_and(|a| a.t >= 20));
@@ -1292,6 +1465,18 @@ fn ranged() {
             p.shot("h03_frost_chilled");
         }
     }
+    // Blood Imbue through the Bloodrunner's bow (C), then an imbued arrow away, red down its length.
+    road(&mut p, Archetype::Husk, 10.0, 0);
+    p.game().fight.enemies[0].ai = crate::fight::Ai::Wait(10_000);
+    { let h = &mut p.game().fight.hero; h.stats.kit = holding("Bloodrunner's Bow"); levelled(&mut h.stats); *h = crate::fight::Hero { quiver: crate::fight::Quiver::SETTING_OUT, ..crate::fight::Hero::with(h.stats) }; }
+    p.tap("c");
+    p.until(30, |f| f.hero.act.is_some_and(|a| a.t >= 22));
+    p.shot("h05_imbue");
+    assert!(p.until(80, |f| f.hero.quiver.imbued > 0 && f.hero.act.is_none()), "nothing imbued");
+    p.tap("f");
+    assert!(p.until(120, |f| f.bolts.first().is_some_and(|b| b.imbued && b.age >= 10)), "no imbued arrow loosed");
+    p.shot("h06_imbued_away");
+    p.until(120, |f| f.bolts.is_empty());
     { let kit = p.game().world.gear.kit(); let h = &mut p.game().fight.hero; h.stats.kit = kit; *h = crate::fight::Hero::with(h.stats); }
     road(&mut p, Archetype::Archer, 9.0, 0);
     assert!(p.until(900, attacking("loose", 0.5)), "the archer never drew");
@@ -1355,7 +1540,7 @@ fn ranged() {
     // The hero's own, side-on: the bow at full draw, the focus thrust out, the crossbow aimed.
     for (piece, key, name) in [("Hunter's Shortbow", "f", "y05_bow_drawn"), ("Frostweaver's Focus", "c", "y06_focus_cast"), ("Blood Crossbow", "f", "y07_crossbow_aimed")] {
         for f in arena(&mut p).side.foes.iter_mut().filter(|f| f.ai != crate::side::Ai::Dead) { f.ai = crate::side::Ai::Wait(10_000); }
-        { let h = &mut arena(&mut p).side.hero; h.stats.kit = holding(piece); levelled(&mut h.stats); (h.arrows, h.charges) = (12, 3.0); h.hp = h.stats.max_hp(); }
+        { let h = &mut arena(&mut p).side.hero; h.stats.kit = holding(piece); levelled(&mut h.stats); (h.quiver, h.charges) = (crate::fight::Quiver { arrows: 12, bolts: 12, imbued: 0 }, 3.0); h.hp = h.stats.max_hp(); }
         // Up off the ground (the hexer's repel floors them) and free.
         p.until_mode(400, |m| matches!(m, Mode::Side(a) if a.side.hero.act.is_none() && a.side.hero.reel == crate::fight::Reel::None));
         p.tap(key);
@@ -1385,6 +1570,7 @@ fn warden() {
     {
         let g = p.game();
         let b = crate::gear::find("Warden's Bulwark");
+        g.world.gear.warden = true;
         g.world.gear.gain(b);
         g.world.gear.wear(1, Some(b));
         let h = &mut g.fight.hero;

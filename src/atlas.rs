@@ -13,7 +13,7 @@
 //! which roads are open live in `World`.
 
 use crate::fight::Archetype;
-use Archetype::{Archer, Hexer, Husk, Lancer, Shieldbearer, Wretch};
+use Archetype::{Archer, Bloater, Brute, Gravecaller, Hexer, Hound, Husk, Lancer, Shieldbearer, Wretch};
 
 /// A region: its name, and how far into the world it lies (its enemies grow with it, and a
 /// hero who arrives far under it is warned).
@@ -212,9 +212,9 @@ pub const PLACES: &[Place] = &[
     // ── Blackridge: pine roads and bandit hollows north of the marsh ────────────────────────
     // The bandits' bowmen: the first stands alone down the road, to learn its arrows on.
     place("pine_road", "The Pine Road", 2, (52.0, 16.0), "hollowmere", "pine_road.json", 56.0,
-        &[(Lancer, 12.0, 0), (Wretch, 24.0, -1), (Wretch, 26.0, 1), (Archer, 42.0, 0)]),
+        &[(Lancer, 12.0, 0), (Wretch, 24.0, -1), (Wretch, 26.0, 1), (Hound, 33.0, -1), (Hound, 34.5, 1), (Archer, 42.0, 0)]),
     Place { shrine: Some(3.0), ..place("ridge_camp", "Ridge Camp", 2, (58.0, 9.0), "pine_road", "ridge_camp.json", 34.0, &[]) },
-    Place { boss: Some((40.0, &PACK_ALPHA)), ambushes: &[Ambush { at: 24.0, foes: &[(Wretch, -3.0), (Wretch, 3.2), (Archer, 4.8)], chest: false }],
+    Place { boss: Some((40.0, &PACK_ALPHA)), ambushes: &[Ambush { at: 24.0, foes: &[(Hound, -3.0), (Hound, 3.2), (Archer, 4.8)], chest: false }],
         ..place("bandit_hollows", "The Bandit Hollows", 2, (64.0, 16.0), "ridge_camp", "bandit_hollows.json", 48.0,
         &[(Wretch, 10.0, 0), (Lancer, 18.0, 1), (Husk, 30.0, -1)]) },
     Place { boss: Some((40.0, &BANDIT_CHIEF)), ..place("chief_hold", "The Chief's Hold", 2, (60.0, 2.0), "ridge_camp", "chief_hold.json", 46.0,
@@ -223,13 +223,13 @@ pub const PLACES: &[Place] = &[
     place("cliff_path", "The Cliff Path", 2, (70.0, 12.0), "chief_hold", "cliff_path.json", 40.0, &[(Wretch, 16.0, 0), (Archer, 28.0, 1)]),
     // ── Stonehollow: the walled city ────────────────────────────────────────────────────────
     place("stone_gate", "Stonehollow Gate", 3, (66.0, 24.0), "bandit_hollows", "stone_gate.json", 44.0,
-        &[(Shieldbearer, 12.0, 0), (Lancer, 20.0, 1), (Shieldbearer, 32.0, -1)]),
+        &[(Shieldbearer, 12.0, 0), (Lancer, 20.0, 1), (Shieldbearer, 32.0, -1), (Brute, 40.0, 0)]),
     place("lower_stairs", "The Lower Stairs", 3, (61.0, 31.0), "stone_gate", "lower_stairs.json", 40.0, &[(Husk, 12.0, 0), (Lancer, 22.0, -1), (Wretch, 30.0, 1)]),
     // A lantern-seller's last lamp, left on the stall: the Hollowed Shrine needs its light.
     Place { shrine: Some(3.0), cache: Some(30.0), relic: Some(Key::Lantern), ..place("stone_market", "The Lantern Market", 3, (68.0, 35.0), "lower_stairs", "stone_market.json", 36.0, &[(Husk, 20.0, 1)]) },
     // Under the city to the Warrens: a grate that lifts only from below.
     // The last husk keeps the passage out.
-    Place { hold: Hold::Keepers(&[3]), ..place("sewers", "The Old Sewers", 3, (50.0, 40.0), "lower_stairs", "sewers.json", 60.0, &[(Wretch, 14.0, 0), (Husk, 26.0, -1), (Wretch, 40.0, 1), (Husk, 48.0, 0)]) },
+    Place { hold: Hold::Keepers(&[3]), ..place("sewers", "The Old Sewers", 3, (50.0, 40.0), "lower_stairs", "sewers.json", 60.0, &[(Wretch, 14.0, 0), (Husk, 26.0, -1), (Wretch, 40.0, 1), (Husk, 48.0, 0), (Brute, 55.0, 0)]) },
     Place { boss: Some((36.0, &ORDER_AGENT)), ..place("bridge_ward", "The Bridge Ward", 3, (66.0, 43.0), "stone_market", "bridge_ward.json", 44.0,
         &[(Lancer, 12.0, -1), (Shieldbearer, 20.0, 1)]) },
     // The shieldbearer at its gate keeps it.
@@ -237,26 +237,30 @@ pub const PLACES: &[Place] = &[
     Place { boss: Some((38.0, &HOLLOW_MAGISTRATE)), ..place("magistrate", "The Magistrate's Court", 3, (80.0, 32.0), "stone_upper", "magistrate.json", 44.0,
         &[(Shieldbearer, 12.0, -1), (Shieldbearer, 14.0, 1), (Lancer, 24.0, 0)]) },
     // ── The Hollowed Shrine: sunk under the city, dark without the lantern ──────────────────
-    place("sunken_steps", "The Sunken Steps", 4, (60.0, 49.0), "bridge_ward", "sunken_steps.json", 42.0, &[(Husk, 12.0, 0), (Wretch, 22.0, 1), (Hexer, 32.0, -1)]),
-    Place { shrine: Some(3.0), ..place("vine_halls", "The Vine Halls", 4, (52.0, 52.0), "sunken_steps", "vine_halls.json", 40.0, &[(Wretch, 16.0, -1), (Lancer, 26.0, 1)]) },
+    // The plague-dead below the city: a bloater in the dark of the stair, and in its yard another
+    // with a gravecaller behind it.
+    Place { ambushes: &[Ambush { at: 27.0, foes: &[(Bloater, -3.0), (Gravecaller, 4.4)], chest: false }],
+        ..place("sunken_steps", "The Sunken Steps", 4, (60.0, 49.0), "bridge_ward", "sunken_steps.json", 42.0, &[(Husk, 12.0, 0), (Bloater, 17.0, -1), (Wretch, 22.0, 1), (Hexer, 34.0, -1)]) },
+    Place { shrine: Some(3.0), ..place("vine_halls", "The Vine Halls", 4, (52.0, 52.0), "sunken_steps", "vine_halls.json", 40.0, &[(Wretch, 16.0, -1), (Lancer, 26.0, 1), (Gravecaller, 34.0, 0)]) },
     Place { boss: Some((30.0, &WRAITH_LORD)), ..place("wraith_sanctum", "The Wraith Sanctum", 4, (58.0, 58.0), "vine_halls", "wraith_sanctum.json", 36.0, &[(Husk, 12.0, 0)]) },
     // Out of the vault, a catacomb stair up to Chapel Road, its door barred from this side. The
     // Sentinel kept watch over a slab of a sword no one living could lift.
     Place { boss: Some((30.0, &RUNE_SENTINEL)), cache: Some(36.0), loot: Some("Gravewarden's Slab"), ..place("rune_vault", "The Rune Vault", 4, (44.0, 50.0), "vine_halls", "rune_vault.json", 40.0,
-        &[(Husk, 12.0, 0), (Wretch, 20.0, 1)]) },
+        &[(Husk, 12.0, 0), (Bloater, 16.0, 1), (Wretch, 20.0, -1)]) },
     // ── Varnholt: the violet town past the ward ─────────────────────────────────────────────
-    // Husks shamble in front while a hexer works from behind them; more wait in the yard.
-    Place { ambushes: &[Ambush { at: 30.0, foes: &[(Husk, -3.2), (Husk, 3.0), (Hexer, 4.6)], chest: false }], hold: Hold::Clear,
-        ..place("violet_road", "The Violet Road", 5, (86.0, 37.0), "magistrate", "violet_road.json", 50.0, &[(Husk, 12.0, 0), (Husk, 14.0, 1), (Hexer, 22.0, 0), (Wretch, 28.0, -1), (Husk, 38.0, 0)]) },
+    // Husks shamble in front while a hexer works from behind them; a brute and more wait in the yard.
+    Place { ambushes: &[Ambush { at: 30.0, foes: &[(Brute, -3.2), (Husk, 3.0), (Hexer, 4.6)], chest: false }], hold: Hold::Clear,
+        ..place("violet_road", "The Violet Road", 5, (86.0, 37.0), "magistrate", "violet_road.json", 50.0, &[(Husk, 12.0, 0), (Husk, 14.0, 1), (Hexer, 22.0, 0), (Wretch, 28.0, -1), (Husk, 38.0, 0), (Brute, 46.0, 0)]) },
     Place { shrine: Some(3.0), ..place("varnholt", "Varnholt", 5, (90.0, 45.0), "violet_road", "varnholt.json", 40.0, &[(Husk, 20.0, -1), (Husk, 24.0, 1)]) },
     // The pens back onto the Bridge Ward: a gate chained on the town side.
     Place { boss: Some((34.0, &THE_BUTCHER)), ..place("husk_pens", "The Husk Pens", 5, (78.0, 48.0), "varnholt", "husk_pens.json", 44.0,
-        &[(Husk, 10.0, 0), (Husk, 12.0, -1), (Husk, 14.0, 1), (Shieldbearer, 24.0, 0)]) },
+        &[(Husk, 10.0, 0), (Husk, 12.0, -1), (Husk, 14.0, 1), (Bloater, 19.0, 0), (Shieldbearer, 26.0, 0)]) },
     Place { boss: Some((40.0, &ANGEL_PRIEST)), ..place("cathedral", "The Tainted Cathedral", 5, (96.0, 39.0), "varnholt", "cathedral.json", 46.0,
-        &[(Shieldbearer, 12.0, 0), (Husk, 20.0, -1), (Husk, 22.0, 1), (Hexer, 34.0, 0)]) },
+        &[(Shieldbearer, 12.0, 0), (Husk, 20.0, -1), (Husk, 22.0, 1), (Gravecaller, 31.0, 0)]) },
     // ── Eryndor and the Blackwood: the ruined angel city in the void-touched forest ─────────
-    place("blackwood", "The Blackwood Edge", 6, (92.0, 28.0), "cathedral", "blackwood.json", 52.0, &[(Wretch, 12.0, 0), (Wretch, 14.0, -1), (Lancer, 26.0, 1), (Archer, 40.0, 0)]),
-    Place { shrine: Some(3.0), ..place("angel_ruins", "The Ruins of Eryndor", 6, (86.0, 19.0), "blackwood", "angel_ruins.json", 40.0, &[(Lancer, 20.0, 0)]) },
+    place("blackwood", "The Blackwood Edge", 6, (92.0, 28.0), "cathedral", "blackwood.json", 52.0,
+        &[(Wretch, 12.0, 0), (Wretch, 14.0, -1), (Lancer, 26.0, 1), (Hound, 33.0, -1), (Hound, 34.5, 0), (Hound, 36.0, 1), (Archer, 44.0, 0)]),
+    Place { shrine: Some(3.0), ..place("angel_ruins", "The Ruins of Eryndor", 6, (86.0, 19.0), "blackwood", "angel_ruins.json", 40.0, &[(Lancer, 20.0, 0), (Hound, 30.0, -1), (Hound, 31.5, 1)]) },
     // Behind the altars, a stair down into the Magistrate's Court, sealed from the ruins' side.
     Place { boss: Some((34.0, &VOID_STALKER)), ..place("whisper_altars", "The Whispering Altars", 6, (79.0, 22.0), "angel_ruins", "whisper_altars.json", 44.0,
         &[(Wretch, 10.0, 1), (Wretch, 12.0, -1), (Husk, 22.0, 0), (Hexer, 32.0, 0)]) },
@@ -264,7 +268,7 @@ pub const PLACES: &[Place] = &[
         &[(Shieldbearer, 12.0, 0), (Lancer, 20.0, -1), (Lancer, 22.0, 1)]) },
     // ── The Celestial Spire ─────────────────────────────────────────────────────────────────
     place("spire_stair", "The Spire Stair", 7, (97.0, 18.0), "statue_court", "spire_stair.json", 56.0,
-        &[(Shieldbearer, 12.0, 0), (Lancer, 22.0, -1), (Archer, 32.0, 1), (Shieldbearer, 42.0, 0), (Hexer, 50.0, 0)]),
+        &[(Shieldbearer, 12.0, 0), (Lancer, 22.0, -1), (Archer, 32.0, 1), (Brute, 40.0, 0), (Hexer, 50.0, 0)]),
     Place { shrine: Some(3.0), ..place("sealed_slab", "The Sealed Slab", 7, (98.0, 8.0), "spire_stair", "sealed_slab.json", 30.0, &[]) },
     Place { boss: Some((30.0, &THE_ARCHANGEL)), ..place("spire_summit", "The Summit", 7, (98.0, 1.0), "sealed_slab", "spire_summit.json", 36.0, &[]) },
 ];
