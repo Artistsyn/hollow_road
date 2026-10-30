@@ -177,6 +177,9 @@ pub struct World {
     turn_short: Option<f32>,
     /// A `WalkOn` sent: its stop's walk on is under way when it lands.
     turn_on: bool,
+    /// Metres past its boundary the last crossing arrived: turned round in a room entered
+    /// through a door, the door is that much and the metres walked in ahead.
+    entered_past: f32,
     /// The walk on from this stop as last seen, and the road metres at which it passed its
     /// boundary or junction (turned round beyond it, the way back runs up to it).
     underway: Underway,
@@ -278,7 +281,7 @@ pub struct Detour { pub from: String, pub at: f64, pub foes: Vec<Enemy>, pub sid
 impl World {
     pub fn new(walked: f64) -> World {
         World {
-            at: START.into(), base: walked, entered: 0.0, sent: false, warping: None, warp_into: 0.0, turn_short: None, turn_on: false, underway: Underway::default(), shown: walked, handed: None, checkpoint: START.into(), rested: Vec::new(), souls: 0, stain: None,
+            at: START.into(), base: walked, entered: 0.0, sent: false, warping: None, warp_into: 0.0, turn_short: None, turn_on: false, entered_past: 0.0, underway: Underway::default(), shown: walked, handed: None, checkpoint: START.into(), rested: Vec::new(), souls: 0, stain: None,
             pilgrimages: 0, signpost: None, lean: None, chose: false, chose_at: None, took: None, shards: [0; 3], met_keeper: false, met_smith: false, talks: [0, 0], heard: [0, 0], claimed: Vec::new(), meetings: Vec::new(), lingering: None, guild: crate::guild::Guild::default(), hunters: crate::hunters::Hunters::default(), answers: Vec::new(), called: None,
             gear: crate::gear::Loadout::starting(), ammo: crate::fight::Quiver::SETTING_OUT, fallen: [0; Archetype::ALL.len()], luck: 0, parried: false, beaten: Vec::new(), faced: Vec::new(), keys: Vec::new(), remnants: Vec::new(), opened: Vec::new(),
             seen: vec![atlas::node(START)], slain: Vec::new(), spawned: Vec::new(), detour: None, explored: Vec::new(), taken: Vec::new(),
@@ -481,6 +484,14 @@ impl World {
         // Turned about where they stand: what was behind is ahead, as it was.
         self.carry = in_place.then(|| fight.enemies.iter().zip(&self.spawned).filter(|(e, _)| e.alive()).map(|(e, &i)| (i, e.clone(), e.gap(walked))).collect());
         self.warping = Some(to.clone());
+        // In a dead-end room entered through a door, the door is where it was: the walk back out
+        // reaches it after the metres walked in, not after a crossing's whole approach.
+        let door = atlas::edge(place.id, &from).is_some_and(|e| matches!(e.via, atlas::Via::Door(..)));
+        if in_place && door && atlas::leads(place.id, &from).is_empty() {
+            let ahead = into + self.entered_past;
+            self.turn_short = Some(ahead);
+            return Some(Go::TurnInto(to, ahead));
+        }
         self.warp_into = back_into;
         // Short of where this place was walked into: the way back out of it is under way.
         if back_into > place.length {
@@ -527,6 +538,9 @@ impl World {
     /// The road's walk on from here as the frame shown has it (`shown`: its walked metres): kept
     /// for a turn, and where it passed its boundary or junction.
     pub fn follow(&mut self, shown: f64, underway: Underway) {
+        if let (None, Some(handover), Some(length)) = (underway.travel, self.underway.handover, self.underway.length) {
+            self.entered_past = length - handover;
+        }
         (self.underway, self.shown) = (underway, shown);
         if self.handed.is_some() || self.warping.is_some() { return; }
         if let (Some(travel), Some(handover)) = (underway.travel, underway.handover) {
@@ -1649,13 +1663,16 @@ mod tests {
         // Through the door at the hall's end into Gruk's room, a dead end: the walk is held at its
         // end with Gruk in reach, the hero is told once, and TURN is offered.
         w.warping = None;
+        // Come in 1 m past the door: turned at the room's end, the door is that and the room ahead.
+        w.follow(299.0, Underway { travel: Some(9.0), handover: Some(8.0), length: Some(9.0) });
+        w.follow(300.0, Underway::default());
         w.arrive("guild_office@guild_hall", 300.0, 0.0, 1);
         let end = 300.0 + f64::from(w.here().length);
         assert!(w.held_at_end(&f, end) && !w.held_at_end(&f, end - 0.4) && w.can_turn(&f, end));
         assert!(w.can_meet_gruk(&f, end) && w.end_wall().is_some_and(|at| at > w.gruk_at().unwrap_or(f64::MAX)));
         assert_eq!(w.tick(&mut f, end, Some("guild_office@guild_hall"), None), (None, vec![Note::DeadEnd]));
         assert_eq!(w.tick(&mut f, end + 0.5, Some("guild_office@guild_hall"), None), (None, vec![]));
-        assert_eq!(w.turn(&f, end), Some(Go::WarpAt("guild_office@^".into(), 0.0)));
+        assert_eq!(w.turn(&f, end), Some(Go::TurnInto("guild_office@^".into(), w.here().length + 1.0)));
     }
 
     #[test]
