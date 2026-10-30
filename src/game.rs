@@ -150,6 +150,8 @@ const SMITH: &str = "smith";
 /// Gruk behind his counter at the guild hall's end, and the counter.
 const GRUK: &str = "gruk";
 const COUNTER: &str = "counter";
+/// Canvas units a door's mask reaches above and below the frame: its jambs cut sideways only.
+const JAMB_REACH: f32 = 1.0e5;
 /// Someone met on the road (`visitors::Visitor`).
 const VISITOR: &str = "visitor";
 /// The guild's bounty board, in the foot of the wall the hall ends at.
@@ -2327,6 +2329,11 @@ impl Pilgrimage {
         }
         self.relit.borrow_mut().trim();
         TMP_LAP.with(|l| l.borrow_mut().mark("p.trim"));
+        // Gruk and his counter, seen through his door from the hall, show between its jambs only.
+        let jambs = self.world.door_seen().and_then(|(eye, half)| {
+            let (left, right) = (pf.project_on(c, -half, 0.0, eye)?.0, pf.project_on(c, half, 0.0, eye)?.0);
+            Some((left.min(right), -JAMB_REACH, (right - left).abs(), 2.0 * JAMB_REACH))
+        });
         let shadow_img = self.shadows(c, pf, &stands, &seen.into_inner());
         TMP_LAP.with(|l| l.borrow_mut().mark("p.shadowpaint"));
         Self::show_shadows(c, shadow_img);
@@ -2335,6 +2342,9 @@ impl Pilgrimage {
         let looks: Vec<(String, Recolor)> = self.fight.enemies.iter().enumerate()
             .filter_map(|(i, e)| Some((enemy_id(i), Self::variant_look(e.kind, e.variant)?))).collect();
         Self::put(c, placed, &looks);
+        for id in [GRUK, COUNTER] {
+            if let Some(o) = c.get_game_object_mut(id) { o.mask = jambs; }
+        }
         TMP_LAP.with(|l| l.borrow_mut().mark("p.put"));
         Self::wreathe(c, &auras);
         self.pulse_rune(c, pulse_source.filter(|_| !h.dead));

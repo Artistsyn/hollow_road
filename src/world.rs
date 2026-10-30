@@ -32,6 +32,8 @@ const DOOR_FUNNEL: f32 = 4.0;
 const DOOR_PAST: f32 = 1.0;
 /// Metres before a door at which a hero outside its opening meets the wall.
 const DOOR_FACE: f32 = 0.5;
+/// Metres from the eye inside which a door no longer frames what is beyond it.
+const DOOR_EYE_NEAR: f32 = 0.05;
 /// Half the hero's width, metres: what must fit inside a door's opening.
 const HERO_HALF: f32 = 0.35;
 /// Metres within which a living enemy, ahead or behind, keeps what wants a quiet moment (a cache
@@ -887,6 +889,12 @@ impl World {
         Some((handover - travel - HERO_D, half))
     }
 
+    /// The door a crossing goes through while it is still ahead of the eye: metres from the eye
+    /// to it and its half width. What stands beyond shows only between its jambs.
+    pub fn door_seen(&self) -> Option<(f32, f32)> {
+        self.door_ahead().map(|(gap, half)| (gap + HERO_D, half)).filter(|&(eye, _)| eye > DOOR_EYE_NEAR)
+    }
+
     /// Whether the road narrows to its middle lane: a door close ahead, or the hero in it.
     pub fn narrows(&self) -> bool { self.door_ahead().is_some_and(|(gap, _)| gap > -DOOR_PAST && gap < DOOR_FUNNEL) }
 
@@ -1597,15 +1605,18 @@ mod tests {
         assert!((w.through_door(1.0) - 1.0).abs() < 1e-6, "far from the door the hero walks their lane");
         assert!(w.gruk_at().is_some_and(|at| at < seen), "Gruk behind his counter is in the room from the door on");
         assert!(!w.narrows() && !w.held_at_door(crate::fight::LANE_W), "far from the door every lane is open");
+        assert_eq!(w.door_seen(), Some((handover - 20.0, 1.0)), "the door frames the room from the eye's distance to it");
         w.follow(136.0 - f64::from(HERO_D) - 0.2, Underway { travel: Some(handover - HERO_D - 0.2), handover: Some(handover), length: Some(length) });
         assert!(w.narrows() && w.held_at_door(crate::fight::LANE_W) && !w.held_at_door(0.0), "at the door's face a side lane meets the wall, the middle goes through");
         w.follow(136.0 - f64::from(HERO_D), Underway { travel: Some(handover - HERO_D), handover: Some(handover), length: Some(length) });
         assert!(w.through_door(1.0).abs() < 1e-6, "at the door the hero is in its middle");
+        assert_eq!(w.door_seen(), Some((HERO_D, 1.0)), "the hero in the door, the eye still behind it");
         // Arrived, the wall is where it stood all along.
         w.arrive(&atlas::stop("guild_office", "guild_hall"), 120.0 + f64::from(length - 20.0), 0.0, 0);
         w.follow(141.0, Underway::default());
         assert!(w.end_wall().is_some_and(|at| (at - seen).abs() < 1e-3), "{seen} then {:?}", w.end_wall());
         assert!(!w.narrows(), "through the door, the room's lanes are open");
+        assert_eq!(w.door_seen(), None, "in the room no door frames it");
     }
 
     #[test]
