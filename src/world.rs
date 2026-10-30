@@ -864,14 +864,14 @@ impl World {
         (s - Self::standing(walked)).abs() <= SHRINE_REACH as f64 && !fight.hero.dead && Self::quiet(fight, walked)
     }
 
-    /// The dead end the hero stands in or is walking into, and the road metres of `m` (given the
+    /// The dead end the hero stands in or is walking into, and the road metres `depth` (given the
     /// place) metres into it. One walked into begins where the walk arrives there, entered forward.
-    pub(crate) fn dead_end_at(&self, m: impl Fn(&Place) -> f32) -> Option<(&'static Place, f64)> {
-        if self.at_dead_end() { return Some((self.here(), self.road_at(m(self.here())))); }
+    pub(crate) fn dead_end_at(&self, depth: impl Fn(&Place) -> f32) -> Option<(&'static Place, f64)> {
+        if self.at_dead_end() { return Some((self.here(), self.road_at(depth(self.here())))); }
         let Underway { travel: Some(travel), length: Some(length), .. } = self.underway else { return None };
         let lead = self.heading()?;
         let next = atlas::place_of(lead.road.1)?;
-        atlas::leads(next.id, lead.road.0).is_empty().then(|| (next, self.shown + f64::from(length - travel + HERO_D + m(next))))
+        atlas::leads(next.id, lead.road.0).is_empty().then(|| (next, self.shown + f64::from(length - travel + HERO_D + depth(next))))
     }
 
     /// Where the road ends ahead, walked into a dead end or on the way into one: road metres of
