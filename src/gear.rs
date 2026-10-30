@@ -77,6 +77,8 @@ pub struct Kit {
     pub stamina: f32,
     /// Souls from the dead.
     pub souls: f32,
+    /// More souls, as a share, from the first death after a parry (the Collector's Tally).
+    pub tally: f32,
     /// Weight worn, against `Stats::capacity`.
     pub load: f32,
     /// The weapon held: what it needs and how it scales (`Stats::damage`).
@@ -112,6 +114,10 @@ pub struct Kit {
     pub charges: f32,
     /// What the capstones on what is worn give (`capstone::Capstone`).
     pub capped: crate::capstone::Capped,
+    /// Of what the Order's gas does, what gets through (the Order Agent's beaked mask).
+    pub gas: f32,
+    /// Flasks past the first three: the shrine glass carried (`vials`).
+    pub flasks: u32,
 }
 
 /// What a Warden's ward (`fight::Bulwark`) is through the shield in their hand: what fills it,
@@ -138,6 +144,11 @@ impl Ward {
     }
     /// Whether a perfect block lets it go (a parma's goes into a riposte instead).
     pub fn on_block(self) -> bool { self != Ward::Parma }
+    /// Ticks a guard raised fresh before a blow lands still blocks it perfectly: widest on the
+    /// shields built to block, tightest on the parma, built to parry.
+    pub fn perfect_ticks(self) -> u32 {
+        match self { Ward::Kite | Ward::Bulwark => 14, Ward::Buckler => 11, Ward::Parma => crate::fight::PERFECT_BLOCK }
+    }
 }
 
 /// How much a level of an attribute raises a weapon's damage, by the weapon's letter for it.
@@ -239,6 +250,8 @@ pub enum Ranged {
     /// A hand crossbow, its bolts carried: quick to aim, slow to wind again, each bolt heavier;
     /// Blood Imbue (C) for bolts that pierce every foe in the lane.
     BloodCrossbow,
+    /// Bounty's: a long draw and a heavy arrow that flies flat and far.
+    Longbow,
     /// A frost bolt (`Spell::FrostBolt`), one charge each: charges come back at the shrine and from
     /// blows landed up close.
     Frost,
@@ -246,10 +259,10 @@ pub enum Ranged {
 
 impl Ranged {
     /// How fast what it looses flies, metres a second.
-    pub fn speed(self) -> f32 { match self { Ranged::Bow | Ranged::BloodBow => 24.0, Ranged::BloodCrossbow => 30.0, Ranged::Frost => 16.0 } }
+    pub fn speed(self) -> f32 { match self { Ranged::Bow | Ranged::BloodBow => 24.0, Ranged::BloodCrossbow | Ranged::Longbow => 30.0, Ranged::Frost => 16.0 } }
     /// Its picture in the other hand (`assets/pixellab/offhand/<art>.png`); a spell's, the
     /// catalyst's.
-    pub fn art(self) -> &'static str { match self { Ranged::Bow => "hunters_bow", Ranged::BloodBow => "blood_bow", Ranged::BloodCrossbow => "blood_crossbow", Ranged::Frost => "frost_focus" } }
+    pub fn art(self) -> &'static str { match self { Ranged::Bow => "hunters_bow", Ranged::BloodBow => "blood_bow", Ranged::BloodCrossbow => "blood_crossbow", Ranged::Longbow => "bountys_longbow", Ranged::Frost => "frost_focus" } }
     /// Whether it shoots bolts (a crossbow) rather than arrows; a spell shoots neither.
     pub fn bolts(self) -> bool { self == Ranged::BloodCrossbow }
     /// Whether its shots can be imbued with the hero's blood (`fight::Quiver::imbued`).
@@ -315,7 +328,7 @@ pub const BUCKLER: Off = Off { guard: Guard::Buckler, art: "pilgrim_buckler" };
 
 impl Default for Kit {
     fn default() -> Kit {
-        Kit { damage: 1.0, taken: 1.0, poise: 0.0, guard: 1.0, chip: 1.0, parry: 0, roll: 1.0, strike: 1.0, regen: 1.0, heal: 1.0, hp: 0.0, stamina: 0.0, souls: 1.0, load: 0.0, arms: SWORD, off: Some(BUCKLER), leech: 0.0, opener: 1.0, ranged: None, shooting: UNSCALED, catalyst: None, spell: None, ward: None, art: None, one_hand: false, main: 0, off_level: 0, forged_armour: 0.0, charges: 0.0, capped: crate::capstone::Capped::NONE }
+        Kit { damage: 1.0, taken: 1.0, poise: 0.0, guard: 1.0, chip: 1.0, parry: 0, roll: 1.0, strike: 1.0, regen: 1.0, heal: 1.0, hp: 0.0, stamina: 0.0, souls: 1.0, tally: 0.0, load: 0.0, arms: SWORD, off: Some(BUCKLER), leech: 0.0, opener: 1.0, ranged: None, shooting: UNSCALED, catalyst: None, spell: None, ward: None, art: None, one_hand: false, main: 0, off_level: 0, forged_armour: 0.0, charges: 0.0, capped: crate::capstone::Capped::NONE, gas: 1.0, flasks: 0 }
     }
 }
 
@@ -378,9 +391,11 @@ pub const ITEMS: &[Item] = &[
     weapon("Husk Cleaver", 6.0, Arms { base: 1.0, needs: [4, 0, 0], scales: [A, No, No], class: Class::Axe, art: "husk_cleaver" }, "chops that break a guard", |_| {}),
     weapon("Lancer's Shortspear", 4.0, Arms { base: 1.0, needs: [1, 3, 0], scales: [D, B, No], class: Class::Spear, art: "lancer_spear" }, "reaches past their blades", |_| {}),
     shield("Kite Shield", 6.0, Off { guard: Guard::Kite, art: "kite_shield" }, "blocks cost 35% less, half the chip; slower parries. A Warden's ward: blocks fill it; a perfect block bashes the foe flat, stamina back", |k| { k.guard *= 0.65; k.chip *= 0.5; k.ward = Some(Ward::Kite); }),
-    shield("Warden's Bulwark", 7.0, Off { guard: Guard::Kite, art: "warden_bulwark" }, "blocks cost 30% less, +20 poise. A Warden's ward: blocks fill it; a perfect block bursts it into the foe and all near it", |k| { k.ward = Some(Ward::Bulwark); k.guard *= 0.7; k.chip *= 0.5; k.poise += 20.0; }),
-    shield("Duelist's Parma", 1.0, Off { guard: Guard::Parma, art: "duelist_parma" }, "parry live 4 ticks longer. A Warden's ward: parries fill it most; the next riposte spends it, far harder and drinking", |k| { k.parry += 4; k.ward = Some(Ward::Parma); }),
+    shield("Warden's Bulwark", 7.0, Off { guard: Guard::Kite, art: "warden_bulwark" }, "blocks cost 30% less, half the chip, +20 poise. A Warden's ward: blocks fill it; a perfect block bursts it into the foe and all near it", |k| { k.ward = Some(Ward::Bulwark); k.guard *= 0.7; k.chip *= 0.5; k.poise += 20.0; }),
+    shield("Duelist's Parma", 1.0, Off { guard: Guard::Parma, art: "duelist_parma" }, "parry live 6 ticks longer. A Warden's ward: parries fill it most; the next riposte spends it, far harder and drinking", |k| { k.parry += 6; k.ward = Some(Ward::Parma); }),
     item("Iron Helm", Slot::Head, 3.0, "-5% damage taken, +5 poise", |k| { k.taken *= 0.95; k.poise += 5.0; }),
+    // The Order Agent's, from the chest behind it in the Bridge Ward.
+    item("Order Agent's Beaked Mask", Slot::Head, 1.5, "the Order's gas does a third of its harm", |k| k.gas *= 0.33),
     item("Chain Hauberk", Slot::Body, 9.0, "-12% damage taken, +12 poise", |k| { k.taken *= 0.88; k.poise += 12.0; }),
     item("Shieldbearer's Gauntlets", Slot::Hands, 2.5, "blocks cost 12% less, -3% damage taken", |k| { k.guard *= 0.88; k.taken *= 0.97; }),
     item("Lancer's Greaves", Slot::Legs, 3.0, "+6 poise, -3% damage taken", |k| { k.poise += 6.0; k.taken *= 0.97; }),
@@ -392,10 +407,19 @@ pub const ITEMS: &[Item] = &[
     item("Keeper's Sigil", Slot::Talisman, 0.0, "+15 health, +10 stamina", |k| { k.hp += 15.0; k.stamina += 10.0; }),
     // The Bell Warden's.
     item("Warden's Bell", Slot::Talisman, 1.0, "+10 poise, +8% damage", |k| { k.poise += 10.0; k.damage *= 1.08; }),
+    // The Debt Collector's, from the chest behind him in the guild hall.
+    // Skif's, given once he has grown into a hunter (`visitors::GIFTS`).
+    item("Skif's Rusted Knife", Slot::Talisman, 0.5, "+20% to the open, +5% damage", |k| { k.opener *= 1.2; k.damage *= 1.05; }),
+    item("The Collector's Tally", Slot::Talisman, 0.5, "after a parry, the next kill pays double echoes", |k| k.tally += 1.0),
+// Fin-S's carvings of the hero's friends, and what the barns' saved could give (`cast`).
+item("Fin-S's Carved Hunter", Slot::Talisman, 0.3, "+30 health", |k| k.hp += 30.0),
+item("Fin-S's Carved Listener", Slot::Talisman, 0.3, "+6% damage", |k| k.damage *= 1.06),
+item("Vren's Loupe", Slot::Talisman, 0.2, "+18% echoes", |k| k.souls *= 1.18),
+    item("Varnholt Straw Charm", Slot::Talisman, 0.2, "+12% echoes", |k| k.souls *= 1.12),
     // Weapons for the attributes past might.
     weapon("Duelist's Rapier", 2.5, Arms { base: 1.0, needs: [0, 6, 0], scales: [No, A, No], class: Class::Thrust, art: "duelist_rapier" }, "quick thrusts", |_| {}),
     weapon("Rimed Sabre", 3.5, Arms { base: 1.0, needs: [0, 2, 5], scales: [No, D, B], class: Class::Sword, art: "rimed_sabre" }, "cold-forged, runs on focus", |_| {}),
-    weapon("Executioner's Greatsword", 9.0, Arms { base: 1.0, needs: [8, 2, 0], scales: [B, D, No], class: Class::Greatsword, art: "executioner_greatsword" }, "both hands; its heavy sweeps the lanes beside", |_| {}),
+    weapon("Executioner's Greatsword", 9.0, Arms { base: 1.0, needs: [8, 2, 0], scales: [B, D, No], class: Class::Greatsword, art: "executioner_greatsword" }, "both hands; its heavy strike sweeps the lanes beside", |_| {}),
     // Forged by the smith from what the region bosses leave (`RECIPES`), each with a way of its
     // own and an art (Q, `arts::WeaponArt`) echoing the boss it came from.
     weapon("Bell-Hammer", 10.0, Arms { base: 1.15, needs: [10, 0, 0], scales: [A, No, No], class: Class::Greatsword, art: "bell_hammer" }, "rings the stunned: +40% to the open, +12 poise. Art (Q), Toll: a slam that rings through all near, throwing them off balance", |k| { k.opener *= 1.4; k.poise += 12.0; k.art = Some(WeaponArt::Toll); }),
@@ -405,16 +429,41 @@ pub const ITEMS: &[Item] = &[
     weapon("Reaper's Glaive", 5.0, Arms { base: 1.15, needs: [3, 8, 4], scales: [D, A, D], class: Class::Spear, art: "reapers_glaive" }, "reaps: 8% of each strike back as health. Art (Q), Reap: a sweep across every lane that drinks from all it cuts", |k| { k.leech += 0.08; k.art = Some(WeaponArt::Reap); }),
     weapon("Lance of Light", 3.0, Arms { base: 1.2, needs: [0, 7, 9], scales: [No, C, A], class: Class::Thrust, art: "lance_of_light" }, "weightless: strikes cost 25% less stamina. Art (Q), Light Lance: a dash down the lane, untouchable, piercing what it meets", |k| { k.strike *= 0.75; k.art = Some(WeaponArt::Lance); }),
     weapon("Stoneheart Greatsword", 14.0, Arms { base: 1.25, needs: [15, 2, 0], scales: [S, No, No], class: Class::Ultra, art: "stoneheart_greatsword" }, "stone: -10% damage taken, +20 poise. Art (Q), Stone Skin: ten seconds of stone (no blow staggers you, 30% less gets through) and a stomp that throws back what is near", |k| { k.taken *= 0.9; k.poise += 20.0; k.art = Some(WeaponArt::StoneSkin); }),
+    weapon("Starglass Maul", 11.0, Arms { base: 1.2, needs: [12, 0, 6], scales: [B, No, C], class: Class::Greatsword, art: "starglass_maul" }, "light through glass: +35% to the open, +15 poise", |k| { k.opener *= 1.35; k.poise += 15.0; }),
+    weapon("Warped Fang", 5.0, Arms { base: 1.2, needs: [4, 9, 0], scales: [D, A, No], class: Class::Spear, art: "warped_fang" }, "+15% damage, 4% back as health", |k| { k.damage *= 1.15; k.leech += 0.04; }),
     weapon("Feather of the Fallen Light", 3.0, Arms { base: 1.25, needs: [7, 7, 7], scales: [C, C, C], class: Class::Sword, art: "feather_of_the_fallen_light" }, "+15% damage, 5% back as health, +25% to the open. Art (Q), Wingbeat: a gust throws everything ahead back, then a dive strikes down on the nearest", |k| { k.damage *= 1.15; k.leech += 0.05; k.opener *= 1.25; k.art = Some(WeaponArt::Wingbeat); }),
+    weapon("Veil-Piercer", 3.0, Arms { base: 1.25, needs: [4, 9, 6], scales: [D, A, C], class: Class::Thrust, art: "veil_piercer" }, "+12% damage, +30% to the open, strikes cost 15% less stamina", |k| { k.damage *= 1.12; k.opener *= 1.3; k.strike *= 0.85; }),
+// Out of the Drowned Fingers, for whoever gets there before the shaken hunter; and Vren's, for
+    // showing it to him.
+    weapon("Rune-Marked Blade", 3.5, Arms { base: 1.05, needs: [3, 4, 0], scales: [C, C, No], class: Class::Sword, art: "rune_marked_blade" }, "cut by the rune's makers: +10% damage, +10% echoes", |k| { k.damage *= 1.1; k.souls *= 1.1; }),
+    item("Vren's Chipped Ring", Slot::Ring, 0.0, "+30% echoes, but 8% more damage taken", |k| { k.souls *= 1.3; k.taken *= 1.08; }),
+    // Krix's and Lurz's, given by whichever came home from the fog hollow (`visitors::GIFTS`).
+    weapon("Krix's Notched Axe", 5.0, Arms { base: 1.05, needs: [6, 3, 0], scales: [B, D, No], class: Class::Axe, art: "krix_axe" }, "a notch for every hunter outlived: +25% to the open, +6 poise", |k| { k.opener *= 1.25; k.poise += 6.0; }),
+    weapon("Lurz's Spear", 3.0, Arms { base: 1.05, needs: [2, 6, 0], scales: [D, B, No], class: Class::Spear, art: "lurz_spear" }, "light and quick: strikes cost 15% less stamina, rolls 10% less", |k| { k.strike *= 0.85; k.roll *= 0.9; }),
+    // Forged from what the fog hollow's horror leaves (`RECIPES`).
+    weapon("Ripper's Tendril", 3.0, Arms { base: 1.1, needs: [0, 7, 4], scales: [No, B, D], class: Class::Thrust, art: "rippers_tendril" }, "a razor that was never still: strikes cost 20% less stamina, +8% damage", |k| { k.strike *= 0.8; k.damage *= 1.08; }),
     // Left where it was laid down (`atlas::Place::loot`).
     weapon("Gravewarden's Slab", 18.0, Arms { base: 1.0, needs: [16, 0, 0], scales: [A, No, No], class: Class::Ultra, art: "gravewarden_slab" }, "both hands; every swing sweeps the lanes beside and rides out a flinch", |_| {}),
     // In the other hand instead of a shield (F: a ranged attack; a catalyst, C: a spell): no
     // parry flick, blocks on the blade.
     ranged("Hunter's Shortbow", 1.5, Ranged::Bow, Scaling { base: 1.0, needs: [0, 2, 0], scales: [E, B, No] }, "F: an arrow down the lane, from the arrows you carry (two pulled back out of each foe felled); a long draw any blow cuts off; dexterity"),
-    ranged("Bloodrunner's Bow", 1.5, Ranged::BloodBow, Scaling { base: 1.0, needs: [0, 3, 0], scales: [No, B, D] }, "F: an arrow down the lane, from the arrows you carry. C, Blood Imbue: an eighth of your health for five arrows that strike half again as hard and drink a third of it back; a long draw any blow cuts off; dexterity, a little focus"),
+    ranged("Bloodrunner's Bow", 1.5, Ranged::BloodBow, Scaling { base: 1.0, needs: [0, 3, 0], scales: [No, B, D] }, "F: an arrow down the lane, from the arrows you carry. C, Blood Imbue: an eighth of your health for five arrows that strike half again as hard and, if all five land, drink back over half of it; one at a time, back in half a minute once spent (sooner for blows landed); a long draw any blow cuts off; dexterity, a little focus"),
     catalyst("Frostweaver's Focus", 1.0, Catalyst { scaling: Scaling { base: 1.0, needs: [0, 0, 2], scales: [No, No, B] }, charges: 0.0, own: Some(Spell::FrostBolt), art: "frost_focus" }, "a catalyst, C: the spell attuned, else its own frost bolt; a charge each, filled by blows landed up close and at the shrine; focus"),
+    // Left by Bounty's echo in Eryndor, at the end of his trail (`bounty`).
+    ranged("Bounty's Longbow", 2.0, Ranged::Longbow, Scaling { base: 1.0, needs: [2, 4, 0], scales: [D, A, No] }, "F: a heavy arrow down the lane, flat and far, from the arrows you carry; a longer draw than a shortbow's, any blow cuts it off; dexterity above all"),
     // Found later.
-    ranged("Blood Crossbow", 2.5, Ranged::BloodCrossbow, Scaling { needs: [4, 2, 0], ..UNSCALED }, "F: a heavy bolt, from the bolts you carry. C, Blood Imbue: an eighth of your health for five bolts that strike half again as hard and pierce every foe in the lane; quick to aim, slow to wind again; raised by no attribute, as a crossbow is"),
+    ranged("Blood Crossbow", 2.5, Ranged::BloodCrossbow, Scaling { needs: [4, 2, 0], ..UNSCALED }, "F: a heavy bolt, from the bolts you carry. C, Blood Imbue: an eighth of your health for five bolts that strike half again as hard and pierce every foe in the lane; one at a time, back in half a minute once spent (sooner for blows landed); quick to aim, slow to wind again; raised by no attribute, as a crossbow is"),
+    // Forged from the Keening Cage's bone, by a hero who went out the east gate early (`RECIPES`).
+    weapon("Keening Antler", 4.5, Arms { base: 1.1, needs: [3, 5, 0], scales: [D, B, No], class: Class::Spear, art: "keening_antler" }, "+25% to the open, strikes cost 10% less stamina", |k| { k.opener *= 1.25; k.strike *= 0.9; }),
+    // Out of the black water past the east gate: what the Mother kept, and what she kept it with.
+    // The Blackridge crew's take, in the hole under the ridge, for whoever comes before their chief falls.
+    item("Caravan Signet", Slot::Ring, 0.0, "+15% echoes, +8% damage", |k| { k.souls *= 1.15; k.damage *= 1.08; }),
+    item("Richald's Signet", Slot::Ring, 0.0, "+12% damage, +20 health", |k| { k.damage *= 1.12; k.hp += 20.0; }),
+    item("Yellow-Glass Bead", Slot::Talisman, 0.0, "parries last a little longer, +10% echoes", |k| { k.parry += 3; k.souls *= 1.1; }),
+    item("Maker's Chisel", Slot::Talisman, 0.0, "strikes heal 4% of the damage they deal", |k| k.leech += 0.04),
+    item("Gravedigger's Ring", Slot::Ring, 0.0, "+10% echoes, flasks heal 10% more", |k| { k.souls *= 1.1; k.heal *= 1.1; }),
+    item("Mara's Whistle", Slot::Talisman, 0.0, "+12% damage, stamina back 10% faster", |k| { k.damage *= 1.12; k.regen *= 1.1; }),
+    weapon("Drowner's Hook", 3.5, Arms { base: 1.1, needs: [2, 6, 3], scales: [E, B, D], class: Class::Sword, art: "drowners_hook" }, "pulls the life back: 5% of each strike back as health, rolls cost 10% less", |k| { k.leech += 0.05; k.roll *= 0.9; }),
     spell("Frost Bolt", Spell::FrostBolt, "a spell (focus 3 to cast), C through a catalyst: a frost bolt that cracks a stance and chills a foe (a third slower, its stance held) for four seconds; a charge"),
 ];
 
@@ -422,14 +471,20 @@ pub const ITEMS: &[Item] = &[
 /// and shards. A large sum: a remnant is the start of a weapon, not the whole of it.
 pub struct Recipe { pub remnant: &'static str, pub item: &'static str, pub echoes: u32, pub shards: u32, pub grade: usize }
 pub const RECIPES: &[Recipe] = &[
+    Recipe { remnant: "Violet-Veined Bone", item: "Keening Antler", echoes: 1800, shards: 4, grade: 0 },
+    Recipe { remnant: "The Mother's Hooked Finger", item: "Drowner's Hook", echoes: 2400, shards: 5, grade: 0 },
     Recipe { remnant: "Bell Warden's Clapper", item: "Bell-Hammer", echoes: 2500, shards: 6, grade: 0 },
     Recipe { remnant: "Screamer's Drowned Voice", item: "Drowned Wail", echoes: 3500, shards: 8, grade: 0 },
+    Recipe { remnant: "The Horror's Eye-Crack", item: "Ripper's Tendril", echoes: 4000, shards: 9, grade: 0 },
     Recipe { remnant: "Chief's Notched Axe-Head", item: "Chieftain's Cleaver", echoes: 4500, shards: 10, grade: 0 },
     Recipe { remnant: "Magistrate's Seal", item: "Gavel of Sentence", echoes: 6000, shards: 4, grade: 1 },
     Recipe { remnant: "Wraith Lord's Hollow Crown", item: "Reaper's Glaive", echoes: 7500, shards: 5, grade: 1 },
     Recipe { remnant: "Shard of the Priest's Halo", item: "Lance of Light", echoes: 9000, shards: 6, grade: 1 },
     Recipe { remnant: "The Statue's Stone Heart", item: "Stoneheart Greatsword", echoes: 11000, shards: 3, grade: 2 },
+    Recipe { remnant: "Starglass Core", item: "Starglass Maul", echoes: 12000, shards: 3, grade: 2 },
+    Recipe { remnant: "The Drake's Warped Fang", item: "Warped Fang", echoes: 13500, shards: 4, grade: 2 },
     Recipe { remnant: "A Feather of the Archangel", item: "Feather of the Fallen Light", echoes: 15000, shards: 4, grade: 2 },
+    Recipe { remnant: "Exodus's Red Lens", item: "Veil-Piercer", echoes: 18000, shards: 5, grade: 2 },
 ];
 
 /// The index of the piece called `name`.

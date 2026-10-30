@@ -12,7 +12,9 @@
 
 use crate::fight::{Fight, Stats};
 use crate::gear::{Arms, Grade, ATTRIBUTES, ITEMS, SLOTS};
+use crate::lore::Lore;
 use crate::profile::Slot;
+use crate::voices::Speaker;
 use crate::world::{Note, World};
 
 /// A calling: the direction a pilgrim starts in (design doc §8.4).
@@ -28,7 +30,7 @@ impl Calling {
         match self {
             Calling::Wayfarer => "Sword and buckler. Rolls, parries and ripostes: the road's fight as it stands.",
             Calling::Warden => "Sword and a tall bulwark, the steadiest on their feet: blocks fill a ward that any shield in hand keeps, and a block raised at the last moment lets it go, each shield its own way.",
-            Calling::Bloodrunner => "Sword and a bow, no shield: arrows from afar (F), and their own blood drawn into them (C, Blood Imbue) to strike harder and drink it back. Wear a foe down from afar, finish it up close.",
+            Calling::Bloodrunner => "Sword and a bow, no shield: arrows at range (F), and their own blood drawn into them (C, Blood Imbue, one at a time) to strike harder and drink a little back. Wear a foe down from afar, finish it up close.",
             Calling::Frostweaver => "Sword and a frost focus, a catalyst, no shield: frost bolts that crack a foe's stance and chill it (C, cast), their charges filled by blows landed up close.",
         }
     }
@@ -189,7 +191,7 @@ impl Front {
             },
             Front::Pause(i) => Panel {
                 title: "Paused".into(),
-                text: "Take a breath, switch pilgrimages, or leave Hollowmere for now.".into(),
+                text: "Take a breath, switch pilgrimages, or leave the road for now.".into(),
                 options: PAUSE.iter().map(|o| (o.to_string(), true)).collect(),
                 choice: i,
                 hint: "W/S choose   E confirm   Esc back".into(),
@@ -263,6 +265,8 @@ enum View {
     Craft(usize),
     /// The capstones the piece worn at place `p`, at its top, could be given.
     Capstone(usize, usize),
+    /// What the hero carries that is not worn (`lore::Lore::keepsakes`), each with its lines.
+    Keepsakes(usize),
 }
 
 /// The hero at rest.
@@ -278,21 +282,11 @@ const KEEPER_FIRST: [&str; 3] = [
     "I keep the shrines on the way to Hollowmere. Bring me the echoes of the fallen and I can make you more than you are.",
     "Rest when you must. The dead you put down rise again while you sit. That is the fire's price.",
 ];
-const KEEPER_TALK: [&str; 3] = [
-    "The Veil is thin past the marsh. If you hear singing in the reeds, do not answer it.",
-    "Hollowmere was a town of bells. Now it has only the one, and something rings it at night.",
-    "Every shrine remembers who rested at it. So do I.",
-];
 const KEEPER_SMITH: &str = "A smith walks this road. Stubborn old man. Find him, and he will not stay far from a warm fire.";
 pub const SMITH_FIRST: [&str; 3] = [
     "Hah. Another one still breathing. Sit, sit. No? None of you ever do.",
     "Brannoc. I mend what the road breaks. Bring me shards off those armoured dead and I'll put an edge on that blade worth the name.",
     "I'll find your fire. I always find the fires.",
-];
-const SMITH_TALK: [&str; 3] = [
-    "Shieldbearers carry the good iron. Lancers too, if you get past the point.",
-    "Every edge I forge, the road blunts. That's the trade.",
-    "I forged for an Order once. Don't ask which.",
 ];
 
 impl Sanctum {
@@ -307,7 +301,7 @@ impl Sanctum {
         let st = f.hero.stats;
         match (&self.view, self.station()) {
             (View::Choices(_), Station::Keeper) => vec![("Grow stronger".into(), true), ("Talk".into(), true), ("Step away".into(), true)],
-            (View::Choices(_), Station::Shrine) => vec![("Rise and walk on".into(), true), ("Equipment".into(), true), ("Travel".into(), w.travel_list().len() > 1), ("Stay a while".into(), true)],
+            (View::Choices(_), Station::Shrine) => vec![("Rise and walk on".into(), true), ("Equipment".into(), true), ("Travel".into(), w.travel_list().len() > 1), ("Keepsakes".into(), true), ("Stay a while".into(), true)],
             (View::Travel(_), _) => {
                 let here = crate::atlas::node(&w.checkpoint);
                 w.travel_list().into_iter()
@@ -338,6 +332,8 @@ impl Sanctum {
                     .map(|(&(what, n, price), (have, most))| (format!("Fletch {n} {what}\t{price} {}\tcarrying {have} of {most}", crate::world::CURRENCY), w.souls >= price && have < most));
                 w.forgeable().into_iter().map(|p| Self::reinforce_row(w, &st, p)).chain(fletch).chain([("Back".into(), true)]).collect()
             }
+            (View::Keepsakes(_), _) => Lore::keepsakes(w).into_iter().map(|(label, _)| (label, true))
+                .chain([("Back".to_string(), true)]).collect(),
             (View::Capstone(p, _), _) => w.gear.worn[*p].map_or(&[][..], |i| crate::capstone::Capstone::choices(&ITEMS[i])).iter()
                 .map(|c| (format!("{}\n{}", c.name(), c.text()), true))
                 .chain([("Back".to_string(), true)]).collect(),
@@ -384,12 +380,13 @@ impl Sanctum {
             }
             (View::Words { pages, page }, Key::Use | Key::Right) if page + 1 < pages.len() => self.view = View::Words { pages, page: page + 1 },
             (View::Words { .. }, Key::Use | Key::Right | Key::Back) => self.view = View::Choices(0),
-            (View::Choices(i) | View::Levels(i) | View::Forge(i) | View::Gear(i) | View::Wear(_, i) | View::Travel(i) | View::Craft(i) | View::Capstone(_, i), Key::Up) => self.set_choice(i.saturating_sub(1)),
-            (View::Choices(i) | View::Levels(i) | View::Forge(i) | View::Gear(i) | View::Wear(_, i) | View::Travel(i) | View::Craft(i) | View::Capstone(_, i), Key::Down) => self.set_choice((i + 1).min(n.saturating_sub(1))),
+            (View::Choices(i) | View::Levels(i) | View::Forge(i) | View::Gear(i) | View::Wear(_, i) | View::Travel(i) | View::Craft(i) | View::Capstone(_, i) | View::Keepsakes(i), Key::Up) => self.set_choice(i.saturating_sub(1)),
+            (View::Choices(i) | View::Levels(i) | View::Forge(i) | View::Gear(i) | View::Wear(_, i) | View::Travel(i) | View::Craft(i) | View::Capstone(_, i) | View::Keepsakes(i), Key::Down) => self.set_choice((i + 1).min(n.saturating_sub(1))),
             (View::Choices(_), Key::Back) => self.view = View::Walk,
             (View::Levels(_) | View::Forge(_), Key::Back) => self.view = View::Choices(0),
             (View::Gear(_), Key::Back) => self.view = View::Choices(1),
             (View::Travel(_), Key::Back) => self.view = View::Choices(2),
+            (View::Keepsakes(_), Key::Back | Key::Use) => self.view = View::Choices(3),
             (View::Craft(_), Key::Back) => self.view = View::Choices(1),
             (View::Craft(i), Key::Use) => match w.craftable().get(i).map(|(r, _)| *r) {
                 Some(r) => { let out = w.craft(r); Self::refit(w, f); if w.craftable().is_empty() { self.view = View::Choices(1); } return out.map(Outcome::Note); }
@@ -447,7 +444,7 @@ impl Sanctum {
         let Some((grade, shards, souls)) = w.reinforce_cost(place) else {
             return match w.gear.capstones.get(&i) {
                 Some(cap) => (format!("{} +{n}\t{}\n{}", item.name, cap.name(), cap.text()), false),
-                None => (format!("{} +{n}\tchoose its capstone\nat its top: one power of three, and a look of its own, for good", item.name), true),
+                None => (format!("{} +{n}\tchoose its capstone\nat its top: one of three powers, and a look of its own, for good", item.name), true),
             };
         };
         let mut gear = w.gear.clone();
@@ -480,7 +477,7 @@ impl Sanctum {
     fn set_choice(&mut self, i: usize) {
         self.view = match self.view {
             View::Choices(_) => View::Choices(i), View::Levels(_) => View::Levels(i), View::Forge(_) => View::Forge(i),
-            View::Gear(_) => View::Gear(i), View::Wear(p, _) => View::Wear(p, i), View::Travel(_) => View::Travel(i), View::Craft(_) => View::Craft(i), View::Capstone(p, _) => View::Capstone(p, i), ref v => v.clone(),
+            View::Gear(_) => View::Gear(i), View::Wear(p, _) => View::Wear(p, i), View::Travel(_) => View::Travel(i), View::Craft(_) => View::Craft(i), View::Capstone(p, _) => View::Capstone(p, i), View::Keepsakes(_) => View::Keepsakes(i), ref v => v.clone(),
         };
     }
 
@@ -514,30 +511,37 @@ impl Sanctum {
     /// The hero as now dressed: the kit's changes, health and stamina kept within their new tops.
     fn refit(w: &World, f: &mut Fight) {
         let h = &mut f.hero;
-        h.stats.kit = w.gear.kit();
+        h.stats.kit = w.kit();
         h.hp = h.hp.min(h.stats.max_hp());
         h.stamina = h.stamina.min(h.stats.max_stamina());
         h.poise = h.poise.min(h.stats.poise());
     }
 
     fn choose(&mut self, i: usize, w: &mut World) -> Option<Outcome> {
-        let words = |list: &[&str], k: u32| View::Words { pages: vec![list[k as usize % list.len()].to_string()], page: 0 };
         match (self.station(), i) {
             (Station::Keeper, 0) => self.view = View::Levels(0),
             (Station::Keeper, 1) => {
                 let k = w.talks[0];
                 w.talks[0] += 1;
-                // Every third word from her is about the smith until he has been met.
-                self.view = if !w.met_smith && k % 3 == 2 { View::Words { pages: vec![KEEPER_SMITH.into()], page: 0 } } else { words(&KEEPER_TALK, k) };
+                let told = w.heard[0];
+                let pages = Speaker::Keeper.talk(&w.beaten, &mut w.heard[0], k);
+                // Every third idle word from her is about the smith until he has been met.
+                let pages = if told == w.heard[0] && !w.met_smith && k % 3 == 2 { vec![KEEPER_SMITH.into()] } else { pages };
+                self.view = View::Words { pages, page: 0 };
             }
             (Station::Shrine, 0) => { self.view = View::Walk; return Some(Outcome::Rise); }
             (Station::Shrine, 1) => self.view = View::Gear(0),
             (Station::Shrine, 2) if w.travel_list().len() > 1 => self.view = View::Travel(0),
             (Station::Shrine, 2) => {}
+            (Station::Shrine, 3) => self.view = View::Keepsakes(0),
             (Station::Smith, 0) => self.view = View::Forge(0),
             (Station::Smith, 1) if !w.craftable().is_empty() => self.view = View::Craft(0),
             (Station::Smith, 1) => {}
-            (Station::Smith, 2) => { let k = w.talks[1]; w.talks[1] += 1; self.view = words(&SMITH_TALK, k); }
+            (Station::Smith, 2) => {
+                let k = w.talks[1];
+                w.talks[1] += 1;
+                self.view = View::Words { pages: Speaker::Smith.talk(&w.beaten, &mut w.heard[1], k), page: 0 };
+            }
             _ => self.view = View::Walk,
         }
         None
@@ -608,8 +612,23 @@ impl Sanctum {
                     st.max_hp(), st.max_stamina(), st.poise(), st.damage(), st.taken(),
                     if weak.is_empty() { String::new() } else { format!("\nToo weak for this weapon: it wants {}.", weak.join(", ")) },
                 );
+                // The lines on the piece picked (in a place, the one worn there), as a Souls game
+                // tells its world.
+                let picked = match &self.view { View::Wear(q, _) => Self::wearable(w, *q).get(*i).copied().flatten(), _ => w.gear.worn.get(*i).copied().flatten() };
+                if let Some(lines) = picked.and_then(|item| Lore::of(ITEMS[item].name)) { p.text = format!("{}\n\n{lines}", p.text); }
                 p.choice = *i;
                 p.hint = "W/S choose   E wear   Esc back".into();
+            }
+            View::Keepsakes(i) => {
+                let kept = Lore::keepsakes(w);
+                p.title = "Keepsakes".into();
+                p.text = match kept.get(*i) {
+                    Some((_, name)) => format!("{name}\n{}", Lore::of(name).unwrap_or("")),
+                    None if kept.is_empty() => "Nothing yet but what you wear. The road will give you more to carry.".into(),
+                    None => String::new(),
+                };
+                p.choice = *i;
+                p.hint = "W/S choose   Esc back".into();
             }
         }
         p
@@ -655,19 +674,86 @@ pub fn held_line(item: &crate::gear::Item, st: &Stats) -> Option<String> {
     Some(format!("{kind}  needs {}  scales {}  x{k:.2}", needs(sc.needs), if grades.is_empty() { "-".into() } else { grades.join(" ") }))
 }
 
-/// Words with someone met on the road, a page at a time.
+/// Who a meeting on the road is with.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Met { Smith, Gruk, Visitor }
+
+/// Words with someone met on the road, a page at a time, and what the hero is told once they
+/// are read (`then`); some end on a question (`summons::Ask`): the answer picked, and the one
+/// given, whose reply is read on.
 #[derive(Clone, Debug, PartialEq)]
-pub struct Meeting { pub who: &'static str, pub pages: Vec<String>, pub page: usize }
+pub struct Meeting {
+    pub who: &'static str,
+    pub with: Met,
+    pub pages: Vec<String>,
+    pub page: usize,
+    pub then: Vec<Note>,
+    pub ask: Option<&'static crate::summons::Ask>,
+    pub choice: usize,
+    pub answer: Option<&'static str>,
+}
 
 impl Meeting {
-    pub fn smith() -> Meeting { Meeting { who: Station::Smith.name(), pages: SMITH_FIRST.iter().map(|s| s.to_string()).collect(), page: 0 } }
-    /// E turns the page; true once the last is read.
+    fn said(who: &'static str, with: Met, pages: Vec<String>, then: Vec<Note>) -> Meeting {
+        Meeting { who, with, pages, page: 0, then, ask: None, choice: 0, answer: None }
+    }
+    pub fn smith() -> Meeting {
+        let pages = SMITH_FIRST.iter().map(|s| s.to_string()).collect();
+        Meeting::said(Station::Smith.name(), Met::Smith, pages, vec![Note::Met("Brannoc")])
+    }
+    /// A word with Gruk at his counter: what he says, and what it came to once read.
+    pub fn gruk(w: &mut World) -> Meeting {
+        let bone = w.remnants.contains(&"Violet-Veined Bone") || w.gear.owns(crate::gear::find("Keening Antler"));
+        let (mut pages, mut then) = w.guild.meet(&w.beaten, bone);
+        // What he pays goes into the hero's purse as it is counted out.
+        w.souls += then.iter().map(|n| if let Note::Paid(_, n) = n { *n } else { 0 }).sum::<u32>();
+        then.extend(w.story_moves());
+        pages.extend(w.guild.cave_word(w.stash_taken_by_hero()));
+        Meeting::said(crate::guild::GRUK, Met::Gruk, pages, then)
+    }
+    /// Someone met on the road (`visitors::VISITS`), if anyone waits here.
+    pub fn visitor(w: &mut World) -> Option<Meeting> {
+        let id = w.visit()?.id;
+        let first = !w.met(id);
+        let (who, pages) = w.meet_visitor()?;
+        let then = if first { w.gift_from(id) } else { Vec::new() };
+        Some(Meeting { ask: w.asking(id), ..Meeting::said(who, Met::Visitor, pages, then) })
+    }
+    /// The question on this page, while unanswered: it waits on the last page.
+    fn asking(&self) -> Option<&'static crate::summons::Ask> {
+        self.ask.filter(|_| self.answer.is_none() && self.page + 1 == self.pages.len())
+    }
+    /// E turns the page; true once the last is read. On a question, up and down pick and E says
+    /// it (its reply read on); BACK leaves it unsaid, to be asked again.
     pub fn press(&mut self, k: Key) -> bool {
+        if let Some(ask) = self.asking() {
+            let n = ask.answers.len();
+            match k {
+                Key::Up | Key::Left => self.choice = (self.choice + n - 1) % n,
+                Key::Down | Key::Right => self.choice = (self.choice + 1) % n,
+                Key::Use => {
+                    let said = &ask.answers[self.choice.min(n - 1)];
+                    self.answer = Some(said.id);
+                    self.pages.extend(said.reply.iter().map(|p| (*p).to_string()));
+                    self.page += 1;
+                }
+                Key::Back => return true,
+            }
+            return false;
+        }
         if !matches!(k, Key::Use | Key::Right | Key::Back) { return false; }
         if self.page + 1 < self.pages.len() && k != Key::Back { self.page += 1; false } else { true }
     }
     pub fn panel(&self) -> Panel {
-        Panel { title: self.who.into(), text: self.pages[self.page].clone(), hint: "E continue".into(), ..Panel::default() }
+        let text = self.pages[self.page].clone();
+        match self.asking() {
+            Some(ask) => Panel {
+                title: self.who.into(), text, choice: self.choice,
+                options: ask.answers.iter().map(|a| (a.say.to_string(), true)).collect(),
+                hint: "W/S choose   E say   Esc leave it".into(),
+            },
+            None => Panel { title: self.who.into(), text, hint: "E continue".into(), ..Panel::default() },
+        }
     }
 }
 
@@ -728,6 +814,17 @@ mod tests {
         u.press(Key::Use, &slots);
         assert_eq!(u, Front::Profiles(3));
         assert!(!Front::Profiles(3).panel(&slots).options[3].1);
+    }
+
+    #[test]
+    fn what_gruk_pays_goes_into_the_purse() {
+        let mut w = World::new(0.0);
+        Meeting::gruk(&mut w);
+        w.beaten.push("hollowmere");
+        let before = w.souls;
+        let m = Meeting::gruk(&mut w);
+        let paid: u32 = m.then.iter().map(|n| if let Note::Paid(_, n) = n { *n } else { 0 }).sum();
+        assert!(paid > 0 && w.souls == before + paid, "paid {paid}, purse {before} -> {}", w.souls);
     }
 
     #[test]
@@ -813,6 +910,7 @@ mod tests {
         let opts = s.panel(&w, &f).options;
         let k = opts.iter().position(|o| o.0.starts_with("Kite Shield")).expect("the shield is offered");
         for _ in 0..k { s.press(Key::Down, &mut w, &mut f); }
+        assert!(s.panel(&w, &f).text.contains("a sun behind a veil"), "its lines under the stats: {}", s.panel(&w, &f).text);
         assert_eq!(s.press(Key::Use, &mut w, &mut f), Some(Outcome::Note(Note::Wore("Kite Shield"))));
         assert!(f.hero.stats.kit.guard < 0.7, "blocks cost less with it");
         assert!(s.panel(&w, &f).options[1].0.contains("Kite Shield"), "back at the list, wearing it");
@@ -866,6 +964,14 @@ mod tests {
         let (mut s, mut w, mut f) = setup();
         s.press(Key::Use, &mut w, &mut f);
         for _ in 0..3 { s.press(Key::Down, &mut w, &mut f); }
+        // The keepsakes, then back out, then one further down: stay a while.
+        s.press(Key::Use, &mut w, &mut f);
+        assert_eq!(s.panel(&w, &f).title, "Keepsakes");
+        assert!(s.panel(&w, &f).text.contains("Nothing yet"), "{}", s.panel(&w, &f).text);
+        w.keys.push(crate::atlas::Key::Hook);
+        assert!(s.panel(&w, &f).text.contains("Blackridge chief"), "{}", s.panel(&w, &f).text);
+        s.press(Key::Back, &mut w, &mut f);
+        s.press(Key::Down, &mut w, &mut f);
         assert_eq!(s.press(Key::Use, &mut w, &mut f), None, "stay a while");
         assert!(!s.talking());
         s.press(Key::Use, &mut w, &mut f);

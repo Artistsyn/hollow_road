@@ -174,6 +174,10 @@ impl Fx {
                     _ => burst(x, at, 1.15, 1.2, [255, 228, 184], ImpactSide::Dealt, 20),
                 }),
                 Event::Deflected { enemy } => on_enemy(enemy).map(|(x, at)| burst(x - 0.2, at, 1.1, 1.0, [200, 222, 255], ImpactSide::Dealt, 14)),
+                // An ally's blow or arrow: smaller and warmer than the hero's own.
+                // Melting into the dark: a violet smoke where it stood.
+                Event::Fled { enemy, at } => on_enemy(enemy).map(|(x, _)| burst(x, At::Road(at), 1.0, 2.4, [150, 90, 220], ImpactSide::Dealt, 40)),
+                Event::AllyHit { enemy } => on_enemy(enemy).map(|(x, at)| burst(x, at, 1.2, 1.0, [255, 214, 160], ImpactSide::Dealt, 16)),
                 Event::StanceBroken { enemy } => on_enemy(enemy).map(|(x, at)| burst(x, at, 1.3, 2.2, [255, 246, 222], ImpactSide::Dealt, 30)),
                 // A perfect roll: a cold flash at its feet as it stumbles through empty air.
                 Event::JustDodge { enemy } => on_enemy(enemy).map(|(x, at)| burst(x, at, 0.55, 1.8, [150, 225, 255], ImpactSide::Dealt, 28)),

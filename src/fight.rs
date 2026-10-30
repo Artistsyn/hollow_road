@@ -32,6 +32,9 @@ pub const TRAVEL: u32 = 18;
 pub const SIDESTEP: u32 = 10;
 /// A roll forward down the road, m/s while it travels (`TRAVEL` ticks): a little over a metre.
 pub const TUMBLE: f32 = 4.0;
+/// A roll back toward the camera: ticks it travels and m/s on average (a little over a metre).
+pub const BACK_TRAVEL: u32 = 20;
+pub const BACK_ROLL: f32 = 3.24;
 
 pub const HP: f32 = 100.0;
 pub const STAMINA: f32 = 100.0;
@@ -48,12 +51,17 @@ pub(crate) const SALVAGE: u32 = 2;
 const ARCHER_ARROWS: u32 = 4;
 const ARCHER_BOLTS: u32 = 2;
 /// Blood Imbue (C, a blood bow held and no spell to cast): the share of the hero's health it
-/// costs, the shots it imbues, how much harder an imbued one strikes, and of what an imbued
-/// blood bow's arrow deals, what comes back as health.
+/// costs, the shots it imbues, how much harder an imbued one strikes, and how much of what it
+/// cost an imbued blood bow's arrows give back if every one lands (always less than it took).
 pub const IMBUE_COST: f32 = 0.12;
 pub const IMBUE_SHOTS: u32 = 5;
 pub const IMBUE_DAMAGE: f32 = 1.5;
-pub const IMBUE_DRINK: f32 = 0.35;
+pub const IMBUE_RETURN: f32 = 0.6;
+/// One Blood Imbue at a time, in the spell charges' place (a blood bow's kit casts no spell): it
+/// comes back over this many seconds once its shots are spent, sooner for each blow landed up
+/// close (this much of it), and whole at a shrine.
+pub const IMBUE_RECHARGE: f32 = 30.0;
+pub const IMBUE_PER_HIT: f32 = 0.1;
 
 /// What the hero carries to shoot: arrows for a bow, bolts for a crossbow (found on archers,
 /// pulled out of the fallen, bought of the smith; never refilled by resting), and the shots a
@@ -104,6 +112,7 @@ const FLASK_HEAL: f32 = 40.0;
 /// thrown back.
 pub const WARD_MAX: f32 = 100.0;
 pub const WARD_BURST: f32 = 35.0;
+/// The tightest perfect block, a parma's; each ward has its own (`gear::Ward::perfect_ticks`).
 pub const PERFECT_BLOCK: u32 = 8;
 /// Ticks the guard must be down before a raise counts as fresh: a guard flicked up and down
 /// again and again blocks perfectly no more often than one held up and lowered with thought.
@@ -301,6 +310,16 @@ impl Spec {
 }
 
 impl Move {
+    /// The road's speed on tick `t` of a roll that travels `ticks` at `mean` m/s on average:
+    /// out of standing, quickest mid-tumble and easing into the crouch, over the same distance
+    /// as a flat `mean` would cover.
+    pub fn glide(t: u32, ticks: u32, mean: f32) -> f32 {
+        if t >= ticks { return 0.0; }
+        let shape = |i: u32| (std::f32::consts::PI * (i as f32 + 0.5) / ticks as f32).sin().sqrt();
+        let whole: f32 = (0..ticks).map(shape).sum();
+        mean * ticks as f32 * shape(t) / whole
+    }
+
     /// As swung with the Wayfarer's sword.
     pub fn spec(self) -> Spec { self.spec_for(crate::gear::Class::Sword, Some(crate::gear::Guard::Buckler)) }
 
@@ -333,9 +352,9 @@ impl Move {
         }
         match (self, off) {
             // No shield to flick: the blade turns the blow, in a tighter window.
-            (Move::Parry, None) => return s((8, 6, 26), 0.0, None, 0.0, 0.0, 0.0),
-            // A tall shield swings round slower and stays out a little longer.
-            (Move::Parry, Some(Guard::Kite)) => return s((9, 9, 25), 0.0, None, 0.0, 0.0, 0.0),
+            (Move::Parry, None) => return s((7, 9, 26), 0.0, None, 0.0, 0.0, 0.0),
+            // A tall shield swings round slower, and its window is a little tighter.
+            (Move::Parry, Some(Guard::Kite)) => return s((8, 11, 25), 0.0, None, 0.0, 0.0, 0.0),
             _ => {}
         }
         match self {
@@ -345,7 +364,8 @@ impl Move {
             Move::Step(_) | Move::Tumble => s((3, 18, 13), 12.0, Some((1, 21)), 0.0, 0.0, 0.0),
             Move::Lane(_) => s((0, SIDESTEP, 2), 0.0, None, 0.0, 0.0, 0.0),
             Move::Backstep => s((2, 16, 6), 14.0, Some((2, 18)), 0.0, 0.0, 0.0),
-            Move::Parry => s((6, 10, 22), 0.0, None, 0.0, 0.0, 0.0),
+            // 13 ticks live (0.22 s): a parry a person can time, not only a frame-perfect one.
+            Move::Parry => s((6, 13, 22), 0.0, None, 0.0, 0.0, 0.0),
             Move::Flask => s((36, 1, 17), 0.0, None, 0.0, 0.0, 0.0),
             Move::Riposte => s((18, 4, 28), 0.0, Some((0, 50)), 2.9, 60.0, 0.0),
             Move::Loose => Move::loose_spec(crate::gear::Ranged::Bow),
@@ -375,6 +395,8 @@ impl Move {
             Ranged::BloodBow => s((34, 2, 20), 10.0, 8.0, 3.0),
             // Quick to aim, long to wind again: a heavy bolt, a few of a light's damage a second.
             Ranged::BloodCrossbow => s((28, 2, 52), 8.0, 12.0, 6.0),
+            // A long draw for a heavy arrow: half again a shortbow's, for a little more stamina.
+            Ranged::Longbow => s((44, 2, 22), 16.0, 11.0, 5.0),
             Ranged::Frost => s((34, 3, 20), 8.0, 20.0, 24.0),
         }
     }
@@ -949,7 +971,7 @@ pub enum Guarded {
 pub fn guard_blow(stats: &Stats, stamina: f32, bulwark: &mut Bulwark, guard: f32, damage: f32, breaker: bool) -> Guarded {
     let kit = stats.kit;
     let gain = guard * WARD_PER_STAMINA * kit.ward.map_or(0.0, |w| w.fills().0) * kit.ward_boost();
-    if let Some(ward) = kit.ward.filter(|_| bulwark.fresh && bulwark.up <= PERFECT_BLOCK) {
+    if let Some(ward) = kit.ward.filter(|w| bulwark.fresh && bulwark.up <= w.perfect_ticks()) {
         // Once a raise: a second blow on the same guard is blocked as any other.
         bulwark.fresh = false;
         if let Some(w) = Some(ward).filter(|w| w.on_block()).and_then(|_| bulwark.let_go()) {
@@ -1033,6 +1055,15 @@ pub enum Event {
     /// Wanted to move with no stamina.
     Spent,
     Died,
+    /// Someone called to the fight (`allies`): struck enemy `enemy`, loosed an arrow, got out of
+    /// the way of a blow, took one, went down.
+    AllyHit { enemy: usize },
+    AllyLoosed { ally: usize },
+    AllyDodged { ally: usize },
+    AllyStruck { ally: usize, damage: f32 },
+    AllyDown { ally: usize },
+    /// A foe that only tested the hero melted away, `at` metres along (`side::SideFight::flee`).
+    Fled { enemy: usize, at: f64 },
 }
 
 /// Levels bought with souls at a shrine, each over the start (design doc §8.3; Finesse, Insight
@@ -1092,7 +1123,19 @@ impl Stats {
     pub fn max_hp(&self) -> f32 { HP + 8.0 * self.vigor as f32 + self.kit.hp }
     pub fn max_stamina(&self) -> f32 { STAMINA + 6.0 * self.endurance as f32 + self.kit.stamina }
     /// Spell charges at full: three, one more for every four levels of focus, and the catalyst's.
-    pub fn max_charges(&self) -> f32 { 3.0 + (self.focus / 4) as f32 + self.kit.catalyst.map_or(0.0, |c| c.charges + self.kit.charges) }
+    pub fn max_charges(&self) -> f32 {
+        if self.kit.imbues() { return 1.0; }
+        3.0 + (self.focus / 4) as f32 + self.kit.catalyst.map_or(0.0, |c| c.charges + self.kit.charges)
+    }
+
+    /// The Blood Imbue's charge `by` further on (a tick's worth, or a blow's), with `quiver`
+    /// carried: it fills only once the last imbue's shots are spent, and only for a blood bow.
+    pub fn imbue_refilled(&self, charges: f32, quiver: &Quiver, by: f32) -> f32 {
+        if self.kit.imbues() && quiver.imbued == 0 { (charges + by).min(1.0) } else { charges }
+    }
+
+    /// How much health an imbued blood bow's arrow gives back when it lands.
+    pub fn imbue_drink(&self) -> f32 { self.max_hp() * IMBUE_COST * IMBUE_RETURN / IMBUE_SHOTS as f32 }
     /// What an arrow, a bolt or a spell hits for against its own damage, as in the souls games:
     /// a bow or a crossbow by its own grades and needs (a crossbow's are none: its bolt is its
     /// weight), a spell by the catalyst it is cast through; all by what is worn, and the smith's
@@ -1169,7 +1212,7 @@ impl Hero {
     pub fn mend(&mut self) { self.hp = (self.hp + self.stats.kit.capped.mend * self.stats.max_hp()).min(self.stats.max_hp()); }
     /// Whole, with these levels: as they rise from a shrine.
     pub fn with(stats: Stats) -> Hero {
-        Hero { stats, hp: stats.max_hp(), stamina: stats.max_stamina(), rested: REGEN_DELAY, flasks: FLASKS, lane: 0, x: 0.0, act: None, guarding: false, reeling: 0, reel: Reel::None, poise: stats.poise(), poise_wait: 0, buffer: None, dead: false, quiver: Quiver::default(), charges: stats.max_charges(), bulwark: Bulwark::default(), art: 0.0, stone: 0, mark: None, pierced: 0 }
+        Hero { stats, hp: stats.max_hp(), stamina: stats.max_stamina(), rested: REGEN_DELAY, flasks: FLASKS + stats.kit.flasks, lane: 0, x: 0.0, act: None, guarding: false, reeling: 0, reel: Reel::None, poise: stats.poise(), poise_wait: 0, buffer: None, dead: false, quiver: Quiver::default(), charges: stats.max_charges(), bulwark: Bulwark::default(), art: 0.0, stone: 0, mark: None, pierced: 0 }
     }
     /// Whole again with the same levels (as at a shrine), keeping what is carried to shoot.
     pub fn renewed(&self) -> Hero { Hero { quiver: Quiver { imbued: 0, ..self.quiver }, ..Hero::with(self.stats) } }
@@ -1182,9 +1225,9 @@ impl Hero {
             None => false,
         }
     }
-    /// Whether Blood Imbue can be called (C): a blood bow held, the blood to pay for it, and
-    /// shots to imbue.
-    pub fn can_imbue(&self) -> bool { self.stats.kit.imbues() && self.quiver.imbued < IMBUE_SHOTS && self.hp > self.stats.max_hp() * IMBUE_COST + 1.0 }
+    /// Whether Blood Imbue can be called (C): a blood bow held, its charge back, the blood to pay
+    /// for it, and no imbued shots still to loose.
+    pub fn can_imbue(&self) -> bool { self.stats.kit.imbues() && self.charges >= 1.0 && self.quiver.imbued == 0 && self.hp > self.stats.max_hp() * IMBUE_COST + 1.0 }
     /// Whether the hand's bow or crossbow has a shot to give (F).
     pub fn can_loose(&self) -> bool { self.can_shoot(self.stats.kit.shot(false)) }
     /// Whether a spell can be cast: a catalyst held, a spell to cast, a charge for it (C).
@@ -1244,9 +1287,9 @@ impl Fight {
         if h.dead || h.reeling > 0 { return 0.0; }
         if let Some(a) = h.act {
             match a.mv {
-                Move::Backstep => return if a.t < 18 { -3.6 } else { 0.0 },
+                Move::Backstep => return -Move::glide(a.t, BACK_TRAVEL, BACK_ROLL),
                 // Forward while it travels, never into the enemy ahead.
-                Move::Tumble => return if a.t < TRAVEL && self.in_the_way(walked).is_none_or(|i| self.enemies[i].gap(walked) > 0.8) { TUMBLE } else { 0.0 },
+                Move::Tumble => return if self.in_the_way(walked).is_none_or(|i| self.enemies[i].gap(walked) > 0.8) { Move::glide(a.t, TRAVEL, TUMBLE) } else { 0.0 },
                 // A sidestep keeps walking.
                 Move::Lane(_) => {}
                 Move::Art => return self.art_speed(a, walked),
@@ -1424,6 +1467,7 @@ impl Fight {
         }
         // Stamina comes back once it has gone unspent a while, slower behind a guard.
         h.rested = h.rested.saturating_add(1);
+        h.charges = h.stats.imbue_refilled(h.charges, &h.quiver, 1.0 / (IMBUE_RECHARGE * 60.0));
         if h.rested > REGEN_DELAY && h.act.is_none_or(|a| a.mv == Move::Flask) {
             let k = if h.guarding { 1.0 / 3.0 } else { 1.0 };
             h.stamina = (h.stamina + REGEN * k * h.stats.regen()).min(h.stats.max_stamina());
@@ -1443,7 +1487,7 @@ impl Fight {
         // Blood Imbue: paid for in health as it goes off; a call cut off spends nothing.
         if a.mv == Move::Cast && a.t == spec.frames.0 && h.stats.kit.imbues() {
             h.hp = (h.hp - h.stats.max_hp() * IMBUE_COST).max(1.0);
-            h.quiver.imbued = IMBUE_SHOTS;
+            (h.quiver.imbued, h.charges) = (IMBUE_SHOTS, 0.0);
             out.push(Event::Imbued);
         }
         // Loosed at the end of the draw, paid for then: a draw cut off spends nothing.
@@ -1512,6 +1556,7 @@ impl Fight {
         h.hp = (h.hp + dealt * kit.leech).min(h.stats.max_hp());
         // A blow landed up close fills the spell's charges.
         if kit.spell_cast().is_some() { h.charges = (h.charges + CHARGE_PER_HIT).min(h.stats.max_charges()); }
+        h.charges = h.stats.imbue_refilled(h.charges, &h.quiver, IMBUE_PER_HIT);
         let e = &mut self.enemies[i];
         // The weapon's capstone: the blow burns on, or chills.
         e.burn.light(dealt, kit.capped.burn);
@@ -1758,10 +1803,10 @@ impl Fight {
         let capped = self.hero.stats.kit.capped;
         if b.ranged == crate::gear::Ranged::Frost { e.chill = CHILL * capped.winter; } else { e.chill = e.chill.max(capped.shot_chill); }
         if b.ranged != crate::gear::Ranged::Frost { e.burn.light(dealt, capped.shot_burn); }
-        // An imbued blood bow's arrow drinks back of the blood it was paid for with; a siphoning
-        // catalyst's spell, of what it dealt.
-        let drink = if b.drinks() { IMBUE_DRINK } else if b.ranged == crate::gear::Ranged::Frost { capped.spell_drink } else { 0.0 };
-        self.hero.hp = (self.hero.hp + dealt * drink).min(self.hero.stats.max_hp());
+        // An imbued blood bow's arrow drinks back some of the blood it was paid for with; a
+        // siphoning catalyst's spell, of what it dealt.
+        let drink = if b.drinks() { self.hero.stats.imbue_drink() } else if b.ranged == crate::gear::Ranged::Frost { dealt * capped.spell_drink } else { 0.0 };
+        self.hero.hp = (self.hero.hp + drink).min(self.hero.stats.max_hp());
         out.push(Event::Hit { enemy: i, mv: Move::Loose });
         if e.hp <= 0.0 {
             e.ai = Ai::Dead;
@@ -2694,7 +2739,11 @@ mod tests {
     fn a_backstep_walks_the_road_back_and_a_flask_heals() {
         let mut f = Fight::new(vec![dummy(5.0, 0)]);
         f.tick(&Input { backstep: true, ..idle() }, 0.0);
-        assert!(f.speed(&idle(), 0.0) < -3.0);
+        // Back a little over a metre, quickest mid-roll.
+        let mut back = Vec::new();
+        while f.hero.act.is_some() { back.push(f.speed(&idle(), 0.0)); f.tick(&idle(), 0.0); }
+        let gone: f32 = back.iter().sum::<f32>() / 60.0;
+        assert!(back.iter().any(|&v| v < -4.0) && (gone + 1.08).abs() < 0.08, "{gone} m: {back:?}");
         assert_eq!(f.hero.lane, 0);
         let mut g = Fight::new(vec![dummy(5.0, 0)]);
         g.hero.hp = 30.0;
@@ -2732,7 +2781,8 @@ mod tests {
         let mut t = Fight::new(vec![dummy(30.0, 0)]);
         t.tick(&Input { tumble: true, ..idle() }, 0.0);
         assert!(t.hero.act.unwrap().invulnerable() && t.hero.stamina < STAMINA && t.hero.lane == 0);
-        assert_eq!(t.speed(&idle(), 0.0), TUMBLE);
+        let gone: f32 = (0..TRAVEL).map(|_| { let v = t.speed(&idle(), 0.0); t.tick(&idle(), 0.0); v }).sum::<f32>() / 60.0;
+        assert!((gone - TUMBLE * TRAVEL as f32 / 60.0).abs() < 0.08, "{gone} m");
         // And the roll across.
         let mut f = Fight::new(vec![dummy(5.0, 0)]);
         f.tick(&Input { step: 1, ..idle() }, 0.0);
@@ -3355,8 +3405,8 @@ mod tests {
         let ev = run(&mut f, 100, |_, t| if t == 0 { press_cast() } else { idle() }, |f, _| f.hero.act.is_none());
         assert!(ev.contains(&Event::Imbued) && !ev.iter().any(|e| matches!(e, Event::Shot(_))), "{ev:?}");
         assert_eq!((f.hero.hp, f.hero.quiver.imbued, f.hero.quiver.arrows), (top - top * IMBUE_COST, IMBUE_SHOTS, Quiver::SETTING_OUT.arrows));
-        // Called again with all five still imbued: nothing.
-        assert!(!f.hero.can_cast());
+        // Called again with all five still imbued: nothing; and its one charge is spent.
+        assert!(!f.hero.can_cast() && f.hero.charges == 0.0);
         // The arrows: one plain, then one imbued.
         let mut g = holding(Ranged::BloodBow, vec![of(Archetype::Husk, 9.0, 0)]);
         g.enemies[0].hp = 1000.0;
@@ -3370,8 +3420,10 @@ mod tests {
         assert!(plain > 0.0 && healed == 0.0, "{plain} {healed}");
         (g.hero.hp, g.hero.quiver.imbued) = (0.5 * g.hero.stats.max_hp(), IMBUE_SHOTS);
         let (imbued, drank) = shoot(&mut g);
-        assert!((imbued - plain * IMBUE_DAMAGE).abs() < 1e-3 && (drank - imbued * IMBUE_DRINK).abs() < 1e-3, "{plain} {imbued} {drank}");
+        assert!((imbued - plain * IMBUE_DAMAGE).abs() < 1e-3 && (drank - g.hero.stats.imbue_drink()).abs() < 1e-3, "{plain} {imbued} {drank}");
         assert_eq!(g.hero.quiver.imbued, IMBUE_SHOTS - 1);
+        // All five landing give back less than the imbue took.
+        assert!(drank * IMBUE_SHOTS as f32 <= top * IMBUE_COST * IMBUE_RETURN + 1e-3 && IMBUE_RETURN < 1.0);
         // The crossbow's bolt: stopped by the first foe, unless imbued.
         let lane_of_two = |imbued: u32| {
             let mut c = holding(Ranged::BloodCrossbow, vec![of(Archetype::Husk, 6.0, 0), of(Archetype::Husk, 10.0, 0)]);
@@ -3384,6 +3436,27 @@ mod tests {
         assert_eq!(lane_of_two(1), [true, true]);
     }
 
+
+    #[test]
+    fn one_blood_imbue_comes_back_over_half_a_minute_once_spent_and_sooner_for_blows_landed() {
+        use crate::gear::Ranged;
+        let mut f = holding(Ranged::BloodBow, Vec::new());
+        assert_eq!(f.hero.stats.max_charges(), 1.0);
+        run(&mut f, 100, |_, t| if t == 0 { press_cast() } else { idle() }, |f, _| f.hero.act.is_none());
+        // Nothing comes back while imbued shots are left.
+        for _ in 0..600 { f.tick(&idle(), 0.0); }
+        assert_eq!(f.hero.charges, 0.0);
+        f.hero.quiver.imbued = 0;
+        let ticks = (IMBUE_RECHARGE * 60.0) as u32;
+        for _ in 0..ticks - 60 { f.tick(&idle(), 0.0); }
+        assert!(!f.hero.can_cast() && f.hero.charges > 0.9, "{}", f.hero.charges);
+        for _ in 0..61 { f.tick(&idle(), 0.0); }
+        assert!(f.hero.can_cast(), "{}", f.hero.charges);
+        // Each blow landed up close brings it a tenth nearer; a rest brings it whole.
+        assert!((f.hero.stats.imbue_refilled(0.2, &f.hero.quiver, IMBUE_PER_HIT) - 0.3).abs() < 1e-6);
+        f.hero.charges = 0.0;
+        assert_eq!(f.hero.renewed().charges, 1.0);
+    }
 
     /// The hero holding forged weapon `name`, the meter at `meter`.
     fn forged(name: &str, meter: f32, enemies: Vec<Enemy>) -> Fight {

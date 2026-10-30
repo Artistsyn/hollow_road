@@ -115,9 +115,20 @@ fn skip_opening(&mut self) {
     /// `n` ticks, each given a few milliseconds so the road's worker keeps up as in a window.
     fn ticks(&mut self, n: u32) {
         for _ in 0..n {
+            let at = std::time::Instant::now();
             let req = self.canvas.request_size();
             let sized = self.canvas.build(screen(), req);
             OnEvent::on_event(&mut self.canvas, &mut self.ctx, &sized, Box::new(TickEvent) as Box<dyn Event>);
+            // `HR_SLOW_TICK=ms`: name each tick (with the item list a frame draws) slower than that.
+            if let Some(limit) = std::env::var("HR_SLOW_TICK").ok().and_then(|v| v.parse::<f32>().ok()) {
+                let ticked = at.elapsed().as_secs_f32() * 1000.0;
+                let req = self.canvas.request_size();
+                let sized = self.canvas.build(screen(), req);
+                let drawn = std::time::Instant::now();
+                let _ = self.canvas.draw(&sized, (0.0, 0.0), (0.0, 0.0, screen().0, screen().1));
+                let items = drawn.elapsed().as_secs_f32() * 1000.0;
+                if ticked + items > limit { eprintln!("[slow tick] {ticked:.1} ms + items {items:.1} ms: {}", self.status()); }
+            }
             std::thread::sleep(std::time::Duration::from_millis(6));
         }
     }
@@ -332,6 +343,15 @@ fn gear_panels() {
     p.ticks(2);
     p.shot("g03_weapons_last_picked");
     for _ in 0..40 { p.tap("w"); }
+    p.shot("g03b_weapon_lines");
+    // The keepsakes: what is carried and not worn, each with its lines; then back to the weapons.
+    { let w = &mut p.game().world; w.keys.extend([crate::atlas::Key::Hook, crate::atlas::Key::ShardI]); w.remnants.push("Screamer's Drowned Voice"); w.shards = [4, 1, 0]; }
+    for k in ["q", "q", "s", "s", "e"] { p.tap(k); p.ticks(2); }
+    p.shot("g03c_keepsakes");
+    p.tap("s");
+    p.ticks(2);
+    p.shot("g03d_keepsakes_shard");
+    for k in ["q", "w", "w", "e", "e"] { p.tap(k); p.ticks(2); }
     // The smith's forge: a row for each piece worn, its level, its price and what the next does.
     { let w = &mut p.game().world; (w.met_smith, w.souls, w.shards) = (true, 5000, [9, 2, 0]); w.gear.levels.insert(w.gear.worn[0].unwrap(), 3); }
     p.game().fight.hero.stats.kit = p.game().world.gear.kit();
@@ -355,7 +375,7 @@ fn gear_panels() {
     p.shot("g05_warrens_shrine");
     // Rested at it walking the Warrens back from the guild hall: the shrine is near the walk's far
     // end, and waking stands the hero by it there.
-    let at = "warrens@guild_hall";
+    let at = "warrens@^";
     let w = &mut p.game().world;
     (w.checkpoint, w.rested) = (at.into(), vec![at.into()]);
     let go = p.game().world.resume();
@@ -503,8 +523,80 @@ fn perf() {
         if now - last >= 1.0 {
             last = now;
             ms.sort_by(f32::total_cmp);
-            eprintln!("[perf] {:5.1}s  {:<12} progress {:?}  road ms median {:6.1} max {:6.1}", now, st.stop.as_deref().unwrap_or("-"), st.progress.map(|p| (p * 100.0).round()), ms[ms.len() / 2], ms[ms.len() - 1]);
+            eprintln!("[perf] {:5.1}s  {:<12} progress {:?}  road ms median {:6.1} max {:6.1}  churn {:?}", now, st.stop.as_deref().unwrap_or("-"), st.progress.map(|p| (p * 100.0).round()), ms[ms.len() / 2], ms[ms.len() - 1],
+                p.renderer.as_mut().map(|r| r.take_image_churn(4)));
             ms.clear();
+        }
+    }
+}
+
+/// Textures uploaded a second on the road with enemies about (walking up to the first and
+/// guarding): what churns. `cargo test --release perf_churn -- --ignored --nocapture`.
+#[test]
+#[ignore]
+fn perf_churn() {
+    let mut p = Play::started();
+    p.game().world.souls = 0;
+    p.key("w", KeyboardState::Pressed);
+    let t0 = std::time::Instant::now();
+    let mut last = 0.0;
+    let mut uploaded = p.renderer.as_ref().map_or(0, |r| r.image_uploads());
+    while t0.elapsed().as_secs_f32() < 12.0 {
+        let tick = std::time::Instant::now();
+        let req = p.canvas.request_size();
+        let sized = p.canvas.build(screen(), req);
+        OnEvent::on_event(&mut p.canvas, &mut p.ctx, &sized, Box::new(TickEvent) as Box<dyn Event>);
+        let items = p.canvas.draw(&sized, (0.0, 0.0), (0.0, 0.0, screen().0, screen().1));
+        if let Some(r) = p.renderer.as_mut() { let _ = r.render(items); }
+        if let Some(rest) = std::time::Duration::from_micros(16_667).checked_sub(tick.elapsed()) { std::thread::sleep(rest); }
+        let now = t0.elapsed().as_secs_f32();
+        if now - last >= 1.0 {
+            last = now;
+            let up = p.renderer.as_ref().map_or(0, |r| r.image_uploads());
+            eprintln!("[perf_churn] {now:5.1}s uploads {} churn {:?}  {}", up - uploaded, p.renderer.as_mut().map(|r| r.take_image_churn(5)), p.status());
+            uploaded = up;
+        }
+    }
+}
+
+/// The opening's cost, played as a window plays it (a draw a tick, 60 a second): each second the
+/// game's own frame (update, draw, render) and the road's render, median and worst.
+/// `HR_SCREEN=2940x1846 cargo test --release perf_opening -- --ignored --nocapture`.
+#[test]
+#[ignore]
+fn perf_opening() {
+    let mut p = Play::new();
+    p.ticks(5);
+    for ch in ["e", "e", "s", "e"] { p.tap(ch); }
+    for _ in 0..200 { if p.scene_at().is_some() { break; } p.ticks(1); }
+    assert_eq!(p.scene_at().map(|s| s.0), Some("opening"), "no opening: {}", p.status());
+    let t0 = std::time::Instant::now();
+    let (mut last, mut game, mut road, mut parts) = (0.0, Vec::new(), Vec::new(), Vec::new());
+    let mut uploaded = p.renderer.as_ref().map_or(0, |r| r.image_uploads());
+    while p.scene_at().is_some() && t0.elapsed().as_secs_f32() < 60.0 {
+        let tick = std::time::Instant::now();
+        let req = p.canvas.request_size();
+        let sized = p.canvas.build(screen(), req);
+        OnEvent::on_event(&mut p.canvas, &mut p.ctx, &sized, Box::new(TickEvent) as Box<dyn Event>);
+        let updated = tick.elapsed().as_secs_f32() * 1000.0;
+        let items = p.canvas.draw(&sized, (0.0, 0.0), (0.0, 0.0, screen().0, screen().1));
+        let drawn = tick.elapsed().as_secs_f32() * 1000.0;
+        if let Some(r) = p.renderer.as_mut() { let _ = r.render(items); }
+        game.push(tick.elapsed().as_secs_f32() * 1000.0);
+        parts.push((updated, drawn - updated, game[game.len() - 1] - drawn));
+        if let Some(rest) = std::time::Duration::from_micros(16_667).checked_sub(tick.elapsed()) { std::thread::sleep(rest); }
+        road.push(p.canvas.get_plugin::<quartz_path_forge::PathForgePlugin>().map_or(0.0, |pf| pf.render_ms()));
+        let now = t0.elapsed().as_secs_f32();
+        if now - last >= 1.0 {
+            last = now;
+            game.sort_by(f32::total_cmp);
+            road.sort_by(f32::total_cmp);
+            let mean = |pick: fn(&(f32, f32, f32)) -> f32| parts.iter().map(pick).sum::<f32>() / parts.len().max(1) as f32;
+            eprintln!("[perf_opening] {now:5.1}s {:?}  game ms median {:5.1} max {:6.1} (update {:4.1} draw {:4.1} render {:4.1})  road ms median {:6.1} max {:6.1}  uploads {}", p.scene_at(), game[game.len() / 2], game[game.len() - 1],
+                mean(|x| x.0), mean(|x| x.1), mean(|x| x.2), road[road.len() / 2], road[road.len() - 1], p.renderer.as_ref().map_or(0, |r| r.image_uploads()) - uploaded);
+            uploaded = p.renderer.as_ref().map_or(0, |r| r.image_uploads());
+            eprintln!("    churn {:?}", p.renderer.as_mut().map(|r| r.take_image_churn(6)));
+            (game, road, parts) = (Vec::new(), Vec::new(), Vec::new());
         }
     }
 }
@@ -573,6 +665,10 @@ fn journey() {
     assert!(p.walk_until(4000, true, |s| s.stop.as_deref() == Some("vale_edge@road")), "never reached the marsh edge: {}", p.status());
     p.ticks(60);
     p.shot("j03d_marsh_edge");
+    // The marsh edge forks at its end, the vale one way and the Drowned Fingers the other.
+    let vale_ahead_left = crate::atlas::leads("vale_edge", "road").first().is_some_and(|l| l.road.1 == "vale");
+    assert!(p.walk_until(6000, true, |s| s.choose_within.is_some()), "no fork on the marsh edge: {}", p.status());
+    p.tap(if vale_ahead_left { "a" } else { "d" });
     assert!(p.walk_until(6000, true, |s| s.stop.as_deref() == Some("vale@vale_edge")), "never reached the vale: {}", p.status());
     p.ticks(90);
     p.shot("j04_vale");
@@ -594,7 +690,7 @@ fn journey() {
     p.run_on("w");
     p.ticks(60);
     p.shot("j05a_turned");
-    let vale_left = crate::atlas::leads("gate", crate::atlas::BACK)[0].shown == "vale";
+    let vale_left = crate::atlas::leads("vale", "gate")[0].stop == "vale@^";
     assert!(p.walk_until(4000, true, |s| s.choose_within.is_some()), "no fork walking back: {}", p.status());
     p.tap(if vale_left { "a" } else { "d" });
     assert!(p.walk_until(6000, true, |s| s.stop.as_deref() == Some("vale@^")), "never back in the vale: {}", p.status());
@@ -609,8 +705,13 @@ fn journey() {
     p.ticks(120);
     assert!(p.walk_state().choose_within.is_some(), "the junction chose for the player");
     p.shot("j05c_waiting_at_fork");
-    // At the marsh edge's end, the road's junction: down it home, or on to the chapel.
-    let chapel_left = crate::atlas::leads("vale_edge", "vale")[0].shown == "chapel_edge";
+    // The marsh edge's own junction first: down its trunk to the road, not on to the Fingers.
+    let trunk_left = crate::atlas::leads("vale_edge", "vale")[0].stop == "vale_edge@^";
+    p.tap(if trunk_left { "a" } else { "d" });
+    assert!(p.walk_until(6000, true, |s| s.stop.as_deref() == Some("vale_edge@^")), "never back down the marsh edge: {}", p.status());
+    assert!(p.walk_until(4000, true, |s| s.choose_within.is_some()), "no fork at the road: {}", p.status());
+    // Past the marsh edge, into the road's junction: down it home, or on to the chapel.
+    let chapel_left = crate::atlas::leads("road", "vale_edge")[0].shown == "chapel_edge";
     p.tap(if chapel_left { "a" } else { "d" });
     assert!(p.walk_until(6000, true, |s| s.stop.as_deref() == Some("chapel@chapel_edge")), "never reached the chapel: {}", p.status());
     p.ticks(90);
@@ -701,7 +802,7 @@ fn boss_moves() {
     // The other region bosses and the mini-bosses, each in its own art: standing, then near the
     // end of one of its own moves' windups.
     use crate::side::{AGENT, ALPHA, ARCHANGEL, BUTCHER, COLLECTOR, MAGISTRATE, PRIEST, SENTINEL, STALKER, STATUE, WRAITH};
-    for (k, b) in [&MAGISTRATE, &WRAITH, &PRIEST, &STATUE, &ARCHANGEL, &COLLECTOR, &ALPHA, &AGENT, &SENTINEL, &BUTCHER, &STALKER].into_iter().enumerate() {
+    for (k, b) in [&MAGISTRATE, &WRAITH, &PRIEST, &STATUE, &ARCHANGEL, &COLLECTOR, &ALPHA, &AGENT, &SENTINEL, &BUTCHER, &STALKER, &crate::side::BOUNTY_ECHO, &crate::side::CONSTRUCT, &crate::side::DRAKE].into_iter().enumerate() {
         arena(&mut p).side.foes[0] = crate::side::Foe::new(b, 2.0, -1.0, 400);
         let i = b.blows.iter().position(|x| ["grab", "knell", "leap", "throw"].contains(&x.art)).unwrap_or(0);
         throw(&mut p, i, 3.5);
@@ -889,7 +990,7 @@ fn roll_moves() {
         let mut seen = 0;
         for t in 0..30 {
             p.ticks(1);
-            if p.fight().hero.act.is_some_and(|a| a.mv == mv) { seen += 1; if t % 4 == 1 { p.shot(&format!("v_{name}_{t:02}")); } }
+            if p.fight().hero.act.is_some_and(|a| a.mv == mv) { seen += 1; if t % 2 == 1 { p.shot(&format!("v_{name}_{t:02}")); } }
         }
         assert!(seen > 5, "no {name} roll: {}", p.status());
         p.ticks(30);
@@ -1051,10 +1152,12 @@ fn boss() {
     let w = windup(&mut p, 1);
     p.ticks(w * 8 / 10);
     p.shot("b03_sweep_warning");
-    p.tap("w");
-    p.ticks(12);
-    p.shot("b04_jumped_the_sweep");
+    // Space jumps in the yard (W does not: a thumb on the touch stick pushed it).
     let hp = arena(&mut p).side.hero.hp;
+    p.tap(" ");
+    p.ticks(12);
+    assert!(arena(&mut p).side.hero.airborne(), "no jump");
+    p.shot("b04_jumped_the_sweep");
     p.ticks(40);
     assert_eq!(arena(&mut p).side.hero.hp, hp, "the sweep passed under");
     throw(&mut p, 2, 3.0);
@@ -1179,6 +1282,42 @@ fn side_path() {
 
 /// An ambush in the Wretched Vale: the spring, the yard with a pack on both sides, a warning, a
 /// foe felled, the last down, and the road again.
+/// A or D held on the road keeps stepping lanes that way until the road's edge, and a tap
+/// steps one: `cargo test --release shots::lanes_held -- --ignored`.
+#[test]
+#[ignore]
+fn lanes_held() {
+    let mut p = Play::started();
+    p.ticks(60);
+    assert_eq!(p.game().fight.hero.lane, 0);
+    p.key("d", KeyboardState::Pressed);
+    p.ticks(1);
+    p.key("d", KeyboardState::Released);
+    p.ticks(40);
+    assert_eq!(p.game().fight.hero.lane, 1, "a tap steps one lane");
+    p.key("a", KeyboardState::Pressed);
+    p.ticks(90);
+    assert_eq!(p.game().fight.hero.lane, -1, "held, it carries on across the road");
+    p.ticks(40);
+    assert_eq!(p.game().fight.hero.lane, -1, "and stops at its edge");
+    p.key("a", KeyboardState::Released);
+}
+
+/// The loading screen over the fade's black, a moment apart:
+/// `cargo test --release shots::loading -- --ignored` writes target/shots/loading_<k>.png
+/// (`HR_SCREEN=2400x1080` for a phone's shape, where nothing of the road may show at the sides).
+#[test]
+#[ignore]
+fn loading() {
+    let mut p = Play::new();
+    p.ticks(5);
+    p.game().hold_loading_for_test();
+    for k in 0..3 {
+        p.ticks(if k == 0 { 40 } else { 9 });
+        p.shot(&format!("loading_{k}"));
+    }
+}
+
 /// Each weapon held on the road, caught at the live frame of its light and its heavy:
 /// `cargo test --release movesets -- --ignored --nocapture` writes target/shots/m_<weapon>_<move>.png,
 /// and m_<weapon>_<move>_fx.png two frames into its strike effect.
@@ -1209,6 +1348,36 @@ fn movesets() {
             h.act = Some(Act { mv, spec, t: spec.frames.0 + 6 - 1, landed: true, from_lane: h.lane, from_x: h.x });
             p.ticks(1);
             p.shot(&format!("m_{}_{label}_fx", class.slug()));
+        }
+        p.game().fight.hero.act = None;
+    }
+}
+
+/// Every thrust drawn tick by tick from wind-up to recovery, its effect over it:
+/// `cargo test --release shots::thrusts -- --ignored` writes target/shots/t_<weapon>_<move>_<tick>.png.
+#[test]
+#[ignore]
+fn thrusts() {
+    use crate::fight::{Act, Move};
+    let mut p = Play::started();
+    p.ticks(240);
+    for name in ["Duelist's Rapier", "Lancer's Shortspear"] {
+        let g = p.game();
+        let i = crate::gear::find(name);
+        g.world.gear.gain(i);
+        assert!(g.world.gear.wear(0, Some(i)), "{name} would not go on");
+        g.fight.hero.stats.kit = g.world.gear.kit();
+        for e in g.fight.enemies.iter_mut() { e.ai = crate::fight::Ai::Dead; }
+        let class = g.fight.hero.stats.kit.arms.class;
+        for (mv, label) in [(Move::Light, "light"), (Move::Heavy, "heavy")] {
+            let spec = mv.spec_for(class, None);
+            let all = spec.frames.0 + spec.frames.1 + spec.frames.2;
+            for t in (0..all).step_by(2) {
+                let h = &mut p.game().fight.hero;
+                h.act = Some(Act { mv, spec, t, landed: true, from_lane: h.lane, from_x: h.x });
+                p.ticks(1);
+                p.shot(&format!("t_{}_{label}_{t:02}", class.slug()));
+            }
         }
         p.game().fight.hero.act = None;
     }
@@ -1702,7 +1871,7 @@ fn resume_at_last_shrine() {
     assert_eq!(profile::read(&dir, 0).expect("nothing kept").world["checkpoint"].as_str(), Some(crate::world::START));
     // Beside the Warrens' shrine walking back from the hall (sent as a wake would send the hero,
     // the kept shrine left as it was).
-    let hall = "warrens@guild_hall";
+    let hall = "warrens@^";
     let go = { let w = &mut p.game().world; w.checkpoint = hall.into(); let go = w.resume(); w.checkpoint = crate::world::START.into(); go };
     let pf = p.canvas.get_plugin_mut::<quartz_path_forge::PathForgePlugin>().unwrap();
     match go { crate::world::Go::WarpAt(s, m) => pf.warp_at(&s, m), crate::world::Go::Warp(s) => pf.warp(&s), _ => unreachable!() }
@@ -1781,6 +1950,16 @@ impl Play {
     /// The husk's blow under way has wound up to `t` ticks.
     fn until_windup(&mut self, t: u32) -> bool { self.until(900, |f| matches!(f.enemies.first().map(|e| e.ai), Some(crate::fight::Ai::Attack { t: at, .. }) if at >= t)) }
     fn until_still(&mut self) -> bool { self.until(400, |f| f.enemies.first().is_none_or(|e| e.attack().is_none())) }
+    /// Every banner line shown over the next `n` ticks, in order.
+    fn banners_over(&mut self, n: u32) -> Vec<String> {
+        let mut told: Vec<String> = Vec::new();
+        for _ in 0..n {
+            self.ticks(1);
+            let line = &self.game().banner.0;
+            if !line.is_empty() && told.last() != Some(line) { told.push(line.clone()); }
+        }
+        told
+    }
 }
 
 /// The prologue played through by keys, lesson by lesson: the memory, walking, running, lanes,
@@ -1896,7 +2075,10 @@ fn prologue() {
     p.ticks(20);
     p.shot("t13_end");
     p.tap("e");
-    assert!(p.until_mode(900, |m| matches!(m, Mode::Wake(_))), "never woke: {}", p.status());
+    // The memory's road is not announced on the way out: the first word is the road itself.
+    let told = p.banners_over(900);
+    assert_eq!(told.first().map(String::as_str), Some("The Road to Hollowmere"), "{told:?}");
+    assert!(p.until_mode(900, |m| matches!(m, Mode::Wake(_) | Mode::Play)), "never woke: {}", p.status());
     assert!(p.game().prologue.is_none());
     assert_eq!(p.walk_state().stop.as_deref(), Some(crate::world::START), "woke on the prologue's road");
     p.ticks(40);
@@ -1921,7 +2103,10 @@ fn prologue() {
     p.shot("t15_leave_asked");
     assert!(p.game().prologue.as_ref().is_some_and(|x| x.leaving));
     p.tap("e");
-    assert!(p.until_mode(900, |m| matches!(m, Mode::Wake(_))), "never set out: {}", p.status());
+    // The memory's road is not announced on the way out: the first word is the road itself.
+    let told = p.banners_over(900);
+    assert_eq!(told.first().map(String::as_str), Some("The Road to Hollowmere"), "{told:?}");
+    assert!(p.until_mode(900, |m| matches!(m, Mode::Wake(_) | Mode::Play)), "never set out: {}", p.status());
     assert!(p.game().prologue.is_none());
     assert_eq!(p.walk_state().stop.as_deref(), Some(crate::world::START));
 }
@@ -2087,8 +2272,9 @@ fn probe_lag() {
     eprintln!("[lag] end {}", p.status());
 }
 
-/// The opening, before a first pilgrimage: the Spire at dusk, Hollowmere at night, the vale at
-/// dawn, the title over the Warrens; then the road at the first shrine.
+/// The opening, before a first pilgrimage: the Spire at dusk, the angels' ruins, the marsh at
+/// night, Hollowmere and Varnholt as rumour, the hero on the road at the first shrine, the Warrens,
+/// the title over the guild hall; then the road at the first shrine.
 /// `cargo test --release --lib -- --ignored --exact shots::opening` writes target/shots/c0*.png.
 #[test]
 #[ignore]
@@ -2102,7 +2288,9 @@ fn opening() {
     p.tap("e");
     for _ in 0..200 { if p.scene_at().is_some() { break; } p.ticks(1); }
     assert_eq!(p.scene_at().map(|s| s.0), Some("opening"), "no opening: {}", p.status());
-    for (secs, name) in [(4.5, "c01_spire"), (3.5, "c02_spire_risen"), (5.0, "c03_hollowmere"), (4.0, "c04_hollowmere_low"), (4.5, "c05_vale"), (4.0, "c06_vale_orbit"), (3.6, "c07_title")] {
+    let cuts = [(4.5, "c01_spire"), (8.5, "c02_the_eye"), (7.5, "c03_the_guardians"), (7.0, "c04_the_tear"), (7.5, "c05_hollowmere"),
+        (6.0, "c06_varnholt"), (6.0, "c07_rise_whole"), (5.0, "c08_waking"), (3.5, "c09_you"), (5.5, "c10_the_warrens"), (6.0, "c11_title")];
+    for (secs, name) in cuts {
         p.watch(secs);
         eprintln!("[opening] {name} at {:?}", p.scene_at());
         p.shot(name);
@@ -2110,7 +2298,366 @@ fn opening() {
     assert!(p.until_mode(900, |m| matches!(m, Mode::Wake(_))), "never woke on the road: {}", p.status());
     assert!(p.scene_at().is_none());
     p.ticks(60);
-    p.shot("c08_road");
+    p.shot("c12_road");
+}
+
+/// The Screamer speaks into the head as it is named, and its last words as it falls, before what
+/// it leaves is told. `cargo test --release --lib -- --ignored --exact shots::screamer_words`.
+#[test]
+#[ignore]
+fn screamer_words() {
+    use crate::game::Mode;
+    let mut p = Play::started();
+    p.game().world.warping = Some("hollowmere@gate".into());
+    p.canvas.run(Action::RunPlugin { name: "path_forge".into(), data: "warp:hollowmere@gate".into() });
+    assert!(p.walk_until(3000, false, |s| s.stop.as_deref() == Some("hollowmere@gate")), "never reached Hollowmere");
+    p.ticks(10);
+    p.key("w", KeyboardState::Pressed);
+    for _ in 0..6000 { p.fell_all(); p.ticks(1); p.step_through_veil(); if matches!(p.mode(), Mode::Side(_)) { break; } }
+    p.key("w", KeyboardState::Released);
+    assert_eq!(p.scene_at().map(|s| s.0), Some("entrance"), "no entrance: {}", p.status());
+    p.watch(3.6);
+    p.shot("w01_screamer_whispers");
+    for _ in 0..240 { if p.scene_at().is_none() { break; } p.ticks(1); }
+    for f in &mut arena(&mut p).side.foes { (f.hp, f.ai) = (0.0, crate::side::Ai::Dead); }
+    p.ticks(40);
+    p.shot("w02_screamer_last_words");
+    assert!(p.until_mode(400, |m| matches!(m, Mode::Play)), "the yard never let go");
+    p.ticks(10);
+    p.shot("w03_screamer_falls");
+    // What it leaves, told after, one line at a time.
+    p.ticks(200);
+    p.shot("w04_the_rune");
+    p.ticks(200);
+    p.shot("w05_the_remnant");
+}
+
+/// The East Gate both ways. Gone out early: the Keening Cage named and felled, its bone carried
+/// off, and once the story reaches it Olekeen comes for his bounty and finds it dead. In the
+/// story's order: Olekeen over his own kill. `cargo test --release --lib -- --ignored --exact
+/// shots::east_gate` writes target/shots/x*.png.
+#[test]
+#[ignore]
+fn east_gate() {
+    use crate::game::Mode;
+    fn to_gate(p: &mut Play) {
+        p.game().world.warping = Some("east_gate@warrens_lane".into());
+        p.canvas.run(Action::RunPlugin { name: "path_forge".into(), data: "warp:east_gate@warrens_lane".into() });
+        assert!(p.walk_until(3000, false, |s| s.stop.as_deref() == Some("east_gate@warrens_lane")), "never reached the east gate");
+    }
+    fn to_olekeen(p: &mut Play, name: &str) {
+        p.key("w", KeyboardState::Pressed);
+        let near = |p: &mut Play| { let walked = p.walk_state().walked; let g = p.game(); g.world.can_meet_visitor(&g.fight, walked) };
+        for _ in 0..3000 { p.fell_all(); p.ticks(1); if near(p) { break; } }
+        p.key("w", KeyboardState::Released);
+        assert!(near(p), "Olekeen is out of reach: {}", p.status());
+        p.ticks(20);
+        p.shot(&format!("{name}_olekeen"));
+        p.tap("e");
+        p.ticks(4);
+        for k in 0..5 { p.shot(&format!("{name}_olekeen_{k}")); p.tap("e"); p.ticks(4); }
+        assert!(matches!(p.mode(), Mode::Play), "still talking: {}", p.status());
+    }
+    let mut p = Play::started();
+    to_gate(&mut p);
+    p.ticks(30);
+    p.shot("x01_east_gate");
+    p.key("w", KeyboardState::Pressed);
+    for _ in 0..6000 { p.fell_all(); p.ticks(1); p.step_through_veil(); if matches!(p.mode(), Mode::Side(_)) { break; } }
+    p.key("w", KeyboardState::Released);
+    assert_eq!(p.scene_at().map(|s| s.0), Some("entrance"), "no entrance: {}", p.status());
+    p.watch(4.0);
+    p.shot("x02_the_keening_cage");
+    for _ in 0..240 { if p.scene_at().is_none() { break; } p.ticks(1); }
+    p.ticks(90);
+    p.shot("x03_the_keening_cage_fights");
+    for f in &mut arena(&mut p).side.foes { (f.hp, f.ai) = (0.0, crate::side::Ai::Dead); }
+    assert!(p.until_mode(400, |m| matches!(m, Mode::Play)), "the yard never let go");
+    assert!(p.game().world.remnants.contains(&"Violet-Veined Bone"));
+    // The story reaches the gate: Gruk pays the Hollowmere bounty, and Olekeen comes too late.
+    { let w = &mut p.game().world; w.guild.posted = 1; w.guild.paid = 1; w.story_moves(); }
+    to_gate(&mut p);
+    to_olekeen(&mut p, "x04_early");
+    // In the story's order: the beast is his, and he is still standing over it.
+    let mut p = Play::started();
+    { let w = &mut p.game().world; w.guild.posted = 1; w.guild.paid = 1; w.story_moves(); }
+    to_gate(&mut p);
+    to_olekeen(&mut p, "x05_late");
+    assert!(!matches!(p.mode(), Mode::Side(_)), "no beast to fight");
+}
+
+/// Down the side path off the Bandit Hollows into the crew's hole under the ridge, before their
+/// chief has fallen: the stash's guards spring at the chest, and the Caravan Signet is in it.
+/// `cargo test --release --lib -- --ignored --exact shots::bandit_cave` writes target/shots/bc*.png.
+#[test]
+#[ignore]
+fn bandit_cave() {
+    use crate::game::Mode;
+    let mut p = Play::started();
+    p.game().world.warping = Some("bandit_hollows@ridge_camp".into());
+    p.canvas.run(Action::RunPlugin { name: "path_forge".into(), data: "warp:bandit_hollows@ridge_camp".into() });
+    assert!(p.walk_until(3000, false, |s| s.stop.as_deref() == Some("bandit_hollows@ridge_camp")), "never reached the hollows");
+    p.ticks(10);
+    p.key("w", KeyboardState::Pressed);
+    let mut mouth = false;
+    for _ in 0..6000 {
+        p.fell_all();
+        p.ticks(1);
+        let st = p.walk_state();
+        if st.side_paths.iter().any(|(d, _)| (d - crate::fight::HERO_D).abs() < crate::world::SIDE_REACH * 0.5) { mouth = true; break; }
+    }
+    p.key("w", KeyboardState::Released);
+    assert!(mouth, "no side path opened: {}", p.status());
+    p.ticks(4);
+    p.shot("bc01_mouth");
+    p.tap("e");
+    assert!(p.until_mode(20, |m| matches!(m, Mode::Peek(..))), "E did not turn down it: {:?}", p.mode());
+    assert!(p.walk_until(1200, false, |s| s.stop.as_deref() == Some("bandit_cave")), "never reached the cave");
+    assert!(p.until_playing(400));
+    p.ticks(30);
+    p.shot("bc02_the_bandits_hole");
+    p.key("w", KeyboardState::Pressed);
+    let mut trap = false;
+    for _ in 0..6000 {
+        if !trap && matches!(p.mode(), Mode::Side(_)) {
+            trap = true;
+            p.key("w", KeyboardState::Released);
+            p.until_mode(300, |m| matches!(m, Mode::Side(a) if a.t >= 170));
+            p.shot("bc03_the_stash_guarded");
+            p.key("w", KeyboardState::Pressed);
+        }
+        p.fell_all();
+        p.ticks(1);
+        if p.game().world.cache_taken() { break; }
+    }
+    p.key("w", KeyboardState::Released);
+    assert!(trap, "the stash's guards never sprang");
+    assert!(p.until_playing(400));
+    p.ticks(20);
+    p.shot("bc04_the_signet");
+    let w = &p.game().world;
+    assert!(w.gear.owns(crate::gear::find("Caravan Signet")) && w.stash_taken_by_hero() == Some(true));
+}
+
+/// Past the East Gate into the black water, early: the Mother named (in a drowned woman's voice)
+/// and felled, Mara's whistle found among what she kept, and Krix at the guild knowing it.
+/// `cargo test --release --lib -- --ignored --exact shots::black_water` writes target/shots/bw*.png.
+#[test]
+#[ignore]
+fn black_water() {
+    use crate::game::Mode;
+    let mut p = Play::started();
+    p.game().world.beaten.extend(["east_gate", "guild_hall"]);
+    p.game().world.warping = Some("black_water@east_gate".into());
+    p.canvas.run(Action::RunPlugin { name: "path_forge".into(), data: "warp:black_water@east_gate".into() });
+    assert!(p.walk_until(3000, false, |s| s.stop.as_deref() == Some("black_water@east_gate")), "never reached the black water");
+    p.ticks(30);
+    p.shot("bw01_black_water");
+    p.key("w", KeyboardState::Pressed);
+    for _ in 0..6000 { p.fell_all(); p.ticks(1); p.step_through_veil(); if matches!(p.mode(), Mode::Side(_)) { break; } }
+    p.key("w", KeyboardState::Released);
+    assert_eq!(p.scene_at().map(|s| s.0), Some("entrance"), "no entrance: {}", p.status());
+    p.watch(2.0);
+    p.shot("bw02_the_mother_named");
+    p.watch(2.0);
+    p.shot("bw03_her_voice");
+    for _ in 0..240 { if p.scene_at().is_none() { break; } p.ticks(1); }
+    p.ticks(90);
+    p.shot("bw04_the_mother_fights");
+    for f in &mut arena(&mut p).side.foes { (f.hp, f.ai) = (0.0, crate::side::Ai::Dead); }
+    p.ticks(30);
+    p.shot("bw05_last_words");
+    assert!(p.until_mode(400, |m| matches!(m, Mode::Play)), "the yard never let go");
+    assert!(p.game().world.remnants.contains(&"The Mother's Hooked Finger"));
+    p.key("w", KeyboardState::Pressed);
+    for _ in 0..6000 { p.fell_all(); p.ticks(1); if p.game().world.cache_taken() { break; } }
+    p.key("w", KeyboardState::Released);
+    assert!(p.game().world.cache_taken(), "Mara's whistle was never found");
+    p.ticks(20);
+    p.shot("bw06_maras_whistle");
+    // Krix, at the guild, sees what was brought back.
+    p.game().world.warping = Some("guild_hall@warrens".into());
+    p.canvas.run(Action::RunPlugin { name: "path_forge".into(), data: "warp:guild_hall@warrens".into() });
+    assert!(p.walk_until(3000, false, |s| s.stop.as_deref() == Some("guild_hall@warrens")), "never reached the guild hall");
+    p.key("w", KeyboardState::Pressed);
+    let near = |p: &mut Play| { let walked = p.walk_state().walked; let g = p.game(); g.world.can_meet_visitor(&g.fight, walked) };
+    for _ in 0..3000 { p.fell_all(); p.ticks(1); if near(&mut p) { break; } }
+    p.key("w", KeyboardState::Released);
+    assert!(near(&mut p), "Krix is out of reach: {}", p.status());
+    p.ticks(20);
+    p.shot("bw07_krix");
+    p.tap("e");
+    p.ticks(4);
+    for k in 0..5 { p.shot(&format!("bw08_krix_{k}")); p.tap("e"); p.ticks(4); }
+    assert!(matches!(p.mode(), Mode::Play), "still talking: {}", p.status());
+    assert!(p.game().world.meetings.contains(&"krix_beaten_whistle"));
+}
+
+/// The fog hollow off the Bandit Hollows once the chief is down: Lurz at its mouth, the horror
+/// named and felled with no fall, and Krix telling it after, both hunters alive; then Lurz at
+/// Stonehollow's market with his spear.
+/// `cargo test --release --lib -- --ignored --exact shots::fog_hollow` writes target/shots/fh*.png.
+#[test]
+#[ignore]
+fn fog_hollow() {
+    use crate::game::Mode;
+    let mut p = Play::started();
+    p.game().world.beaten.extend(["chief_hold"]);
+    p.game().world.warping = Some("fog_hollow@bandit_hollows".into());
+    p.canvas.run(Action::RunPlugin { name: "path_forge".into(), data: "warp:fog_hollow@bandit_hollows".into() });
+    assert!(p.walk_until(3000, false, |s| s.stop.as_deref() == Some("fog_hollow@bandit_hollows")), "never reached the fog hollow");
+    p.ticks(30);
+    p.shot("fh01_fog_hollow");
+    let near = |p: &mut Play| { let walked = p.walk_state().walked; let g = p.game(); g.world.can_meet_visitor(&g.fight, walked) };
+    p.key("w", KeyboardState::Pressed);
+    for _ in 0..3000 { p.fell_all(); p.ticks(1); if near(&mut p) { break; } }
+    p.key("w", KeyboardState::Released);
+    assert!(near(&mut p), "Lurz is out of reach: {}", p.status());
+    p.ticks(20);
+    p.shot("fh02_lurz");
+    p.tap("e");
+    p.ticks(4);
+    for _ in 0..5 { p.tap("e"); p.ticks(4); }
+    assert!(matches!(p.mode(), Mode::Play), "still talking: {}", p.status());
+    p.key("w", KeyboardState::Pressed);
+    for _ in 0..6000 { p.fell_all(); p.ticks(1); p.step_through_veil(); if matches!(p.mode(), Mode::Side(_)) { break; } }
+    p.key("w", KeyboardState::Released);
+    assert_eq!(p.scene_at().map(|s| s.0), Some("entrance"), "no entrance: {}", p.status());
+    p.watch(2.0);
+    p.shot("fh03_the_horror_named");
+    for _ in 0..240 { if p.scene_at().is_none() { break; } p.ticks(1); }
+    p.ticks(90);
+    p.shot("fh04_the_horror_fights");
+    for f in &mut arena(&mut p).side.foes { (f.hp, f.ai) = (0.0, crate::side::Ai::Dead); }
+    p.ticks(30);
+    p.shot("fh05_last_words");
+    assert!(p.until_mode(400, |m| matches!(m, Mode::Play)), "the yard never let go");
+    assert!(p.game().world.remnants.contains(&"The Horror's Eye-Crack"));
+    assert_eq!(p.game().world.hunters, crate::hunters::Hunters { lost: 0, settled: true });
+    p.key("w", KeyboardState::Pressed);
+    for _ in 0..1200 { p.ticks(1); if near(&mut p) { break; } }
+    p.key("w", KeyboardState::Released);
+    assert!(near(&mut p), "Krix never came out of the fog: {}", p.status());
+    p.ticks(150);
+    p.shot("fh06_krix_after");
+    p.tap("e");
+    p.ticks(4);
+    p.shot("fh07_krix_words");
+    for _ in 0..8 { if matches!(p.mode(), Mode::Play) { break; } p.tap("e"); p.ticks(4); }
+    assert!(p.game().world.meetings.contains(&"hollow_both_live"));
+    p.game().world.warping = Some("stone_market@lower_stairs".into());
+    p.canvas.run(Action::RunPlugin { name: "path_forge".into(), data: "warp:stone_market@lower_stairs".into() });
+    assert!(p.walk_until(3000, false, |s| s.stop.as_deref() == Some("stone_market@lower_stairs")), "never reached the market");
+    p.key("w", KeyboardState::Pressed);
+    for _ in 0..3000 { p.fell_all(); p.ticks(1); if near(&mut p) { break; } }
+    p.key("w", KeyboardState::Released);
+    assert!(near(&mut p), "Lurz is out of reach at the market: {}", p.status());
+    p.ticks(20);
+    p.shot("fh08_lurz_at_the_market");
+    p.tap("e");
+    for _ in 0..6 { p.ticks(4); p.tap("e"); }
+    p.ticks(10);
+    assert!(p.game().world.gear.owns(crate::gear::find("Lurz's Spear")), "the spear was never given");
+}
+
+/// Tusk and Vren once the hero carries the rune and the shaken hunter found the blade first: Tusk
+/// at his Warrens cart, then down the Warrens' side path to the Broken Spire, where Vren shows it.
+/// `cargo test --release --lib -- --ignored --exact shots::tusk_and_vren` writes target/shots/tv*.png.
+#[test]
+#[ignore]
+fn tusk_and_vren() {
+    use crate::game::Mode;
+    let mut p = Play::started();
+    { let w = &mut p.game().world; w.keys.push(crate::atlas::Key::Rune); w.guild.paid = 1; w.story_moves(); }
+    p.game().world.warping = Some("warrens@warrens_lane".into());
+    p.canvas.run(Action::RunPlugin { name: "path_forge".into(), data: "warp:warrens@warrens_lane".into() });
+    assert!(p.walk_until(3000, false, |s| s.stop.as_deref() == Some("warrens@warrens_lane")), "never reached the Warrens");
+    let near = |p: &mut Play| { let walked = p.walk_state().walked; let g = p.game(); g.world.can_meet_visitor(&g.fight, walked) };
+    p.key("w", KeyboardState::Pressed);
+    for _ in 0..3000 { p.fell_all(); p.ticks(1); if near(&mut p) { break; } }
+    p.key("w", KeyboardState::Released);
+    assert!(near(&mut p), "Tusk is out of reach: {}", p.status());
+    p.ticks(20);
+    p.shot("tv01_tusk");
+    p.tap("e");
+    p.ticks(4);
+    p.shot("tv02_tusk_words");
+    for _ in 0..8 { if matches!(p.mode(), Mode::Play) { break; } p.tap("e"); p.ticks(4); }
+    assert!(p.game().world.meetings.contains(&"tusk_sold_it"));
+    // Back the way it was walked to the side path's mouth: turned round, down the street.
+    p.game().world.warping = Some("warrens@warrens_lane".into());
+    p.canvas.run(Action::RunPlugin { name: "path_forge".into(), data: "warp:warrens@warrens_lane".into() });
+    assert!(p.walk_until(3000, false, |s| s.stop.as_deref() == Some("warrens@warrens_lane")), "never back in the Warrens");
+    p.key("w", KeyboardState::Pressed);
+    let mut mouth = false;
+    for _ in 0..6000 {
+        p.fell_all();
+        p.ticks(1);
+        let st = p.walk_state();
+        if st.side_paths.iter().any(|(d, _)| (d - crate::fight::HERO_D).abs() < crate::world::SIDE_REACH * 0.5) { mouth = true; break; }
+    }
+    p.key("w", KeyboardState::Released);
+    assert!(mouth, "no side path opened: {}", p.status());
+    p.tap("e");
+    assert!(p.until_mode(20, |m| matches!(m, Mode::Peek(..))), "E did not turn down it: {:?}", p.mode());
+    assert!(p.walk_until(1200, false, |s| s.stop.as_deref() == Some("broken_spire")), "never reached the Broken Spire");
+    assert!(p.until_playing(400));
+    p.ticks(30);
+    p.shot("tv03_broken_spire");
+    p.key("w", KeyboardState::Pressed);
+    for _ in 0..3000 { p.fell_all(); p.ticks(1); if near(&mut p) { break; } }
+    p.key("w", KeyboardState::Released);
+    assert!(near(&mut p), "Vren is out of reach: {}", p.status());
+    p.ticks(20);
+    p.shot("tv04_vren");
+    p.tap("e");
+    p.ticks(4);
+    p.tap("e");
+    p.ticks(4);
+    p.tap("e");
+    p.ticks(4);
+    p.shot("tv05_vren_a_call");
+    for _ in 0..8 { if matches!(p.mode(), Mode::Play) { break; } p.tap("e"); p.ticks(4); }
+    assert!(p.game().world.meetings.contains(&"vren_shows_blade"));
+}
+
+/// The Taint echoes of Krix and Lurz, for a hero the fog hollow cost both: Lurz's on the Violet
+/// Road, named, fought and felled for his spear; Krix's at the Blackwood's edge, named.
+/// `cargo test --release --lib -- --ignored --exact shots::taint_echoes` writes target/shots/te*.png.
+#[test]
+#[ignore]
+fn taint_echoes() {
+    use crate::game::Mode;
+    let mut p = Play::started();
+    { let w = &mut p.game().world; w.beaten.extend(["chief_hold", "fog_hollow", "magistrate"]); w.hunters = crate::hunters::Hunters { lost: 2, settled: true }; }
+    for (stop, tag) in [("violet_road@magistrate", "te0"), ("blackwood@cathedral", "te1")] {
+        p.game().world.warping = Some(stop.into());
+        p.canvas.run(Action::RunPlugin { name: "path_forge".into(), data: format!("warp:{stop}") });
+        assert!(p.walk_until(3000, false, |s| s.stop.as_deref() == Some(stop)), "never reached {stop}");
+        p.key("w", KeyboardState::Pressed);
+        let duel = |p: &mut Play| matches!(p.mode(), Mode::Side(a) if a.why == crate::game::Why::Boss);
+        for _ in 0..12000 {
+            p.fell_all();
+            p.ticks(1);
+            p.step_through_veil();
+            if duel(&mut p) { break; }
+            // The road's own ambushes are not what this is about.
+            if matches!(p.mode(), Mode::Side(_)) { for f in &mut arena(&mut p).side.foes { (f.hp, f.ai) = (0.0, crate::side::Ai::Dead); } }
+        }
+        p.key("w", KeyboardState::Released);
+        assert!(duel(&mut p), "no duel at {stop}: {}", p.status());
+        p.watch(2.0);
+        p.shot(&format!("{tag}1_named"));
+        for _ in 0..240 { if p.scene_at().is_none() { break; } p.ticks(1); }
+        p.ticks(60);
+        p.shot(&format!("{tag}2_fights"));
+        for f in &mut arena(&mut p).side.foes { (f.hp, f.ai) = (0.0, crate::side::Ai::Dead); }
+        p.ticks(30);
+        p.shot(&format!("{tag}3_last_words"));
+        assert!(p.until_mode(400, |m| matches!(m, Mode::Play)), "the yard never let go at {stop}");
+    }
+    let w = &p.game().world;
+    assert!(w.gear.owns(crate::gear::find("Lurz's Spear")) && w.gear.owns(crate::gear::find("Krix's Notched Axe")), "the echoes left nothing");
 }
 
 /// A boss's entrance: the swing round to the gate's yard, the Bell Warden's toll as the view
@@ -2143,9 +2690,9 @@ fn entrance() {
     p.shot("e07_fight");
 }
 
-/// The last boss falls: slow, a flash, the view closing on it into white; out of the white the
-/// sky over the Spire, the Warrens at dawn, the pilgrimage beginning again, and waking at the first
-/// shrine with the dead stronger. `cargo test --release --lib -- --ignored --exact shots::ending`
+/// The Archangel falls: slow, a flash, the view closing on it into white; out of the white the
+/// Eye made whole and the trap at the Summit, and waking by the Sealed Slab's fire (the last act
+/// and its endings are `finale`). `cargo test --release --lib -- --ignored --exact shots::ending`
 /// writes target/shots/z0*.png.
 #[test]
 #[ignore]
@@ -2172,17 +2719,282 @@ fn ending() {
         eprintln!("[ending] {name} at {:?}", p.scene_at());
         p.shot(name);
     }
-    for _ in 0..600 { if p.scene_at().is_some_and(|s| s.0 == "ending") { break; } p.ticks(1); }
-    assert_eq!(p.scene_at().map(|s| s.0), Some("ending"), "no ending after the fall: {}", p.status());
-    for (secs, name) in [(2.6, "z05_dawn"), (4.4, "z06_sky"), (4.0, "z07_warrens"), (3.4, "z08_quiet"), (3.0, "z09_again")] {
+    for _ in 0..600 { if p.scene_at().is_some_and(|s| s.0 == "trap") { break; } p.ticks(1); }
+    assert_eq!(p.scene_at().map(|s| s.0), Some("trap"), "no trap after the fall: {}", p.status());
+    for (secs, name) in [(2.6, "z05_whole"), (6.0, "z06_voices"), (8.0, "z07_olekeen"), (6.0, "z08_exodus"), (6.5, "z09_gas")] {
         p.watch(secs);
         eprintln!("[ending] {name} at {:?}", p.scene_at());
         p.shot(name);
     }
-    assert!(p.until_mode(1200, |m| matches!(m, Mode::Wake(_))), "never woke again: {}", p.status());
-    assert_eq!((p.game().world.pilgrimages, p.game().world.at.as_str()), (1, crate::world::START));
+    assert!(p.until_mode(2400, |m| matches!(m, Mode::Wake(_))), "never woke: {}", p.status());
+    assert_eq!((p.game().world.pilgrimages, p.game().world.at.as_str()), (0, "sealed_slab@spire_stair"));
     p.ticks(60);
-    p.shot("z10_again_at_the_shrine");
+    p.shot("z10_awake_at_the_slab");
+}
+
+/// Turning round anywhere on the way: past a place's end short of the next boundary, at once
+/// again, past the boundary, and past a fork's junction. Each time the way back runs to the same
+/// boundary or junction, as far off as it was behind. `cargo test --release turn_anywhere --
+/// --ignored --test-threads=1`.
+#[test]
+#[ignore]
+fn turn_anywhere() {
+    use quartz_path_forge::WalkState;
+    let under = |s: &WalkState| s.travel.zip(s.handover);
+    let turn = |p: &mut Play| {
+        p.key("w", KeyboardState::Released);
+        p.fell_all();
+        p.ticks(2);
+        let walked = p.walk_state().walked;
+        let offered = { let g = p.game(); g.world.can_turn(&g.fight, walked) };
+        assert!(offered, "TURN is not offered: {}", p.status());
+        p.tap("t");
+        assert!(p.until_mode(60, |m| *m != crate::game::Mode::Play), "the turn never began: {}", p.status());
+        assert!(p.until_playing(900), "the turn never ended: {}", p.status());
+    };
+    let mut p = Play::started();
+    p.ticks(20);
+    // From the start back down the road toward Stilt Lane (`road@^`: a crossing at its end).
+    turn(&mut p);
+    p.run_on("w");
+    // Past the road's end, short of the boundary: the road walked the other way, the boundary
+    // behind the hero by as much as it was ahead.
+    assert!(p.walk_until(6000, true, |s| s.stop.as_deref() == Some("road@^") && under(s).is_some_and(|(t, h)| t > 4.0 && t < h - 4.0)), "never neared Stilt Lane: {}", p.status());
+    let (travel, handover) = under(&p.walk_state()).unwrap_or_default();
+    turn(&mut p);
+    let st = p.walk_state();
+    let into = st.walked - p.game().world.base;
+    assert_eq!(st.stop.as_deref(), Some("road@warrens_lane"), "{}", p.status());
+    assert!((into + f64::from(travel)).abs() < 1.5, "{into:.1} m into the road, not {:.1}: {}", -travel, p.status());
+    // Turned again at once: the crossing toward Stilt Lane, as far along as it was.
+    turn(&mut p);
+    let st = p.walk_state();
+    assert_eq!(st.stop.as_deref(), Some("road@^"), "{}", p.status());
+    let (again, at) = under(&st).expect("the crossing under way");
+    assert!((again - travel).abs() < 1.5 && at == handover, "{again:.1} m into the crossing, not {travel:.1}: {}", p.status());
+    // Past the boundary: Stilt Lane walked the other way, the crossing back to the road under
+    // way as far short of the boundary as the hero is past it.
+    p.run_on("w");
+    assert!(p.walk_until(6000, true, |s| s.stop.as_deref() == Some("road@^") && under(s).is_some_and(|(t, h)| t > h + 3.0)), "never crossed into Stilt Lane: {}", p.status());
+    let behind = under(&p.walk_state()).map_or(0.0, |(t, h)| t - h);
+    turn(&mut p);
+    let st = p.walk_state();
+    // Stilt Lane forks (the Warrens, the East Gate), so walked back toward the road it is walked
+    // down its trunk.
+    assert_eq!(st.stop.as_deref(), Some("warrens_lane@^"), "{}", p.status());
+    let (t, h) = under(&st).expect("the crossing back under way");
+    assert!((h - t - behind).abs() < 1.5, "the boundary {:.1} m ahead, not {behind:.1}: {}", h - t, p.status());
+    p.ticks(60);
+    p.shot("t01_turned_past_the_boundary");
+    // On over it and up the road to its fork; left, toward the marsh, past the junction.
+    p.run_on("w");
+    assert!(p.walk_until(8000, true, |s| s.stop.as_deref() == Some("road@warrens_lane") && s.choose_within.is_some()), "no fork: {}", p.status());
+    p.tap("a");
+    assert!(p.walk_until(6000, true, |s| s.choose_within.is_none() && under(s).is_some_and(|(t, h)| t > h + 4.0)), "never passed the junction: {}", p.status());
+    let behind = under(&p.walk_state()).map_or(0.0, |(t, h)| t - h);
+    turn(&mut p);
+    let st = p.walk_state();
+    let back = crate::atlas::stop("road", "vale_edge");
+    assert_eq!(st.stop.as_deref(), Some(back.as_str()), "{}", p.status());
+    let (t, h) = under(&st).expect("the fork under way");
+    assert!(st.choose_within.is_some(), "the junction is ahead to choose at: {}", p.status());
+    assert!((h - t - behind).abs() < 1.5, "the junction {:.1} m ahead, not {behind:.1}: {}", h - t, p.status());
+    p.ticks(60);
+    p.shot("t02_turned_past_the_junction");
+}
+
+/// Through the door at the guild hall's end, Gruk's counting room is a dead end: walked to its end
+/// the walk stops there, Gruk is spoken to and TURN is offered; turned, the room and the hall are
+/// walked back out and the Warrens' junction is at the hall's end, the trunk down to Stilt Lane
+/// taken (the sewers' way is shut from this side). `cargo test --release dead_end --
+/// --ignored --nocapture --test-threads=1` writes target/shots/d*.png.
+#[test]
+#[ignore]
+fn dead_end() {
+    let mut p = Play::started();
+    p.ticks(20);
+    let start = "guild_hall@warrens";
+    p.game().world.beaten.push("guild_hall");
+    let go = { let w = &mut p.game().world; w.checkpoint = start.into(); let go = w.resume(); w.checkpoint = crate::world::START.into(); go };
+    let pf = p.canvas.get_plugin_mut::<quartz_path_forge::PathForgePlugin>().unwrap();
+    match go { crate::world::Go::WarpAt(s, m) => pf.warp_at(&s, m), crate::world::Go::Warp(s) => pf.warp(&s), _ => unreachable!() }
+    assert!(p.walk_until(600, false, |s| s.stop.as_deref() == Some(start)), "never reached the hall: {}", p.status());
+    p.ticks(30);
+    p.shot("d00_into_the_hall");
+    p.run_on("w");
+    p.fell_all();
+    // On to the door at the hall's end, and through it into Gruk's counting room.
+    assert!(p.walk_until(2400, true, |s| s.stop.as_deref() == Some(start) && s.handover.zip(s.travel).is_some_and(|(at, t)| at - t < 9.0)), "no door ahead: {}", p.status());
+    p.shot("d00b_the_door_to_gruks_room");
+    let office = "guild_office@guild_hall";
+    // Walked on and on: the walk stops at the room's end, nothing under way.
+    p.walk_until(2400, true, |_| false);
+    let st = p.walk_state();
+    let (into, length) = (st.walked - p.game().world.base, crate::atlas::place_of("guild_office").map_or(0.0, |pl| pl.length));
+    eprintln!("[dead end] at {:?}, {into:.1} m in of {length}, under way {:?}", st.stop, st.travel);
+    assert!(st.stop.as_deref() == Some(office) && st.travel.is_none() && (into - f64::from(length)).abs() < 1.0, "not held at the end: {}", p.status());
+    p.key("w", KeyboardState::Released);
+    p.ticks(30);
+    p.shot("d01_the_halls_end");
+    let walked = p.walk_state().walked;
+    // Gruk behind his counter: met, his words read through, the Hollowmere bounty taken.
+    let near = { let g = p.game(); g.world.can_meet_gruk(&g.fight, walked) };
+    assert!(near, "Gruk is out of reach at the end: {}", p.status());
+    p.tap("e");
+    assert!(p.until_mode(30, |m| matches!(m, crate::game::Mode::Meet(_))), "no word with Gruk: {}", p.status());
+    p.ticks(10);
+    p.shot("d01b_gruk");
+    for _ in 0..12 { if !matches!(p.game().mode, crate::game::Mode::Meet(_)) { break; } p.tap("e"); p.ticks(2); }
+    assert_eq!(p.game().world.guild.open(), Some(crate::guild::Bounty::Hollowmere), "{}", p.status());
+    p.ticks(10);
+    p.shot("d01c_bounty_taken");
+    let offered = { let g = p.game(); g.world.can_turn(&g.fight, walked) };
+    assert!(offered, "TURN is not offered at the end: {}", p.status());
+    p.tap("t");
+    assert!(p.until_mode(60, |m| *m != crate::game::Mode::Play), "the turn never began: {}", p.status());
+    assert!(p.until_playing(900), "the turn never ended: {}", p.status());
+    assert_eq!(p.walk_state().stop.as_deref(), Some("guild_office@^"), "{}", p.status());
+    // Back out through the door and down the hall, the junction at its end: on down the
+    // Warrens' trunk.
+    p.run_on("w");
+    assert!(p.walk_until(3000, true, |s| s.stop.as_deref() == Some("guild_hall@guild_office")), "never back in the hall: {}", p.status());
+    assert!(p.walk_until(6000, true, |s| s.stop.as_deref() == Some("warrens@guild_hall") && s.choose_within.is_some()), "no junction out of the hall: {}", p.status());
+    p.ticks(20);
+    p.shot("d02_the_junction_out_of_the_hall");
+    assert!(p.walk_until(9000, true, |s| s.stop.as_deref() == Some("warrens@^")), "never down the Warrens' trunk: {}", p.status());
+    p.ticks(60);
+    p.shot("d03_down_the_warrens");
+}
+
+/// Out of the guild hall the walk crosses into the Warrens' rain before their junction comes in
+/// view, and the fork is on the alley's ground. Turned round just past it (toward Stilt Lane),
+/// the junction is ahead again: the signpost stands its own way past it, and neither it nor the
+/// camera has turned before the walk does. `cargo test --release turn_out_of_the_hall --
+/// --ignored --nocapture --test-threads=1` writes target/shots/h*.png.
+#[test]
+#[ignore]
+fn turn_out_of_the_hall() {
+    use quartz_path_forge::WalkState;
+    let under = |s: &WalkState| s.travel.zip(s.handover);
+    let mut p = Play::started();
+    p.ticks(20);
+    let start = "guild_hall@guild_office";
+    let go = { let w = &mut p.game().world; w.checkpoint = start.into(); let go = w.resume(); w.checkpoint = crate::world::START.into(); go };
+    let pf = p.canvas.get_plugin_mut::<quartz_path_forge::PathForgePlugin>().unwrap();
+    match go { crate::world::Go::WarpAt(s, m) => pf.warp_at(&s, m), crate::world::Go::Warp(s) => pf.warp(&s), _ => unreachable!() }
+    assert!(p.walk_until(600, false, |s| s.stop.as_deref() == Some(start)), "never in the hall: {}", p.status());
+    p.ticks(30);
+    p.run_on("w");
+    // No fork in the hall: the junction comes in view only once in the Warrens.
+    let forked_in_hall = std::cell::Cell::new(false);
+    let at_fork = p.walk_until(12000, true, |s| {
+        if s.stop.as_deref() == Some(start) && s.choose_within.is_some() { forked_in_hall.set(true); }
+        s.stop.as_deref() == Some("warrens@guild_hall") && s.choose_within.is_some()
+    });
+    assert!(at_fork && !forked_in_hall.get(), "the fork came in the hall, or never: {}", p.status());
+    p.ticks(10);
+    p.shot("h01_the_junction_out_of_the_hall");
+    // Down the trunk toward Stilt Lane, 3 m past the junction, and turned round.
+    let left = { let g = p.game(); g.world.ahead()[0].stop == "warrens@^" };
+    p.tap(if left { "a" } else { "d" });
+    assert!(p.walk_until(12000, true, |s| s.choose_within.is_none() && under(s).is_some_and(|(t, h)| t > h + 3.0)), "never past the junction: {}", p.status());
+    p.key("w", KeyboardState::Released);
+    p.fell_all();
+    p.ticks(2);
+    let walked = p.walk_state().walked;
+    { let g = p.game(); assert!(g.world.can_turn(&g.fight, walked), "TURN not offered: {}", p.status()); }
+    p.tap("t");
+    assert!(p.until_mode(60, |m| *m != crate::game::Mode::Play) && p.until_playing(900), "the turn never ran: {}", p.status());
+    p.ticks(2);
+    let st = p.walk_state();
+    assert_eq!(st.stop.as_deref(), Some("warrens@warrens_lane"), "{}", p.status());
+    let junction = under(&st).map(|(t, h)| f64::from(h - t)).expect("the fork under way");
+    let sign = p.game().world.signpost.expect("the signpost") - st.walked;
+    assert!((sign - junction - f64::from(crate::world::SIGNPOST_PAST)).abs() < 0.3, "the signpost {sign:.1} m ahead, the junction {junction:.1}: {}", p.status());
+    p.shot("h02_turned_past_the_junction");
+}
+
+/// Turning round past a fork's junction, on its own walk and on the branch's lane beyond: the way
+/// back is the junction's, as far ahead as the hero is past it. The road's fork, and the Warrens'
+/// both ways. `cargo test --release turn_on_a_lane -- --ignored --nocapture --test-threads=1`.
+#[test]
+#[ignore]
+fn turn_on_a_lane() {
+    use quartz_path_forge::WalkState;
+    let under = |s: &WalkState| s.travel.zip(s.handover);
+    // (where the walk starts, the way taken at its fork, the stop turned back onto)
+    let cases = [
+        ("road@warrens_lane", "vale_edge", "road@vale_edge"),
+        ("warrens@warrens_lane", "guild_hall", "warrens@guild_hall"),
+        ("warrens@guild_hall", "warrens_lane", "warrens@warrens_lane"),
+    ];
+    let mut failed = Vec::new();
+    for (start, way, back) in cases {
+        for lane in [false, true] {
+            let mut p = Play::started();
+            p.ticks(20);
+            if start != crate::world::START {
+                let go = { let w = &mut p.game().world; w.checkpoint = start.into(); let go = w.resume(); w.checkpoint = crate::world::START.into(); go };
+                let pf = p.canvas.get_plugin_mut::<quartz_path_forge::PathForgePlugin>().unwrap();
+                match go { crate::world::Go::WarpAt(s, m) => pf.warp_at(&s, m), crate::world::Go::Warp(s) => pf.warp(&s), _ => unreachable!() }
+                assert!(p.walk_until(600, false, |s| s.stop.as_deref() == Some(start)), "never reached {start}: {}", p.status());
+                p.ticks(30);
+            }
+            p.run_on("w");
+            assert!(p.walk_until(12000, true, |s| s.stop.as_deref() == Some(start) && s.choose_within.is_some()), "no fork from {start}: {}", p.status());
+            let left = { let g = p.game(); g.world.ahead()[0].road.1 == way };
+            p.tap(if left { "a" } else { "d" });
+            let junction = std::cell::Cell::new(None);
+            let past = p.walk_until(12000, true, |s| {
+                if junction.get().is_none() { if let Some((t, h)) = under(s).filter(|(t, h)| t >= h) { junction.set(Some(s.walked - f64::from(t - h))); } }
+                if lane { s.stop.as_deref().is_some_and(crate::atlas::is_lane) && under(s).is_some_and(|(t, _)| t > 2.0) }
+                else { s.choose_within.is_none() && under(s).is_some_and(|(t, h)| t > h + 3.0) }
+            });
+            assert!(past, "never past the junction from {start} toward {way}: {}", p.status());
+            p.key("w", KeyboardState::Released);
+            p.fell_all();
+            p.ticks(2);
+            let walked = p.walk_state().walked;
+            let (offered, handed, at) = { let g = p.game(); (g.world.can_turn(&g.fight, walked), g.world.handed, g.world.at.clone()) };
+            let case = format!("{start} -> {way} ({}), at {at}, handed {handed:?}, junction {junction:?}", if lane { "lane" } else { "fork" }, junction = junction.get());
+            if !offered { failed.push(format!("{case}: TURN not offered")); continue; }
+            p.tap("t");
+            if !p.until_mode(60, |m| *m != crate::game::Mode::Play) || !p.until_playing(900) { failed.push(format!("{case}: the turn never ran")); continue; }
+            let st = p.walk_state();
+            let behind = walked - junction.get().unwrap_or(walked);
+            // Under way, the junction is its hand-over ahead; short of the walk on, the rest of
+            // the stop and then the hand-over.
+            let into = st.walked - p.game().world.base;
+            let rest = f64::from(crate::atlas::length_of(st.stop.as_deref().unwrap_or_default())) - into;
+            let ahead = st.handover.map(|h| f64::from(h) - st.travel.map_or(-rest, f64::from));
+            let line = format!("{case}: landed {:?} the junction {ahead:?} ahead, {behind:.1} behind", st.stop);
+            eprintln!("[lane] {line}");
+            if st.stop.as_deref() != Some(back) || ahead.is_none_or(|a| (a - behind).abs() > 1.5) { failed.push(line); }
+        }
+    }
+    assert!(failed.is_empty(), "{}", failed.join("\n"));
+}
+
+/// Into the guild hall and up to its boss, every slow tick named (`HR_SLOW_TICK=30 cargo test
+/// --release arrival_ticks -- --ignored --nocapture --test-threads=1`): what a scene change costs
+/// the game thread.
+#[test]
+#[ignore]
+fn arrival_ticks() {
+    let mut p = Play::started();
+    p.ticks(20);
+    p.tap("t");
+    p.ticks(30);
+    p.run_on("w");
+    assert!(p.walk_until(9000, true, |s| s.stop.as_deref() == Some("warrens@warrens_lane")), "never reached the Warrens: {}", p.status());
+    eprintln!("[arrival] the Warrens");
+    assert!(p.walk_until(6000, true, |s| s.choose_within.is_some()), "no fork: {}", p.status());
+    eprintln!("[arrival] the fork");
+    p.tap("d");
+    assert!(p.walk_until(6000, true, |s| s.stop.as_deref() == Some("guild_hall@warrens")), "never reached the guild hall: {}", p.status());
+    eprintln!("[arrival] the guild hall");
+    for _ in 0..900 { p.ticks(1); if !p.game().playing() { eprintln!("[arrival] mode {:?}", p.game().mode); break; } }
+    p.ticks(120);
 }
 
 /// Back from the start through Stilt Lane into the Warrens, to its fork: the sewers' way is
@@ -2199,6 +3011,11 @@ fn barred() {
     // Stilt Lane into the Warrens: the alley opens in a street front, not two walls out of the ground.
     assert!(p.walk_until(6000, true, |s| s.stop.as_deref() == Some("warrens_lane@road") && s.progress.is_some_and(|t| t > 0.35)), "never came to the Warrens: {}", p.status());
     p.shot("b00a_warrens_front_far");
+    // Stilt Lane forks at its end, the Warrens one way and the East Gate the other: lean the
+    // Warrens' way.
+    let warrens_left = crate::atlas::leads("warrens_lane", "road").first().is_some_and(|l| l.road.1 == "warrens");
+    assert!(p.walk_until(6000, true, |s| s.choose_within.is_some()), "no fork on Stilt Lane: {}", p.status());
+    p.tap(if warrens_left { "a" } else { "d" });
     assert!(p.walk_until(6000, true, |s| s.progress.is_some_and(|t| t > 0.75)), "never neared the Warrens: {}", p.status());
     p.shot("b00b_warrens_front_near");
     assert!(p.walk_until(6000, true, |s| s.stop.as_deref() == Some("warrens@warrens_lane")), "never reached the Warrens: {}", p.status());
@@ -2324,4 +3141,399 @@ fn arts() {
         p.until_mode(200, |m| matches!(m, Mode::Side(a) if a.side.hero.act.is_none() && a.side.hatchets.is_empty()));
         p.ticks(20);
     }
+}
+
+/// Krix home from the fog, asked about his axe and let keep it; then at the Magistrate's veil
+/// Mara's whistle blown twice, and Krix in the yard on the boss's far side, fighting with the
+/// hero and falling back from what comes at him.
+/// `cargo test --release --lib -- --ignored --exact shots::summon_krix` writes target/shots/sk*.png.
+#[test]
+#[ignore]
+fn summon_krix() {
+    use crate::game::Mode;
+    let mut p = Play::started();
+    {
+        let w = &mut p.game().world;
+        w.beaten.extend(["guild_hall", "chief_hold", "fog_hollow", "black_water"]);
+        w.taken.push("black_water");
+        w.hunters = crate::hunters::Hunters { lost: 0, settled: true };
+    }
+    let near = |p: &mut Play| { let walked = p.walk_state().walked; let g = p.game(); g.world.can_meet_visitor(&g.fight, walked) };
+    p.game().world.warping = Some("guild_hall@warrens".into());
+    p.canvas.run(Action::RunPlugin { name: "path_forge".into(), data: "warp:guild_hall@warrens".into() });
+    assert!(p.walk_until(3000, false, |s| s.stop.as_deref() == Some("guild_hall@warrens")), "never reached the hall");
+    p.key("w", KeyboardState::Pressed);
+    for _ in 0..3000 { p.fell_all(); p.ticks(1); if near(&mut p) { break; } }
+    p.key("w", KeyboardState::Released);
+    assert!(near(&mut p), "Krix is out of reach: {}", p.status());
+    p.ticks(20);
+    p.tap("e");
+    for _ in 0..2 { p.ticks(4); p.tap("e"); }
+    p.ticks(6);
+    p.shot("sk01_the_axe_asked");
+    p.tap("s");
+    p.ticks(4);
+    p.shot("sk02_keep_it_picked");
+    p.tap("e");
+    p.ticks(6);
+    p.shot("sk03_his_answer");
+    for _ in 0..6 { if matches!(p.mode(), Mode::Play) { break; } p.tap("e"); p.ticks(4); }
+    assert!(p.game().world.answers.contains(&"krix_keeps_axe"), "the answer was never given: {:?}", p.game().world.answers);
+    assert!(!p.game().world.gear.owns(crate::gear::find("Krix's Notched Axe")), "the axe was taken anyway");
+    p.game().world.warping = Some("magistrate@stone_upper".into());
+    p.canvas.run(Action::RunPlugin { name: "path_forge".into(), data: "warp:magistrate@stone_upper".into() });
+    assert!(p.walk_until(3000, false, |s| s.stop.as_deref() == Some("magistrate@stone_upper")), "never reached the court");
+    let calls = |p: &mut Play| { let walked = p.walk_state().walked; let g = p.game(); g.playing() && g.world.can_call(&g.fight, walked) };
+    p.key("w", KeyboardState::Pressed);
+    for _ in 0..6000 {
+        p.fell_all();
+        p.ticks(1);
+        if calls(&mut p) { break; }
+        if matches!(p.mode(), Mode::Side(_)) { for f in &mut arena(&mut p).side.foes { (f.hp, f.ai) = (0.0, crate::side::Ai::Dead); } }
+    }
+    p.key("w", KeyboardState::Released);
+    assert!(calls(&mut p), "no call at the veil: {}", p.status());
+    p.ticks(20);
+    p.shot("sk04_the_whistle_offered");
+    p.tap("e");
+    p.ticks(30);
+    p.shot("sk05_two_notes");
+    assert_eq!(p.game().world.called, Some(crate::allies::Summoner::Krix));
+    for _ in 0..600 { p.ticks(1); p.step_through_veil(); if matches!(p.mode(), Mode::Side(_)) { break; } }
+    assert!(matches!(p.mode(), Mode::Side(a) if a.why == crate::game::Why::Boss && a.side.allies.len() == 1), "Krix never came: {}", p.status());
+    for _ in 0..300 { if p.scene_at().is_none() { break; } p.ticks(1); }
+    p.ticks(60);
+    p.shot("sk06_krix_across_the_yard");
+    for (k, secs) in [(7, 2.5), (8, 2.5), (9, 3.0)] {
+        // The hero stands and takes it (kept on their feet): this is Krix's fight to show.
+        let h = &mut arena(&mut p).side.hero;
+        h.hp = h.stats.max_hp();
+        p.watch(secs);
+        p.shot(&format!("sk0{k}_fighting"));
+    }
+    let a = arena(&mut p);
+    eprintln!("[summon] boss {:.0}/{:.0}, Krix {:.0}/{:.0} {:?}", a.side.foes[0].hp, a.side.foes[0].top, a.side.allies[0].hp, a.side.allies[0].top, a.side.allies[0].doing);
+    assert!(a.side.foes[0].hp < a.side.foes[0].top, "nobody touched the Magistrate");
+}
+
+/// The later cast, in the story's order: the registrar paying for the Blackridge helms, Steel
+/// reading the rune, the hooded thing striking in the alley and melting away, Helena naming the
+/// Shrine; Exodus in its halls and the heart that wants blood; Atrael at Varnholt's barns, and
+/// Fin-S asleep in the roots on the violet road.
+/// `cargo test --release --lib -- --ignored --exact shots::later_cast` writes target/shots/lc*.png.
+#[test]
+#[ignore]
+fn later_cast() {
+    use crate::game::Mode;
+    let mut p = Play::started();
+    {
+        let w = &mut p.game().world;
+        w.beaten.extend(["guild_hall", "gate", "hollowmere", "chief_hold"]);
+        w.keys.extend([crate::atlas::Key::Rune, crate::atlas::Key::Hook, crate::atlas::Key::Lantern]);
+        (w.guild.posted, w.guild.paid) = (2, 1);
+    }
+    let near = |p: &mut Play| { let walked = p.walk_state().walked; let g = p.game(); g.world.can_meet_visitor(&g.fight, walked) };
+    let go = |p: &mut Play, stop: &str| {
+        p.game().world.warping = Some(stop.into());
+        p.canvas.run(Action::RunPlugin { name: "path_forge".into(), data: format!("warp:{stop}") });
+        assert!(p.walk_until(3000, false, |s| s.stop.as_deref() == Some(stop)), "never reached {stop}");
+    };
+    // Walks on to whoever waits here, shows them and what they say, and reads it all.
+    let meet = |p: &mut Play, tag: &str| {
+        p.key("w", KeyboardState::Pressed);
+        for _ in 0..4000 { p.fell_all(); p.ticks(1); if near(p) { break; } if matches!(p.mode(), Mode::Side(_)) { for f in &mut arena(p).side.foes { (f.hp, f.ai) = (0.0, crate::side::Ai::Dead); } } }
+        p.key("w", KeyboardState::Released);
+        assert!(near(p), "nobody to meet for {tag}: {}", p.status());
+        p.ticks(20);
+        p.shot(&format!("{tag}a"));
+        p.tap("e");
+        p.ticks(6);
+        p.shot(&format!("{tag}b"));
+        for _ in 0..10 { if matches!(p.mode(), Mode::Play) { break; } p.tap("e"); p.ticks(4); }
+    };
+    go(&mut p, "lower_stairs@stone_gate");
+    meet(&mut p, "lc01_registrar");
+    assert_eq!(p.game().world.guild.paid, 2, "the helms were never paid for");
+    go(&mut p, "stone_upper@stone_market");
+    meet(&mut p, "lc02_steel");
+    go(&mut p, "sewers@lower_stairs");
+    p.key("w", KeyboardState::Pressed);
+    for _ in 0..4000 { p.fell_all(); p.ticks(1); if matches!(p.mode(), Mode::Side(a) if a.why == crate::game::Why::Boss) { break; } if matches!(p.mode(), Mode::Side(_)) { for f in &mut arena(&mut p).side.foes { (f.hp, f.ai) = (0.0, crate::side::Ai::Dead); } } }
+    p.key("w", KeyboardState::Released);
+    assert!(matches!(p.mode(), Mode::Side(a) if a.side.flee.is_some()), "the alley never struck: {}", p.status());
+    p.ticks(90);
+    p.shot("lc03_the_hooded_thing");
+    { let f = &mut arena(&mut p).side.foes[0]; f.hp = 0.55 * f.top; }
+    p.ticks(10);
+    p.shot("lc04_it_melts_away");
+    assert!(p.until_mode(500, |m| matches!(m, Mode::Play)), "the yard never let go");
+    assert!(p.game().world.meetings.contains(&crate::cast::STRUCK));
+    meet(&mut p, "lc05_helena");
+    go(&mut p, "vine_halls@sunken_steps");
+    meet(&mut p, "lc06_exodus");
+    p.key("w", KeyboardState::Pressed);
+    let bleeds = |p: &mut Play| { let walked = p.walk_state().walked; let within = p.walk_state().choose_within; let g = p.game(); g.playing() && g.world.can_bleed(&g.fight, walked, within) };
+    for _ in 0..3000 { p.fell_all(); p.ticks(1); if bleeds(&mut p) { break; } }
+    p.key("w", KeyboardState::Released);
+    assert!(bleeds(&mut p), "no heart at the fork: {}", p.status());
+    p.ticks(10);
+    p.shot("lc07_the_heart");
+    p.tap("e");
+    p.ticks(20);
+    p.shot("lc08_blood_given");
+    assert!(p.game().world.keys.contains(&crate::atlas::Key::Heart));
+    p.game().world.beaten.push("wraith_sanctum");
+    go(&mut p, "varnholt@violet_road");
+    meet(&mut p, "lc09_atrael");
+    go(&mut p, "violet_road@varnholt");
+    meet(&mut p, "lc10_fin_s");
+}
+
+/// The last act, through the game: the Archangel falls and the trap is sprung at the Summit; the
+/// hero wakes at the slab; Olekeen in the cells, Fin-S in the foundry, Olekeen called to Exodus
+/// and the fight; the Eye handed over, the three called, and the ending as the road left it.
+/// `cargo test --release --lib -- --ignored --exact shots::finale --test-threads=1` writes target/shots/fn*.png.
+#[test]
+#[ignore]
+fn finale() {
+    use crate::game::Mode;
+    let mut p = Play::started();
+    {
+        let w = &mut p.game().world;
+        w.beaten.extend(["guild_hall", "gate", "hollowmere", "chief_hold", "magistrate", "wraith_sanctum", "cathedral", "statue_court", "east_gate", "black_water", "fog_hollow"]);
+        w.keys.extend([crate::atlas::Key::Rune, crate::atlas::Key::Hook, crate::atlas::Key::Lantern, crate::atlas::Key::Sigil, crate::atlas::Key::Heart, crate::atlas::Key::ShardI, crate::atlas::Key::ShardII]);
+        w.answers.extend(["fins_woken", "atrael_stopped", "olekeen_hunts_with"]);
+        w.meetings.extend(["steel_reads", "olekeen_bound", "fins_sleeps"]);
+        w.hunters = crate::hunters::Hunters { lost: 0, settled: true };
+    }
+    let go = |p: &mut Play, stop: &str| {
+        p.game().world.warping = Some(stop.into());
+        p.canvas.run(Action::RunPlugin { name: "path_forge".into(), data: format!("warp:{stop}") });
+        assert!(p.walk_until(3000, false, |s| s.stop.as_deref() == Some(stop)), "never reached {stop}");
+    };
+    let clear = |p: &mut Play| if matches!(p.mode(), Mode::Side(a) if a.why != crate::game::Why::Boss) { for f in &mut arena(p).side.foes { (f.hp, f.ai) = (0.0, crate::side::Ai::Dead); } };
+    // Walks on to the veil, steps through it, and waits out the entrance.
+    let to_boss = |p: &mut Play| {
+        p.key("w", KeyboardState::Pressed);
+        for _ in 0..6000 { p.fell_all(); p.ticks(1); clear(p); p.step_through_veil(); if matches!(p.mode(), Mode::Side(a) if a.why == crate::game::Why::Boss) { break; } }
+        p.key("w", KeyboardState::Released);
+        assert!(matches!(p.mode(), Mode::Side(a) if a.why == crate::game::Why::Boss), "no boss: {}", p.status());
+        for _ in 0..400 { if p.scene_at().is_none() { break; } p.ticks(1); }
+    };
+    let near = |p: &mut Play| { let walked = p.walk_state().walked; let g = p.game(); g.world.can_meet_visitor(&g.fight, walked) };
+    let meet = |p: &mut Play, tag: &str| {
+        p.key("w", KeyboardState::Pressed);
+        for _ in 0..4000 { p.fell_all(); p.ticks(1); clear(p); if near(p) { break; } }
+        p.key("w", KeyboardState::Released);
+        assert!(near(p), "nobody to meet for {tag}: {}", p.status());
+        p.ticks(20);
+        p.shot(&format!("{tag}a"));
+        p.tap("e");
+        p.ticks(6);
+        p.shot(&format!("{tag}b"));
+    };
+    go(&mut p, "spire_summit@sealed_slab");
+    to_boss(&mut p);
+    { let f = &mut arena(&mut p).side.foes[0]; (f.hp, f.ai) = (0.0, crate::side::Ai::Dead); }
+    p.ticks(150);
+    p.shot("fn01_the_archangel_falls");
+    assert!(p.until_mode(900, |m| matches!(m, Mode::Scene(crate::game::Then::Taken))), "no trap: {}", p.status());
+    for (k, secs) in [(2, 4.0), (3, 7.5), (4, 9.0), (5, 6.5), (6, 4.5), (7, 5.0), (8, 4.0)] {
+        p.ticks((secs * 60.0) as u32);
+        p.shot(&format!("fn0{k}_the_trap"));
+    }
+    assert!(p.until_mode(3000, |m| matches!(m, Mode::Play)), "never woke: {}", p.status());
+    assert!(p.game().world.met(crate::finale::STRUCK) && p.walk_state().stop.as_deref() == Some("sealed_slab@spire_stair"), "{}", p.status());
+    p.ticks(30);
+    p.shot("fn09_awake_at_the_slab");
+    go(&mut p, "penitent_cells@radiant_gate");
+    meet(&mut p, "fn10_olekeen");
+    for _ in 0..10 { if matches!(p.mode(), Mode::Play) { break; } p.tap("e"); p.ticks(4); }
+    go(&mut p, "unit_foundry@penitent_cells");
+    meet(&mut p, "fn11_unit_zero");
+    for _ in 0..10 { if matches!(p.mode(), Mode::Play) { break; } p.tap("e"); p.ticks(4); }
+    assert!(p.game().world.answers.contains(&"fins_free"), "{:?}", p.game().world.answers);
+    go(&mut p, "eye_chamber@penitent_cells");
+    let calls = |p: &mut Play| { let walked = p.walk_state().walked; let g = p.game(); g.playing() && g.world.can_call(&g.fight, walked) };
+    p.key("w", KeyboardState::Pressed);
+    for _ in 0..6000 { p.ticks(1); if calls(&mut p) { break; } }
+    p.key("w", KeyboardState::Released);
+    assert!(calls(&mut p), "Olekeen does not answer at Exodus's veil: {}", p.status());
+    p.ticks(20);
+    p.shot("fn12_the_stone_raised");
+    p.tap("e");
+    to_boss(&mut p);
+    p.ticks(60);
+    p.shot("fn13_exodus");
+    let h = &mut arena(&mut p).side.hero;
+    h.hp = h.stats.max_hp();
+    p.watch(3.0);
+    p.shot("fn14_fighting_exodus");
+    { let f = &mut arena(&mut p).side.foes[0]; f.hp = 0.0; }
+    p.ticks(150);
+    p.shot("fn15_exodus_falls");
+    for (k, secs) in [("a", 4.0), ("b", 5.5), ("c", 5.5), ("d", 5.0)] {
+        p.ticks((secs * 60.0) as u32);
+        p.shot(&format!("fn15{k}_possession"));
+    }
+    assert!(p.until_mode(1500, |m| matches!(m, Mode::Side(a) if std::ptr::eq(a.side.foes[0].breed, &crate::order::VESSEL))), "Voryn never took Exodus: {}", p.status());
+    for _ in 0..600 { if p.scene_at().is_none() { break; } p.ticks(1); }
+    p.watch(2.0);
+    p.shot("fn15e_voryns_vessel");
+    { let f = &mut arena(&mut p).side.foes[0]; f.hp = 0.0; }
+    p.ticks(150);
+    p.shot("fn15f_the_vessel_falls");
+    assert!(p.until_mode(1500, |m| matches!(m, Mode::Play)), "the chamber never let go: {}", p.status());
+    assert!(p.game().world.beaten.contains(&crate::atlas::FINALE));
+    meet(&mut p, "fn16_the_eye");
+    for _ in 0..10 { if matches!(p.mode(), Mode::Scene(_)) { break; } p.tap("e"); p.ticks(4); }
+    assert!(matches!(p.mode(), Mode::Scene(crate::game::Then::Conclude)), "no ending: {} {:?}", p.status(), p.game().world.answers);
+    assert!(p.game().world.answers.contains(&"eye_sealed"));
+    for k in 17..26 {
+        p.ticks(6 * 60);
+        p.shot(&format!("fn{k}_the_end"));
+    }
+    assert!(p.until_mode(4000, |m| matches!(m, Mode::Play)), "the pilgrimage never began again: {}", p.status());
+    assert_eq!(p.game().world.pilgrimages, 1);
+    assert!(!p.game().world.met(crate::finale::STRUCK), "the last act is to be played again");
+}
+
+/// The other last boss: Fin-S never freed from his plinth, so when Exodus falls the Eye finishes
+/// Unit 0 and Voryn comes through it whole. `cargo test --release --lib -- --ignored --exact
+/// shots::finale_unfinished --test-threads=1` writes target/shots/fu*.png.
+#[test]
+#[ignore]
+fn finale_unfinished() {
+    use crate::game::Mode;
+    let mut p = Play::started();
+    {
+        let w = &mut p.game().world;
+        w.beaten.extend(["chief_hold", "magistrate", "wraith_sanctum", "cathedral", "statue_court", "spire_summit"]);
+        w.keys.extend([crate::atlas::Key::Rune, crate::atlas::Key::ShardI, crate::atlas::Key::ShardII, crate::atlas::Key::ShardIII]);
+        w.answers.push("fins_woken");
+        w.meetings.extend([crate::finale::STRUCK, "fins_taken"]);
+    }
+    let stop = "eye_chamber@penitent_cells";
+    p.game().world.warping = Some(stop.into());
+    p.canvas.run(Action::RunPlugin { name: "path_forge".into(), data: format!("warp:{stop}") });
+    assert!(p.walk_until(3000, false, |s| s.stop.as_deref() == Some(stop)), "never reached the chamber");
+    let boss = |p: &mut Play| matches!(p.mode(), Mode::Side(a) if a.why == crate::game::Why::Boss);
+    p.key("w", KeyboardState::Pressed);
+    for _ in 0..6000 {
+        p.fell_all();
+        p.ticks(1);
+        if matches!(p.mode(), Mode::Side(_)) && !boss(&mut p) { for f in &mut arena(&mut p).side.foes { (f.hp, f.ai) = (0.0, crate::side::Ai::Dead); } }
+        p.step_through_veil();
+        if boss(&mut p) { break; }
+    }
+    p.key("w", KeyboardState::Released);
+    assert!(boss(&mut p), "no Exodus: {}", p.status());
+    for _ in 0..400 { if p.scene_at().is_none() { break; } p.ticks(1); }
+    p.ticks(60);
+    { let f = &mut arena(&mut p).side.foes[0]; (f.hp, f.ai) = (0.0, crate::side::Ai::Dead); }
+    p.ticks(150);
+    for (k, secs) in [(1, 4.0), (2, 5.5), (3, 5.5), (4, 5.0)] {
+        p.ticks((secs * 60.0) as u32);
+        p.shot(&format!("fu0{k}_the_door_opens"));
+    }
+    assert!(p.until_mode(1500, |m| matches!(m, Mode::Side(a) if std::ptr::eq(a.side.foes[0].breed, &crate::order::WHOLE))), "Voryn never came through Unit 0: {}", p.status());
+    p.ticks(100);
+    p.shot("fu05_entrance");
+    for _ in 0..600 { if p.scene_at().is_none() { break; } p.ticks(1); }
+    arena(&mut p).side.hero.hp = 1_000.0;
+    p.watch(3.0);
+    p.shot("fu06_voryn_made_whole");
+    { let f = &mut arena(&mut p).side.foes[0]; (f.hp, f.ai) = (0.0, crate::side::Ai::Dead); }
+    p.ticks(150);
+    p.shot("fu07_unit_zero_falls");
+    assert!(p.until_mode(1500, |m| matches!(m, Mode::Play)), "the chamber never let go: {}", p.status());
+    assert!(p.game().world.beaten.contains(&crate::atlas::FINALE));
+    assert_eq!(p.game().world.fates().fin_s, crate::finale::Unit::Fell);
+}
+
+/// Every area as it is walked up to: from the stop before it, with every boss beaten and the
+/// road cleared, the crossing shot as it begins, halfway and at the threshold, so a place that
+/// reads as floating in nothing, or a join that does not line up, shows. `cargo test --release
+/// --lib -- --ignored --exact shots::approaches --test-threads=1` writes target/shots/ap*.png;
+/// `APPROACH=a,b` shoots only the stops naming one of them.
+#[test]
+#[ignore]
+fn approaches() {
+    use crate::game::Mode;
+    const FROM: [&str; 43] = ["blackwood@cathedral", "void_wood@^", "blackwood@void_wood", "starlit_wastes@statue_court", "sky_peaks@starlit_wastes", "stone_gate@lower_stairs", "east_gate@warrens_lane", "cathedral@varnholt", "sunken_steps@vine_halls",
+        "blackwood@angel_ruins", "chapel@^", "chapel_edge@road", "cliff_path@^", "chief_hold@ridge_camp", "spire_summit@sealed_slab", "drowned_fingers@vale_edge",
+        "black_water@^", "guild_office@^", "guild_hall@warrens", "drowned_mill@^", "hollowmere@^", "stone_gate@bandit_hollows", "violet_road@varnholt",
+        "unit_foundry@^", "ridge_camp@^", "crimson_stair@spire_summit", "bandit_hollows@^", "warrens_lane@^", "spire_stair@sky_peaks", "statue_court@angel_ruins",
+        "crimson_stair@radiant_gate", "spire_stair@sealed_slab", "lower_stairs@^", "bridge_ward@^", "magistrate@^", "vine_halls@^", "vale@^", "violet_road@magistrate",
+        "sunken_steps@bridge_ward", "varnholt@^", "guild_hall@guild_office", "warrens@^", "gate@^"];
+    let only = std::env::var("APPROACH").ok();
+    let mut p = Play::started();
+    {
+        let w = &mut p.game().world;
+        w.beaten.extend(crate::atlas::PLACES.iter().map(|place| place.id));
+        w.keys.extend(crate::atlas::Key::ALL);
+        w.hunters = crate::hunters::Hunters { lost: 0, settled: true };
+    }
+    let clear = |p: &mut Play| if matches!(p.mode(), Mode::Side(_)) { for f in &mut arena(p).side.foes { (f.hp, f.ai) = (0.0, crate::side::Ai::Dead); } };
+    for (k, stop) in FROM.iter().enumerate() {
+        if only.as_deref().is_some_and(|o| !o.split(',').any(|part| stop.contains(part))) { continue; }
+        p.game().world.warping = Some((*stop).into());
+        p.canvas.run(Action::RunPlugin { name: "path_forge".into(), data: format!("warp:{stop}") });
+        if !p.walk_until(3000, false, |s| s.stop.as_deref() == Some(*stop)) { eprintln!("{stop}: never reached"); continue; }
+        p.key("w", KeyboardState::Pressed);
+        let tag = stop.replace(['@', '^'], "_");
+        for (at, name) in [(0.02, "a"), (0.5, "b"), (0.92, "c")] {
+            let mut seen = false;
+            for _ in 0..6000 {
+                p.fell_all();
+                p.ticks(1);
+                clear(&mut p);
+                if p.walk_state().progress.is_some_and(|t| t >= at) { seen = true; break; }
+                if p.walk_state().stop.as_deref() != Some(*stop) { break; }
+            }
+            if !seen { eprintln!("{stop}: no crossing seen at {at}"); break; }
+            p.shot(&format!("ap{k:02}{name}_{tag}"));
+        }
+        p.key("w", KeyboardState::Released);
+    }
+}
+
+/// Atrael at the Hollowmere Screamer once Olekeen is in the world: down in his ravens at a
+/// quarter beaten, then thrown out at half. `cargo test --release --lib -- --ignored --exact
+/// shots::atrael_ravens --test-threads=1` writes target/shots/ar*.png.
+#[test]
+#[ignore]
+fn atrael_ravens() {
+    use crate::game::Mode;
+    let mut p = Play::started();
+    p.game().world.meetings.push("olekeen_gate_his_kill");
+    p.game().world.guild.posted = 1;
+    let stop = "hollowmere@gate";
+    p.game().world.warping = Some(stop.into());
+    p.canvas.run(Action::RunPlugin { name: "path_forge".into(), data: format!("warp:{stop}") });
+    assert!(p.walk_until(3000, false, |s| s.stop.as_deref() == Some(stop)), "never reached Hollowmere");
+    let boss = |p: &mut Play| matches!(p.mode(), Mode::Side(a) if a.why == crate::game::Why::Boss);
+    p.key("w", KeyboardState::Pressed);
+    for _ in 0..6000 {
+        p.fell_all();
+        p.ticks(1);
+        if matches!(p.mode(), Mode::Side(_)) && !boss(&mut p) { for f in &mut arena(&mut p).side.foes { (f.hp, f.ai) = (0.0, crate::side::Ai::Dead); } }
+        p.step_through_veil();
+        if boss(&mut p) { break; }
+    }
+    p.key("w", KeyboardState::Released);
+    assert!(boss(&mut p), "no Screamer: {}", p.status());
+    for _ in 0..600 { if p.scene_at().is_none() { break; } p.ticks(1); }
+    p.ticks(60);
+    let hurt = |p: &mut Play, share: f32| { let a = arena(p); a.side.hero.hp = 1_000.0; let f = &mut a.side.foes[0]; f.hp = share * f.top; };
+    hurt(&mut p, 0.7);
+    p.ticks(30);
+    assert!(arena(&mut p).side.allies.iter().any(|a| a.who == crate::allies::Summoner::Atrael), "no ravens");
+    p.shot("ar01_ravens");
+    p.watch(3.0);
+    p.shot("ar02_atrael_fights");
+    hurt(&mut p, 0.44);
+    p.ticks(40);
+    p.shot("ar03_flung");
+    assert!(arena(&mut p).side.allies.iter().all(|a| !a.standing()), "never thrown out");
 }

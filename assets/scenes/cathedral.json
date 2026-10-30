@@ -9,7 +9,41 @@
     "eye_height": 3.2,
     "horizon": 0.2,
     "zoom": 1.0,
-    "lens_curve": 0.0
+    "lens_curve": 0.0,
+    "moves": {
+      "bob": 0.0,
+      "stride": 0.75,
+      "sway": 0.0,
+      "pan": 0.0,
+      "pans": 1,
+      "tilt": 0.0,
+      "tilts": 1,
+      "dolly": 0.0,
+      "dolly_focus": 8.0,
+      "dollies": 1,
+      "fly_in": 0.0,
+      "fly_height": 18.0,
+      "swing_in": {
+        "seconds": 0.0,
+        "hold": 0.5,
+        "from": {
+          "yaw": 0.0,
+          "side": 0.0,
+          "back": 5.0,
+          "eye_height": 2.2,
+          "horizon": 0.4,
+          "zoom": 1.0
+        },
+        "ease": "Smooth",
+        "overshoot": 0.0,
+        "orbit": true,
+        "bars": 0.0
+      }
+    },
+    "yaw": 0.0,
+    "side": 0.0,
+    "cutaway": 0.4,
+    "world_sky": false
   },
   "path": {
     "half_width": 2.4,
@@ -190,7 +224,7 @@
   "walls": {
     "enabled": true,
     "gap": 0.9,
-    "height": 3.4,
+    "height": 9.0,
     "base_shadow": 0.55,
     "thickness": 0.5,
     "material": {
@@ -217,8 +251,8 @@
     }
   },
   "ceiling": {
-    "enabled": false,
-    "height": 3.6,
+    "enabled": true,
+    "height": 9.0,
     "material": {
       "pattern": "StoneBlock",
       "base": [
@@ -920,7 +954,8 @@
       "blur": 0.008,
       "band": 0.62,
       "band_width": 0.16
-    }
+    },
+    "keep_dark": false
   },
   "style": {
     "pixel_size": 1,
@@ -934,7 +969,9 @@
         12,
         14
       ],
-      "objects_only": true
+      "objects_only": true,
+      "selective": 0.0,
+      "dark": 0.5
     },
     "paint": 0.0,
     "grade": "",

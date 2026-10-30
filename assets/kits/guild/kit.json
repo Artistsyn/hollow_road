@@ -1,0 +1,129 @@
+{
+  "name": "guild",
+  "props": {
+    "table": {
+      "description": "a guild table and benches: spilled tankards, a dagger in the boards, coin",
+      "sprite": {
+        "path": "",
+        "pool": [
+          "table/table_1.png"
+        ],
+        "flip_x": false,
+        "pixelated": true
+      },
+      "shape": [],
+      "kind": "Rock",
+      "tint": null,
+      "height": 1.15,
+      "anchor": "Ground",
+      "glow": 0.0,
+      "glow_from": 0.0,
+      "light": {
+        "enabled": false,
+        "color": [
+          255,
+          190,
+          110
+        ],
+        "intensity": 0.8,
+        "radius": 4.0,
+        "at": 0.8,
+        "flicker": 0.0
+      },
+      "trim": true
+    },
+    "barrels": {
+      "description": "ale barrels and crates stacked against the wall, a lantern hook",
+      "sprite": {
+        "path": "",
+        "pool": [
+          "barrels/barrels_1.png"
+        ],
+        "flip_x": false,
+        "pixelated": true
+      },
+      "shape": [],
+      "kind": "Rock",
+      "tint": null,
+      "height": 2.1,
+      "anchor": "Ground",
+      "glow": 0.0,
+      "glow_from": 0.0,
+      "light": {
+        "enabled": false,
+        "color": [
+          255,
+          190,
+          110
+        ],
+        "intensity": 0.8,
+        "radius": 4.0,
+        "at": 0.8,
+        "flicker": 0.0
+      },
+      "trim": true
+    },
+    "notices": {
+      "description": "bounty notices and wanted posters nailed to the wall",
+      "sprite": {
+        "path": "",
+        "pool": [
+          "notices/notices_1.png"
+        ],
+        "flip_x": false,
+        "pixelated": true
+      },
+      "shape": [],
+      "kind": "Rock",
+      "tint": null,
+      "height": 0.75,
+      "anchor": "Ground",
+      "glow": 0.0,
+      "glow_from": 0.0,
+      "light": {
+        "enabled": false,
+        "color": [
+          255,
+          190,
+          110
+        ],
+        "intensity": 0.8,
+        "radius": 4.0,
+        "at": 0.8,
+        "flicker": 0.0
+      },
+      "trim": true
+    },
+    "rack": {
+      "description": "a weapon rack: notched swords, a spear, a battered round shield",
+      "sprite": {
+        "path": "",
+        "pool": [
+          "rack/rack_1.png"
+        ],
+        "flip_x": false,
+        "pixelated": true
+      },
+      "shape": [],
+      "kind": "Rock",
+      "tint": null,
+      "height": 2.0,
+      "anchor": "Ground",
+      "glow": 0.0,
+      "glow_from": 0.0,
+      "light": {
+        "enabled": false,
+        "color": [
+          255,
+          190,
+          110
+        ],
+        "intensity": 0.8,
+        "radius": 4.0,
+        "at": 0.8,
+        "flicker": 0.0
+      },
+      "trim": true
+    }
+  }
+}

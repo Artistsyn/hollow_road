@@ -188,6 +188,13 @@ impl Audio {
                 Event::Struck { heavy: true, .. } | Event::Staggered { .. } => self.play(c, Sfx::StruckHeavy),
                 Event::KnockedDown { .. } => { self.play_at(c, Sfx::StruckHeavy, 1.0, 0.8); self.play_at(c, Sfx::Felled, 0.8, 0.9); }
                 Event::Healed => self.play(c, Sfx::Glug),
+                // An ally's fight, a little under the hero's own.
+                Event::Fled { .. } => { self.play_at(c, Sfx::Frost, 0.8, 0.5); self.play_at(c, Sfx::Roll, 0.6, 0.7); }
+                Event::AllyHit { .. } => self.play_at(c, Sfx::HitLight, 0.7, 0.9),
+                Event::AllyLoosed { .. } => self.play_at(c, Sfx::Twang, 0.7, 0.9),
+                Event::AllyDodged { .. } => self.play_at(c, Sfx::Roll, 0.5, 1.1),
+                Event::AllyStruck { .. } => self.play_at(c, Sfx::Struck, 0.7, 1.1),
+                Event::AllyDown { .. } => { self.play_at(c, Sfx::Felled, 0.9, 1.1); self.play_at(c, Sfx::Knell, 0.5, 0.9); }
                 Event::Died => { self.play_at(c, Sfx::StruckHeavy, 1.0, 0.7); self.play_at(c, Sfx::Knell, 1.0, 0.5); }
                 _ => {}
             }

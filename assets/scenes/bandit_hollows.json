@@ -103,14 +103,14 @@
       ]
     },
     "fork": {
-      "enabled": false,
+      "enabled": true,
       "spacing": 24.0,
-      "offset": 14.0,
+      "offset": 10.0,
       "side": "Alternate",
       "style": "Side",
-      "angle": 38.0,
-      "half_width": 1.1,
-      "depth": 7.0,
+      "angle": 40.0,
+      "half_width": 1.5,
+      "depth": 14.0,
       "height": 2.6
     },
     "edge_lights": {

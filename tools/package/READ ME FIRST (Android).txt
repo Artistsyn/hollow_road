@@ -1,0 +1,40 @@
+HOLLOW ROAD - Android test build
+================================
+
+Needs an Android phone or tablet on Android 13 or newer with a 64-bit (arm64) processor, which
+is nearly every phone from the last several years. It plays in landscape. Nothing else to install.
+
+1. Copy "Hollow Road.apk" to the phone (a cable, a cloud drive, or a message to yourself), and
+   tap it in the Files app (or wherever it landed).
+
+2. The first time only: this build does not come from the Play Store, so Android asks whether
+   the app you tapped it in may install apps. Choose Settings, turn on "Allow from this source",
+   go back and tap Install. You can turn that setting off again afterwards.
+   If Play Protect warns that it does not recognise the app, choose "More details" and
+   "Install anyway". It is a test build signed for testing, not a published one.
+
+3. Open Hollow Road from the app drawer. Pick a pilgrimage slot, then a calling:
+     Wayfarer     sword and buckler: rolls, parries, ripostes
+     Warden       a tall bulwark: blocks fill a ward; a block at the last moment bursts it
+     Bloodrunner  a bow whose arrows cost health
+     Frostweaver  a frost focus (a catalyst) whose spell charges are filled by fighting up close
+   then whether to play the prologue first: a short remembered fight that teaches walking,
+   strikes, guarding, rolling and parrying with their timing, a flask, and a side-on bout.
+
+TOUCH CONTROLS
+  Left half of the screen   a stick: put your thumb down anywhere there and push from that
+                            spot. Ahead walks on, back walks back, sideways steps a lane; push
+                            far to run. In side-on fights it moves you left and right.
+  Right half                the buttons, with STRIKE under your thumb where it rests:
+                            STRIKE, HEAVY, ROLL, GUARD, PARRY, FLASK, SHOOT, CAST, ART,
+                            JUMP (side-on), USE (rest, talk, open), TURN, MAP, II (pause)
+  Menus and cutscenes       tap a choice to pick it; tap a cutscene to skip it.
+  Warning colours over an enemy:  gold = parry it,  orange = roll or block,  purple = roll
+
+UPDATING
+  Install a newer "Hollow Road.apk" over this one the same way: your saves are kept. Uninstalling
+  the app deletes its saves.
+
+SAVES
+  Your progress is kept automatically, every few seconds, in up to five slots. Carrying a
+  pilgrimage on wakes you at the last shrine you rested at.

@@ -13,3 +13,11 @@ reapers_glaive 12 15.5 123 15.5
 lance_of_light 3.5 11.5 91 11.5
 stoneheart_greatsword 18 22 188 22
 feather_of_the_fallen_light 11 11.5 66 10.5
+keening_antler 24 21.5 123 20.5
+drowners_hook 22 19.5 121 19
+krix_axe 20 11.5 110 9
+lurz_spear 24 15 122 15.5
+rippers_tendril 22 15.5 120 15
+rune_marked_blade 22 15.5 122 15.5
+starglass_maul 14 23.5 121 23.5
+warped_fang 24 21.5 123 20.5

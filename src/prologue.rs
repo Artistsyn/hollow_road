@@ -288,7 +288,7 @@ impl Prologue {
             Lesson::Flask => ("Flask", self.k("R", "FLASK").to_owned() + " drinks a flask to heal. Drinking takes a moment and leaves you open: step back out of reach first.", vec![]),
             Lesson::Hand => {
                 let what = if fight.hero.stats.kit.spell_cast().is_some() { self.k("C", "CAST").to_owned() + " casts the spell your catalyst holds; two blows landed up close fill a charge." }
-                    else if fight.hero.stats.kit.imbues() { self.k("F", "SHOOT").to_owned() + " looses an arrow down your lane. " + self.k("C", "CAST") + " draws your own blood into the next five: harder, and they drink it back." } else { self.k("F", "SHOOT").to_owned() + " is your ranged attack: it flies down your lane to the first foe in it." };
+                    else if fight.hero.stats.kit.imbues() { self.k("F", "SHOOT").to_owned() + " looses an arrow down your lane. " + self.k("C", "CAST") + " draws your own blood into the next five: harder, each drinking a little of it back. Once spent it comes back slowly, sooner for blows landed." } else { self.k("F", "SHOOT").to_owned() + " is your ranged attack: it flies down your lane to the first foe in it." };
                 ("From afar", what, vec![format!("Shots  {}", n(self.got, 2))])
             }
             Lesson::Turn => ("Side-on", "Some fights turn the road to the side: ".to_owned() + self.k("A and D move, Space jumps", "the left thumb moves, JUMP jumps") + ", the same strikes, guard, rolls and parries. Fell the husk to finish.", vec![]),

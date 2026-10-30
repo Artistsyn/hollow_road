@@ -1,0 +1,36 @@
+{
+  "name": "stronghold",
+  "props": {
+    "unit": {
+      "description": "an unfinished wooden unit on its plinth: faceless, unlit, moss in its joints",
+      "sprite": {
+        "path": "",
+        "pool": [
+          "unit/unit_1.png"
+        ],
+        "flip_x": false,
+        "pixelated": true
+      },
+      "shape": [],
+      "kind": "Rock",
+      "tint": null,
+      "height": 1.45,
+      "anchor": "Ground",
+      "glow": 0.0,
+      "glow_from": 0.0,
+      "light": {
+        "enabled": false,
+        "color": [
+          255,
+          190,
+          110
+        ],
+        "intensity": 0.8,
+        "radius": 4.0,
+        "at": 0.8,
+        "flicker": 0.0
+      },
+      "trim": true
+    }
+  }
+}

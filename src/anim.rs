@@ -443,16 +443,19 @@ impl Weapon {
     }
 }
 
-/// A clip's weapon track: `x y angle over [reach [ex ey]]` a line, x and y fractions of the
-/// frame; `ex ey`, the elbow of the skeleton the frame was drawn to, lets [`fit_hold`] find the
-/// fist as drawn.
-fn read_holds(path: &Path) -> Option<Vec<(f32, f32, f32, bool, f32, Option<(f32, f32)>)>> {
+/// One frame's line of a weapon track (`read_holds`).
+struct TrackLine { x: f32, y: f32, angle: f32, over: bool, reach: f32, elbow: Option<(f32, f32)>, locked: bool }
+
+/// A clip's weapon track: `x y angle over [reach [ex ey [lock]]]` a line, x and y fractions of
+/// the frame; `ex ey`, the elbow of the skeleton the frame was drawn to, lets [`fit_hold`] find
+/// the fist as drawn; `lock` 1 keeps the angle as written rather than turned with the forearm.
+fn read_holds(path: &Path) -> Option<Vec<TrackLine>> {
     let text = std::fs::read_to_string(path).ok()?;
     text.lines().filter(|l| !l.trim().is_empty()).map(|l| {
         let v: Vec<&str> = l.split_whitespace().collect();
         let reach = v.get(4).map_or(Some(1.0), |r| r.parse().ok())?;
         let elbow = match (v.get(5), v.get(6)) { (Some(x), Some(y)) => Some((x.parse().ok()?, y.parse().ok()?)), _ => None };
-        Some((v.first()?.parse().ok()?, v.get(1)?.parse().ok()?, v.get(2)?.parse().ok()?, *v.get(3)? == "1", reach, elbow))
+        Some(TrackLine { x: v.first()?.parse().ok()?, y: v.get(1)?.parse().ok()?, angle: v.get(2)?.parse().ok()?, over: *v.get(3)? == "1", reach, elbow, locked: v.get(7) == Some(&"1") })
     }).collect()
 }
 
@@ -508,36 +511,20 @@ impl Sheet {
             if frames.is_empty() { continue; }
             let name = e.file_name().to_string_lossy().into_owned();
             if let Some(t) = read_holds(&e.path().join("hold.txt")).filter(|t| t.len() == frames.len()) {
-                let t = t.into_iter().zip(&frames).map(|((x, y, angle, over, reach, elbow), f)| {
-                    let ((x, y), angle) = elbow.map_or(((x, y), angle), |el| fit_hold(f, (x, y), angle, el));
-                    (x, y, angle, over, reach)
-                }).collect();
-                tracks.insert(name.clone(), (t, frames[0].dimensions()));
+                tracks.insert(name.clone(), (Sheet::fitted(t, &frames), frames[0].dimensions()));
             }
             // With a shield on the arm a clip may hold things its own way (the shield braced, the
             // weapon kept back): `hold_shield.txt` and `off_shield.txt`, kept as `<clip>#shield`.
             for (file, into) in [("hold_shield.txt", &mut tracks), ("off_shield.txt", &mut off_tracks)] {
                 let Some(t) = read_holds(&e.path().join(file)).filter(|t| t.len() == frames.len()) else { continue };
-                let t = t.into_iter().zip(&frames).map(|((x, y, angle, over, reach, elbow), f)| {
-                    let ((x, y), angle) = elbow.map_or(((x, y), angle), |el| fit_hold(f, (x, y), angle, el));
-                    (x, y, angle, over, reach)
-                }).collect();
-                into.insert(format!("{name}{SHIELDED}"), (t, frames[0].dimensions()));
+                into.insert(format!("{name}{SHIELDED}"), (Sheet::fitted(t, &frames), frames[0].dimensions()));
             }
             if let Some(kept) = Sheet::shield_way(&e.path(), &frames) { clips.insert(format!("{name}{SHIELDED}"), Clip { frames: kept, mirrored: Vec::new() }); }
             if let Some(t) = read_holds(&e.path().join("off.txt")).filter(|t| t.len() == frames.len()) {
-                let t = t.into_iter().zip(&frames).map(|((x, y, angle, over, reach, elbow), f)| {
-                    let ((x, y), angle) = elbow.map_or(((x, y), angle), |el| fit_hold(f, (x, y), angle, el));
-                    (x, y, angle, over, reach)
-                }).collect();
-                off_tracks.insert(name.clone(), (t, frames[0].dimensions()));
+                off_tracks.insert(name.clone(), (Sheet::fitted(t, &frames), frames[0].dimensions()));
             }
             if let Some(t) = read_holds(&e.path().join("draw.txt")).filter(|t| t.len() == frames.len()) {
-                let t = t.into_iter().zip(&frames).map(|((x, y, angle, on, reach, elbow), f)| {
-                    let ((x, y), angle) = elbow.map_or(((x, y), angle), |el| fit_hold(f, (x, y), angle, el));
-                    (x, y, angle, on, reach)
-                }).collect();
-                draw_tracks.insert(name.clone(), (t, frames[0].dimensions()));
+                draw_tracks.insert(name.clone(), (Sheet::fitted(t, &frames), frames[0].dimensions()));
             }
             clips.insert(name, Clip { frames, mirrored: Vec::new() });
         }
@@ -630,6 +617,15 @@ impl Sheet {
 
     /// `arm` the weapon `art` (put in hand already, by `arm`) into the clips of another `kind`, once:
     /// a weapon made for both hands held in one is drawn into the one-handed clips when it is.
+    /// A track's holds moved to the fists as `frames` draw them (`fit_hold`); a hold locked on
+    /// screen keeps its blade's angle, as a thrust must to drive along its line.
+    fn fitted(track: Vec<TrackLine>, frames: &[Arc<RgbaImage>]) -> Vec<(f32, f32, f32, bool, f32)> {
+        track.into_iter().zip(frames).map(|(line, frame)| {
+            let ((x, y), turned) = line.elbow.map_or(((line.x, line.y), line.angle), |elbow| fit_hold(frame, (line.x, line.y), line.angle, elbow));
+            (x, y, if line.locked { line.angle } else { turned }, line.over, line.reach)
+        }).collect()
+    }
+
     pub fn arm_as(&mut self, art: &str, kind: &str) {
         if [format!("{kind}_light@{art}"), format!("{kind}_idle@{art}")].iter().any(|n| self.clips.contains_key(n)) { return; }
         let Some(weapon) = self.weapons.get(art).cloned() else { return };
@@ -693,16 +689,16 @@ impl Sheet {
     fn shield_way(dir: &Path, frames: &[Arc<RgbaImage>]) -> Option<Vec<Arc<RgbaImage>>> {
         let bare = read_holds(&dir.join("hold.txt")).filter(|t| t.len() == frames.len())?;
         let shield = read_holds(&dir.join("hold_shield.txt")).filter(|t| t.len() == frames.len())?;
-        let rest = (0..frames.len()).find(|&k| (bare[k].0 - shield[k].0).abs() < AGREE && (bare[k].1 - shield[k].1).abs() < AGREE)?;
-        let lifted: Vec<bool> = bare.iter().zip(&shield).map(|(b, s)| b.1 < s.1 - AGREE).collect();
+        let rest = (0..frames.len()).find(|&k| (bare[k].x - shield[k].x).abs() < AGREE && (bare[k].y - shield[k].y).abs() < AGREE)?;
+        let lifted: Vec<bool> = bare.iter().zip(&shield).map(|(b, s)| b.y < s.y - AGREE).collect();
         if !lifted.contains(&true) { return None; }
         let still = &frames[rest];
         let (w, h) = still.dimensions();
         let columns: Vec<u32> = (0..w).filter(|&x| (0..h).any(|y| still.get_pixel(x, y)[3] >= 128)).collect();
         let mid = (*columns.first()? + *columns.last()?) as f32 / 2.0;
-        let weapon_right = bare[rest].0 * w as f32 > mid;
+        let weapon_right = bare[rest].x * w as f32 > mid;
         let edge = mid + if weapon_right { HOOD_HALF } else { -HOOD_HALF } * w as f32;
-        let top = ((shield[rest].1 * h as f32) as u32).min(h);
+        let top = ((shield[rest].y * h as f32) as u32).min(h);
         Some(frames.iter().zip(&lifted).map(|(f, &up)| {
             if !up || f.dimensions() != (w, h) { return f.clone(); }
             let mut kept = (**f).clone();

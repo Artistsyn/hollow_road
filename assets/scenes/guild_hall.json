@@ -24,24 +24,24 @@
       "phase": 0.0
     },
     "hill": 0.0,
-    "edge_noise": 0.12,
-    "edge_dark": 0.35,
+    "edge_noise": 0.0,
+    "edge_dark": 0.0,
     "material": {
-      "pattern": "Cobblestone",
+      "pattern": "Planks",
       "base": [
         92,
-        80,
-        66
+        68,
+        48
       ],
       "mortar": [
-        30,
-        25,
-        20
+        34,
+        24,
+        16
       ],
       "noise": 10,
-      "damage": 0.2,
+      "damage": 0.25,
       "seed": 102,
-      "tile_size": 2.4,
+      "tile_size": 1.6,
       "rotate": false,
       "brightness": 1.0,
       "gloss": 0.0,
@@ -73,14 +73,14 @@
       "deck": {
         "pattern": "Planks",
         "base": [
-          104,
-          78,
+          112,
+          82,
           54
         ],
         "mortar": [
-          30,
-          22,
-          16
+          40,
+          28,
+          18
         ],
         "noise": 8,
         "damage": 0.15,
@@ -103,15 +103,16 @@
       ]
     },
     "fork": {
-      "enabled": false,
-      "spacing": 24.0,
-      "offset": 14.0,
+      "enabled": true,
+      "spacing": 8.0,
+      "offset": 6.5,
       "side": "Alternate",
       "style": "Side",
       "angle": 38.0,
-      "half_width": 1.1,
-      "depth": 7.0,
-      "height": 2.6
+      "half_width": 0.75,
+      "depth": 4.0,
+      "height": 2.5,
+      "frame": 0.2
     },
     "edge_lights": {
       "enabled": false,
@@ -154,23 +155,23 @@
     }
   },
   "verge": {
-    "enabled": false,
+    "enabled": true,
     "material": {
-      "pattern": "Grass",
+      "pattern": "Planks",
       "base": [
-        42,
-        70,
-        30
+        84,
+        62,
+        44
       ],
       "mortar": [
-        26,
-        46,
-        18
+        32,
+        22,
+        15
       ],
       "noise": 10,
-      "damage": 0.2,
-      "seed": 0,
-      "tile_size": 2.4,
+      "damage": 0.25,
+      "seed": 103,
+      "tile_size": 1.6,
       "rotate": false,
       "brightness": 1.0,
       "gloss": 0.0,
@@ -189,26 +190,26 @@
   "ground_cover": [],
   "walls": {
     "enabled": true,
-    "gap": 0.25,
-    "height": 4.5,
+    "gap": 2.4,
+    "height": 4.0,
     "base_shadow": 0.55,
-    "thickness": 0.5,
+    "thickness": 0.0,
     "material": {
-      "pattern": "StoneBlock",
+      "pattern": "Planks",
       "base": [
-        74,
-        64,
-        54
+        78,
+        58,
+        40
       ],
       "mortar": [
-        28,
-        24,
-        20
+        30,
+        20,
+        14
       ],
       "noise": 10,
-      "damage": 0.2,
-      "seed": 0,
-      "tile_size": 2.8,
+      "damage": 0.3,
+      "seed": 104,
+      "tile_size": 2.0,
       "rotate": false,
       "brightness": 1.0,
       "gloss": 0.0,
@@ -218,23 +219,23 @@
   },
   "ceiling": {
     "enabled": true,
-    "height": 4.2,
+    "height": 3.8,
     "material": {
-      "pattern": "StoneBlock",
+      "pattern": "Planks",
       "base": [
-        52,
-        46,
-        40
+        54,
+        40,
+        28
       ],
       "mortar": [
         22,
-        19,
-        16
+        15,
+        10
       ],
       "noise": 10,
-      "damage": 0.2,
-      "seed": 0,
-      "tile_size": 2.8,
+      "damage": 0.3,
+      "seed": 105,
+      "tile_size": 2.0,
       "rotate": false,
       "brightness": 1.0,
       "gloss": 0.0,
@@ -562,11 +563,11 @@
     }
   },
   "light": {
-    "ambient": 0.25,
+    "ambient": 0.22,
     "ambient_color": [
+      190,
       150,
-      160,
-      190
+      112
     ],
     "void_color": [
       0,
@@ -576,11 +577,11 @@
     "fog": {
       "enabled": true,
       "color": [
-        0,
-        0,
-        0
+        26,
+        18,
+        12
       ],
-      "distance": 20.0,
+      "distance": 24.0,
       "match_sky": false
     },
     "bands": 0
@@ -588,17 +589,17 @@
   "fixtures": [
     {
       "enabled": true,
-      "kind": "Torch",
+      "kind": "Lantern",
       "side": "Both",
       "mount": "Wall",
-      "height": 2.1,
-      "spacing": 6.0,
-      "offset": 0.0,
+      "height": 2.3,
+      "spacing": 8.0,
+      "offset": 3.0,
       "lateral": 0.3,
       "size": 1.0,
       "light": true,
-      "intensity": 1.0,
-      "radius": 6.5,
+      "intensity": 1.3,
+      "radius": 8.0,
       "flicker": 1.0,
       "jitter": 0.0,
       "jitter_along": 0.0,
@@ -608,7 +609,7 @@
       "color_var": 0.0,
       "density": 1.0,
       "cluster": 1,
-      "stagger": 0.0,
+      "stagger": 0.5,
       "tint": [
         255,
         255,
@@ -642,18 +643,204 @@
       "seed": 0
     }
   ],
-  "props": [],
+  "props": [
+    {
+      "enabled": true,
+      "kind": "Tree",
+      "side": "Both",
+      "lateral": 1.25,
+      "spacing": 24.0,
+      "offset": 4.0,
+      "rows": 1,
+      "row_spacing": 3.0,
+      "jitter": 0.15,
+      "jitter_along": 0.1,
+      "stagger": 0.5,
+      "density": 1.0,
+      "scale": 1.0,
+      "scale_var": 0.06,
+      "lean_var": 0.0,
+      "tint_var": 0.08,
+      "tint": [
+        40,
+        110,
+        34
+      ],
+      "sink": 0.02,
+      "float": 0.0,
+      "float_var": 0.0,
+      "orbit": {
+        "enabled": false,
+        "radius": 4.0,
+        "radius_var": 0.8,
+        "height": 0.0,
+        "twist": 1,
+        "spin": 1,
+        "stray": 0.08,
+        "with_tunnel": true
+      },
+      "shadow": true,
+      "shadow_opacity": 0.6,
+      "sprite": {
+        "path": "",
+        "pool": [],
+        "flip_x": false,
+        "pixelated": false
+      },
+      "seed": 61,
+      "def": "../kits/guild#table"
+    },
+    {
+      "enabled": true,
+      "kind": "Tree",
+      "side": "Right",
+      "lateral": 2.0,
+      "spacing": 24.0,
+      "offset": 19.0,
+      "rows": 1,
+      "row_spacing": 3.0,
+      "jitter": 0.15,
+      "jitter_along": 0.1,
+      "stagger": 0.0,
+      "density": 1.0,
+      "scale": 1.0,
+      "scale_var": 0.06,
+      "lean_var": 0.0,
+      "tint_var": 0.08,
+      "tint": [
+        40,
+        110,
+        34
+      ],
+      "sink": 0.02,
+      "float": 0.0,
+      "float_var": 0.0,
+      "orbit": {
+        "enabled": false,
+        "radius": 4.0,
+        "radius_var": 0.8,
+        "height": 0.0,
+        "twist": 1,
+        "spin": 1,
+        "stray": 0.08,
+        "with_tunnel": true
+      },
+      "shadow": true,
+      "shadow_opacity": 0.6,
+      "sprite": {
+        "path": "",
+        "pool": [],
+        "flip_x": false,
+        "pixelated": false
+      },
+      "seed": 62,
+      "def": "../kits/guild#barrels"
+    },
+    {
+      "enabled": true,
+      "kind": "Tree",
+      "side": "Both",
+      "lateral": 2.36,
+      "spacing": 24.0,
+      "offset": 9.0,
+      "rows": 1,
+      "row_spacing": 3.0,
+      "jitter": 0.0,
+      "jitter_along": 0.1,
+      "stagger": 0.5,
+      "density": 1.0,
+      "scale": 1.0,
+      "scale_var": 0.06,
+      "lean_var": 0.0,
+      "tint_var": 0.08,
+      "tint": [
+        40,
+        110,
+        34
+      ],
+      "sink": 0.02,
+      "float": 1.35,
+      "float_var": 0.0,
+      "orbit": {
+        "enabled": false,
+        "radius": 4.0,
+        "radius_var": 0.8,
+        "height": 0.0,
+        "twist": 1,
+        "spin": 1,
+        "stray": 0.08,
+        "with_tunnel": true
+      },
+      "shadow": false,
+      "shadow_opacity": 0.6,
+      "sprite": {
+        "path": "",
+        "pool": [],
+        "flip_x": false,
+        "pixelated": false
+      },
+      "seed": 63,
+      "def": "../kits/guild#notices",
+      "facing": "Path"
+    },
+    {
+      "enabled": true,
+      "kind": "Tree",
+      "side": "Left",
+      "lateral": 2.05,
+      "spacing": 24.0,
+      "offset": 21.0,
+      "rows": 1,
+      "row_spacing": 3.0,
+      "jitter": 0.15,
+      "jitter_along": 0.1,
+      "stagger": 0.0,
+      "density": 1.0,
+      "scale": 1.0,
+      "scale_var": 0.06,
+      "lean_var": 0.0,
+      "tint_var": 0.08,
+      "tint": [
+        40,
+        110,
+        34
+      ],
+      "sink": 0.02,
+      "float": 0.0,
+      "float_var": 0.0,
+      "orbit": {
+        "enabled": false,
+        "radius": 4.0,
+        "radius_var": 0.8,
+        "height": 0.0,
+        "twist": 1,
+        "spin": 1,
+        "stray": 0.08,
+        "with_tunnel": true
+      },
+      "shadow": true,
+      "shadow_opacity": 0.6,
+      "sprite": {
+        "path": "",
+        "pool": [],
+        "flip_x": false,
+        "pixelated": false
+      },
+      "seed": 64,
+      "def": "../kits/guild#rack"
+    }
+  ],
   "set_pieces": [],
   "companions": [],
   "particles": [
     {
       "enabled": true,
       "kind": "Dust",
-      "count": 90,
+      "count": 120,
       "color": [
-        200,
-        190,
-        170
+        210,
+        180,
+        140
       ],
       "size": 1.0,
       "speed": 1.0,

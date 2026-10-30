@@ -1,0 +1,1016 @@
+{
+  "version": 3,
+  "name": "Gruk's Counting Room",
+  "canvas": {
+    "width": 480,
+    "height": 270
+  },
+  "camera": {
+    "eye_height": 3.2,
+    "horizon": 0.2,
+    "zoom": 1.0,
+    "lens_curve": 0.0
+  },
+  "path": {
+    "half_width": 1.6,
+    "flare": 0.0,
+    "bend": 0.0,
+    "winding": {
+      "enabled": false,
+      "amplitude": 2.0,
+      "length": 40.0,
+      "turn": 0.6,
+      "irregular": 0.3,
+      "phase": 0.0
+    },
+    "hill": 0.0,
+    "edge_noise": 0.0,
+    "edge_dark": 0.0,
+    "material": {
+      "pattern": "Planks",
+      "base": [
+        92,
+        68,
+        48
+      ],
+      "mortar": [
+        34,
+        24,
+        16
+      ],
+      "noise": 10,
+      "damage": 0.25,
+      "seed": 102,
+      "tile_size": 1.6,
+      "rotate": false,
+      "brightness": 1.0,
+      "gloss": 0.0,
+      "ripples": 0.0,
+      "glow": 0.0
+    },
+    "stairs": {
+      "enabled": false,
+      "spacing": 12.0,
+      "steps": 8,
+      "rise": 0.17,
+      "run": 0.32,
+      "offset": 3.0,
+      "descending": false
+    },
+    "bridge": {
+      "enabled": false,
+      "spacing": 24.0,
+      "length": 8.0,
+      "offset": 6.0,
+      "depth": 10.0,
+      "bottom": "Ground",
+      "water_level": 10.0,
+      "bottom_color": [
+        150,
+        150,
+        150
+      ],
+      "deck": {
+        "pattern": "Planks",
+        "base": [
+          104,
+          78,
+          54
+        ],
+        "mortar": [
+          30,
+          22,
+          16
+        ],
+        "noise": 8,
+        "damage": 0.15,
+        "seed": 0,
+        "tile_size": 1.2,
+        "rotate": false,
+        "brightness": 1.0,
+        "gloss": 0.0,
+        "ripples": 0.0,
+        "glow": 0.0
+      },
+      "thickness": 0.4,
+      "railing": "Posts",
+      "rail_height": 1.0,
+      "end_pillars": true,
+      "rail_color": [
+        34,
+        35,
+        38
+      ]
+    },
+    "fork": {
+      "enabled": false,
+      "spacing": 24.0,
+      "offset": 11.0,
+      "side": "Alternate",
+      "style": "Side",
+      "angle": 38.0,
+      "half_width": 0.75,
+      "depth": 4.0,
+      "height": 2.4
+    },
+    "edge_lights": {
+      "enabled": false,
+      "color": [
+        80,
+        210,
+        255
+      ],
+      "strength": 1.0,
+      "width": 0.05,
+      "inset": 0.08,
+      "dash": 0.0,
+      "flow": 0
+    },
+    "surface": true,
+    "waterway": {
+      "enabled": false,
+      "flow": 2,
+      "foam": 0.5,
+      "foam_color": [
+        214,
+        226,
+        224
+      ],
+      "foam_width": 0.35,
+      "lap": 3,
+      "wet": 0.25,
+      "floating": "None",
+      "float_density": 0.3,
+      "float_color": [
+        70,
+        110,
+        52
+      ],
+      "float_size": 0.5,
+      "frozen": 0.0,
+      "cascades": 0.0,
+      "cascade_spacing": 24.0,
+      "seed": 0
+    }
+  },
+  "verge": {
+    "enabled": true,
+    "material": {
+      "pattern": "Planks",
+      "base": [
+        84,
+        62,
+        44
+      ],
+      "mortar": [
+        32,
+        22,
+        15
+      ],
+      "noise": 10,
+      "damage": 0.25,
+      "seed": 103,
+      "tile_size": 1.6,
+      "rotate": false,
+      "brightness": 1.0,
+      "gloss": 0.0,
+      "ripples": 0.0,
+      "glow": 0.0
+    },
+    "tufts": false,
+    "tuft_color": [
+      44,
+      100,
+      30
+    ],
+    "tuft_density": 1.0,
+    "tuft_height": 0.25
+  },
+  "ground_cover": [],
+  "walls": {
+    "enabled": true,
+    "gap": 1.0,
+    "height": 4.4,
+    "base_shadow": 0.55,
+    "thickness": 0.0,
+    "material": {
+      "pattern": "Planks",
+      "base": [
+        78,
+        58,
+        40
+      ],
+      "mortar": [
+        30,
+        20,
+        14
+      ],
+      "noise": 10,
+      "damage": 0.3,
+      "seed": 104,
+      "tile_size": 2.0,
+      "rotate": false,
+      "brightness": 1.0,
+      "gloss": 0.0,
+      "ripples": 0.0,
+      "glow": 0.0
+    }
+  },
+  "ceiling": {
+    "enabled": true,
+    "height": 4.0,
+    "material": {
+      "pattern": "Planks",
+      "base": [
+        54,
+        40,
+        28
+      ],
+      "mortar": [
+        22,
+        15,
+        10
+      ],
+      "noise": 10,
+      "damage": 0.3,
+      "seed": 105,
+      "tile_size": 2.0,
+      "rotate": false,
+      "brightness": 1.0,
+      "gloss": 0.0,
+      "ripples": 0.0,
+      "glow": 0.0
+    }
+  },
+  "sky": {
+    "enabled": false,
+    "top": [
+      0,
+      0,
+      0
+    ],
+    "horizon": [
+      0,
+      0,
+      0
+    ],
+    "sun": {
+      "enabled": false,
+      "pos": [
+        0.72,
+        0.35
+      ],
+      "radius": 0.045,
+      "color": [
+        255,
+        236,
+        190
+      ],
+      "emits_light": true,
+      "intensity": 1.0
+    },
+    "moon": {
+      "body": {
+        "enabled": false,
+        "pos": [
+          0.25,
+          0.3
+        ],
+        "radius": 0.06,
+        "color": [
+          222,
+          230,
+          255
+        ],
+        "emits_light": true,
+        "intensity": 0.35
+      },
+      "phase": 0.0,
+      "opacity": 0.9,
+      "craters": true,
+      "relief": 1.0,
+      "seed": 0
+    },
+    "stars": {
+      "enabled": false,
+      "count": 140,
+      "size": 1.0,
+      "twinkle": 0.5,
+      "seed": 0
+    },
+    "meteors": {
+      "enabled": false,
+      "count": 6,
+      "duration": 0.7,
+      "length": 0.35,
+      "angle": -35.0,
+      "spread": 30.0,
+      "brightness": 1.0,
+      "color": [
+        235,
+        242,
+        255
+      ],
+      "tint": 0.4,
+      "seed": 0
+    },
+    "clouds": {
+      "enabled": false,
+      "kind": "Cumulus",
+      "cover": 0.45,
+      "count": 10,
+      "drift": 1.0,
+      "scale": 1.0,
+      "opacity": 0.5,
+      "tint": [
+        226,
+        230,
+        238
+      ],
+      "variation": 0.55,
+      "shade": 0.55,
+      "shadows": 0.0,
+      "patches": 0.0,
+      "seed": 0
+    },
+    "cloud_layers": [],
+    "cloud_mix": {
+      "enabled": false,
+      "layers": 3,
+      "kinds": [],
+      "cover": 0.45,
+      "patches": 0.5,
+      "variety": 0.6,
+      "drift": 1.0,
+      "opacity": 0.5,
+      "tint": [
+        226,
+        230,
+        238
+      ],
+      "seed": 0
+    },
+    "sunset": {
+      "enabled": false,
+      "style": "Golden",
+      "amount": 1.0,
+      "glow": 1.0,
+      "height": 0.35,
+      "spread": 0.8,
+      "clouds": 1.0,
+      "light": 0.7
+    },
+    "day_night": {
+      "enabled": false,
+      "hour": 12.0,
+      "days_per_loop": 0,
+      "sunrise": 6.0,
+      "sunset": 18.0,
+      "sun_height": 1.15,
+      "sun_path": [
+        0.15,
+        0.85
+      ],
+      "sunset_style": "Golden",
+      "glow": 1.0,
+      "keep_look": 0.6,
+      "night_light": 0.3,
+      "sun": true,
+      "moon": true,
+      "stars": true,
+      "lamps": true,
+      "real_time": false
+    },
+    "aurora": {
+      "enabled": false,
+      "intensity": 1.0,
+      "low": [
+        70,
+        255,
+        150
+      ],
+      "high": [
+        225,
+        130,
+        255
+      ],
+      "accent": [
+        255,
+        170,
+        245
+      ],
+      "height": 0.6,
+      "tall": 1.0,
+      "speed": 1.0,
+      "coverage": 0.5,
+      "rays": 1.0,
+      "waves": 0.5,
+      "arc": 1.0,
+      "edge": 1.0,
+      "ground_glow": 0.5,
+      "seed": 0
+    },
+    "rainbow": {
+      "enabled": false,
+      "intensity": 0.5,
+      "x": 0.5,
+      "size": 1.0,
+      "double": true,
+      "saturation": 1.0
+    },
+    "halo": {
+      "enabled": false,
+      "sun": true,
+      "moon": true,
+      "size": 0.32,
+      "strength": 0.35
+    },
+    "space": {
+      "enabled": false,
+      "below": true,
+      "star_style": "Realistic",
+      "stars": 1.0,
+      "star_brightness": 1.0,
+      "star_colors": 1.0,
+      "star_glow": 0.5,
+      "star_clumps": 0.5,
+      "star_spikes": 0.4,
+      "spike_shape": "Four",
+      "twinkle": 0.0,
+      "twinkle_speed": 2,
+      "nebula": 0.6,
+      "nebula_colors": [
+        [
+          190,
+          70,
+          200
+        ],
+        [
+          60,
+          120,
+          255
+        ]
+      ],
+      "nebula_scale": 1.0,
+      "nebula_dust": 0.5,
+      "galaxy": 0.7,
+      "galaxy_color": [
+        235,
+        225,
+        255
+      ],
+      "galaxy_angle": 18.0,
+      "galaxy_width": 0.22,
+      "galaxy_height": 0.55,
+      "galaxy_core": 0.25,
+      "galaxy_dust": 0.7,
+      "objects": [],
+      "planets": [],
+      "black_hole": {
+        "enabled": false,
+        "pos": [
+          0.5,
+          0.45
+        ],
+        "size": 0.12,
+        "tilt": 84.0,
+        "roll": -8.0,
+        "disk_inner": 3.0,
+        "disk_outer": 11.0,
+        "disk_colors": [
+          [
+            255,
+            246,
+            228
+          ],
+          [
+            255,
+            176,
+            96
+          ],
+          [
+            190,
+            64,
+            26
+          ]
+        ],
+        "brightness": 1.0,
+        "doppler": 0.9,
+        "spin": 4,
+        "lensing": 1.0,
+        "infall": 18,
+        "infall_speed": 1,
+        "infall_color": [
+          255,
+          214,
+          170
+        ],
+        "nodes": 0,
+        "node_size": 0.018,
+        "node_colors": [
+          [
+            22,
+            34,
+            66
+          ],
+          [
+            90,
+            230,
+            210
+          ],
+          [
+            156,
+            126,
+            250
+          ]
+        ],
+        "distance": 30.0,
+        "light": 0.5,
+        "seed": 0
+      },
+      "seed": 0
+    },
+    "tunnel": {
+      "enabled": false,
+      "kind": "Hyperspace",
+      "radius": 6.0,
+      "colors": [
+        [
+          6,
+          10,
+          30
+        ],
+        [
+          170,
+          210,
+          255
+        ],
+        [
+          235,
+          245,
+          255
+        ]
+      ],
+      "intensity": 1.0,
+      "rush": 3,
+      "twist": 0,
+      "spin": 0,
+      "density": 1.0,
+      "core": 1.0,
+      "light": 0.5,
+      "seed": 0
+    }
+  },
+  "light": {
+    "ambient": 0.2,
+    "ambient_color": [
+      190,
+      150,
+      112
+    ],
+    "void_color": [
+      0,
+      0,
+      0
+    ],
+    "fog": {
+      "enabled": true,
+      "color": [
+        26,
+        18,
+        12
+      ],
+      "distance": 18.0,
+      "match_sky": false
+    },
+    "bands": 0
+  },
+  "fixtures": [
+    {
+      "enabled": true,
+      "kind": "Candle",
+      "side": "Both",
+      "mount": "Wall",
+      "height": 1.6,
+      "spacing": 6.0,
+      "offset": 1.0,
+      "lateral": 0.3,
+      "size": 1.0,
+      "light": true,
+      "intensity": 1.1,
+      "radius": 6.0,
+      "flicker": 1.0,
+      "jitter": 0.0,
+      "jitter_along": 0.0,
+      "height_var": 0.0,
+      "size_var": 0.0,
+      "intensity_var": 0.0,
+      "color_var": 0.0,
+      "density": 1.0,
+      "cluster": 1,
+      "stagger": 0.5,
+      "tint": [
+        255,
+        255,
+        255
+      ],
+      "post": "Auto",
+      "place": "Anywhere",
+      "set_piece": 0,
+      "bridge_posts": false,
+      "posts_between": 0,
+      "string_lights": {
+        "enabled": false,
+        "bulbs": 9,
+        "sag": 0.45,
+        "color": [
+          255,
+          214,
+          140
+        ],
+        "colors": [],
+        "brightness": 1.0,
+        "size": 1.0,
+        "twinkle": 0.2
+      },
+      "sprite": {
+        "path": "",
+        "pool": [],
+        "flip_x": false,
+        "pixelated": false
+      },
+      "seed": 0
+    }
+  ],
+  "props": [
+    {
+      "enabled": true,
+      "kind": "Tree",
+      "side": "Right",
+      "lateral": 0.5,
+      "spacing": 12.0,
+      "offset": 3.0,
+      "rows": 1,
+      "row_spacing": 3.0,
+      "jitter": 0.15,
+      "jitter_along": 0.1,
+      "stagger": 0.0,
+      "density": 1.0,
+      "scale": 1.0,
+      "scale_var": 0.06,
+      "lean_var": 0.0,
+      "tint_var": 0.08,
+      "tint": [
+        40,
+        110,
+        34
+      ],
+      "sink": 0.02,
+      "float": 0.0,
+      "float_var": 0.0,
+      "orbit": {
+        "enabled": false,
+        "radius": 4.0,
+        "radius_var": 0.8,
+        "height": 0.0,
+        "twist": 1,
+        "spin": 1,
+        "stray": 0.08,
+        "with_tunnel": true
+      },
+      "shadow": true,
+      "shadow_opacity": 0.6,
+      "sprite": {
+        "path": "",
+        "pool": [],
+        "flip_x": false,
+        "pixelated": false
+      },
+      "seed": 62,
+      "def": "../kits/guild#barrels"
+    },
+    {
+      "enabled": true,
+      "kind": "Tree",
+      "side": "Both",
+      "lateral": 0.96,
+      "spacing": 8.0,
+      "offset": 2.0,
+      "rows": 1,
+      "row_spacing": 3.0,
+      "jitter": 0.0,
+      "jitter_along": 0.1,
+      "stagger": 0.5,
+      "density": 0.7,
+      "scale": 1.0,
+      "scale_var": 0.06,
+      "lean_var": 0.0,
+      "tint_var": 0.08,
+      "tint": [
+        40,
+        110,
+        34
+      ],
+      "sink": 0.02,
+      "float": 1.35,
+      "float_var": 0.0,
+      "orbit": {
+        "enabled": false,
+        "radius": 4.0,
+        "radius_var": 0.8,
+        "height": 0.0,
+        "twist": 1,
+        "spin": 1,
+        "stray": 0.08,
+        "with_tunnel": true
+      },
+      "shadow": false,
+      "shadow_opacity": 0.6,
+      "sprite": {
+        "path": "",
+        "pool": [],
+        "flip_x": false,
+        "pixelated": false
+      },
+      "seed": 63,
+      "def": "../kits/guild#notices",
+      "facing": "Path"
+    },
+    {
+      "enabled": true,
+      "kind": "Tree",
+      "side": "Left",
+      "lateral": 0.55,
+      "spacing": 12.0,
+      "offset": 9.0,
+      "rows": 1,
+      "row_spacing": 3.0,
+      "jitter": 0.15,
+      "jitter_along": 0.1,
+      "stagger": 0.0,
+      "density": 1.0,
+      "scale": 1.0,
+      "scale_var": 0.06,
+      "lean_var": 0.0,
+      "tint_var": 0.08,
+      "tint": [
+        40,
+        110,
+        34
+      ],
+      "sink": 0.02,
+      "float": 0.0,
+      "float_var": 0.0,
+      "orbit": {
+        "enabled": false,
+        "radius": 4.0,
+        "radius_var": 0.8,
+        "height": 0.0,
+        "twist": 1,
+        "spin": 1,
+        "stray": 0.08,
+        "with_tunnel": true
+      },
+      "shadow": true,
+      "shadow_opacity": 0.6,
+      "sprite": {
+        "path": "",
+        "pool": [],
+        "flip_x": false,
+        "pixelated": false
+      },
+      "seed": 64,
+      "def": "../kits/guild#rack"
+    }
+  ],
+  "set_pieces": [],
+  "companions": [],
+  "particles": [
+    {
+      "enabled": true,
+      "kind": "Dust",
+      "count": 120,
+      "color": [
+        210,
+        180,
+        140
+      ],
+      "size": 1.0,
+      "speed": 1.0,
+      "seed": 0
+    }
+  ],
+  "weather": {
+    "lightning": {
+      "enabled": false,
+      "strikes": 2,
+      "intensity": 1.5,
+      "color": [
+        205,
+        215,
+        255
+      ],
+      "bolts": true,
+      "seed": 0
+    },
+    "fog_banks": {
+      "enabled": false,
+      "spacing": 12.0,
+      "length": 4.0,
+      "density": 0.5,
+      "offset": 0.0
+    },
+    "precipitation": {
+      "enabled": false,
+      "kind": "Rain",
+      "intensity": 0.5,
+      "size": 1.0,
+      "tint": [
+        255,
+        255,
+        255
+      ],
+      "wetness": 0.8,
+      "puddles": 0.3,
+      "splashes": 0.6,
+      "cover": 0.8,
+      "track": 0.6,
+      "haze": 0.5,
+      "seed": 0
+    },
+    "drips": {
+      "enabled": false,
+      "rate": 1.0,
+      "color": [
+        190,
+        205,
+        220
+      ],
+      "seed": 0
+    },
+    "wind": {
+      "enabled": false,
+      "speed": 3.0,
+      "gusts": 0.4,
+      "sway": 0.5,
+      "flutter": 0.6,
+      "seed": 0
+    },
+    "sandstorm": {
+      "enabled": false,
+      "intensity": 0.5,
+      "color": [
+        214,
+        172,
+        116
+      ],
+      "seed": 0
+    },
+    "mist": {
+      "enabled": false,
+      "height": 0.8,
+      "density": 0.25,
+      "color": [
+        205,
+        210,
+        220
+      ],
+      "patchiness": 0.6,
+      "wisps": 0.4,
+      "seed": 0,
+      "soft": 0.0,
+      "over": "Everywhere",
+      "spread": 1.0,
+      "glow": 0.0,
+      "from": 0.0
+    },
+    "light_shafts": {
+      "enabled": false,
+      "sun": 0.6,
+      "lamps": 0.4
+    },
+    "heat_shimmer": {
+      "enabled": false,
+      "strength": 0.5,
+      "speed": 1.0
+    },
+    "lens": {
+      "enabled": false,
+      "kind": "Drops",
+      "amount": 0.5,
+      "size": 1.0,
+      "trails": 0.6,
+      "blur": 0.35,
+      "seed": 0
+    },
+    "snow_cover": {
+      "enabled": false,
+      "props": 0.7,
+      "ground": 0.6
+    }
+  },
+  "season": {
+    "enabled": false,
+    "season": 1.0,
+    "years_per_loop": 0,
+    "falling": true,
+    "snow": true
+  },
+  "wildlife": {
+    "birds": {
+      "enabled": false,
+      "flocks": 2,
+      "count": 7,
+      "size": 0.025,
+      "height": 0.35,
+      "flap": 3.0,
+      "crossing": 12.0,
+      "color": [
+        30,
+        30,
+        36
+      ],
+      "seed": 0
+    },
+    "bats": {
+      "enabled": false,
+      "count": 8,
+      "size": 0.3,
+      "color": [
+        24,
+        20,
+        22
+      ],
+      "dusk_only": true,
+      "seed": 0
+    },
+    "fish": {
+      "enabled": false,
+      "spacing": 6.0,
+      "lateral": [
+        1.5,
+        6.0
+      ],
+      "leaps": 1,
+      "size": 0.35,
+      "color": [
+        200,
+        210,
+        220
+      ],
+      "seed": 0
+    }
+  },
+  "waterfalls": [],
+  "fences": [],
+  "post": {
+    "exposure": 1.0,
+    "contrast": 1.0,
+    "saturation": 1.0,
+    "bloom": 0.35,
+    "vignette": 0.35,
+    "grain": 0.0,
+    "tint": [
+      255,
+      255,
+      255
+    ],
+    "flare": {
+      "style": "None",
+      "amount": 0.5
+    },
+    "focus": {
+      "enabled": false,
+      "mode": "Depth",
+      "distance": 8.0,
+      "blur": 0.008,
+      "band": 0.62,
+      "band_width": 0.16
+    }
+  },
+  "style": {
+    "pixel_size": 1,
+    "palette": "Full",
+    "dither": "None",
+    "dither_strength": 0.5,
+    "outline": {
+      "enabled": false,
+      "color": [
+        16,
+        12,
+        14
+      ],
+      "objects_only": true
+    },
+    "paint": 0.0,
+    "grade": "",
+    "grade_strength": 1.0,
+    "paper": 0.0,
+    "scanlines": 0.0
+  },
+  "motion": {
+    "loop_length": 24.0,
+    "speed": 2.2,
+    "fps": 24
+  }
+}

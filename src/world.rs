@@ -8,7 +8,7 @@
 //! road metres (`walked`, never coming round), so it is tested without PathForge; the game reads
 //! the walk's state and sends what `World` asks for.
 
-use crate::atlas::{self, Barred, Key, Place, FINALE};
+use crate::atlas::{self, Barred, Key, Place};
 use crate::fight::{Ai, Archetype, Enemy, Fight, HERO_D};
 use quartz_path_forge::Branch;
 
@@ -22,6 +22,10 @@ pub const CURRENCY_TITLE: &str = "Echoes";
 pub const MOST_FOES: usize = 7;
 /// How near the shrine the hero must stand to rest, metres.
 pub const SHRINE_REACH: f32 = 3.0;
+/// How far past where a dead end holds the hero its wall stands, and Gruk behind his counter
+/// (within `SHRINE_REACH`), metres.
+pub const END_PAST: f32 = 5.0;
+pub const GRUK_PAST: f32 = 2.6;
 /// Metres within which a living enemy, ahead or behind, keeps what wants a quiet moment (a cache
 /// taken, a boss stepping out, a side path left) from happening.
 const QUIET: f32 = 8.0;
@@ -63,7 +67,18 @@ pub enum Go {
     Warp(String),
     /// Cut to this stop, this many metres in (turned round partway along a place).
     WarpAt(String, f32),
+    /// Cut to this stop, this many metres short of where its walk on hands over (turned round past
+    /// a boundary or a fork's junction: the way back runs up to it).
+    TurnInto(String, f32),
+    /// Cut to this stop with its walk on this many metres under way (turned round short of where
+    /// a place was walked into: the way back out is that far along).
+    WalkOn(String, f32),
 }
+
+/// The road's walk on from the stop as the frame shown has it (`WalkState::travel`, `handover`):
+/// metres into the crossing or fork under way, and where it hands over to the next place.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Underway { pub travel: Option<f32>, pub handover: Option<f32> }
 
 /// Something worth a line on the screen.
 #[derive(Clone, Debug, PartialEq)]
@@ -78,6 +93,8 @@ pub enum Note {
     Fork(&'static str, &'static str),
     /// Leaning toward a branch at a fork, and the place it leads to.
     Lean(Branch, &'static str),
+    /// At a fork, the rune hums toward this branch (`World::rune_hums`).
+    Hums(Branch),
     /// The way ahead (to this place) cannot be walked: the key it needs, or None for a shortcut
     /// shut from this side.
     Barred(&'static str, Option<Key>),
@@ -111,6 +128,21 @@ pub enum Note {
     Ambushed(bool),
     /// The last boss beaten: the pilgrimage begins again, harder (its count).
     Pilgrimage(u32),
+    /// A bounty taken from a board (its notice), and one paid for: who paid, how many echoes.
+    Bounty(&'static str),
+    Paid(&'static str, u32),
+    /// The walk has reached a dead end: the way on is back the way the hero came.
+    DeadEnd,
+    /// The Collector's Tally paid this many more souls for a kill after a parry.
+    Tallied(u32),
+    /// Someone answered a call at the veil.
+    Called(crate::allies::Summoner),
+    /// A thing that only tested the hero melted into the dark.
+    Fled(&'static str),
+    /// Blood given to the Hollowed Shrine's heart.
+    Bled,
+    /// A line of the story, said as it is.
+    Told(&'static str),
 }
 
 /// Souls left where the hero fell: the place, metres into it as it is laid out, how many.
@@ -130,6 +162,14 @@ pub struct World {
     /// A warp sent and not yet seen in the walk's state, and how far into that stop it lands.
     pub warping: Option<String>,
     warp_into: f32,
+    /// A `TurnInto` sent: metres short of its stop's hand-over the hero stands.
+    turn_short: Option<f32>,
+    /// A `WalkOn` sent: its stop's walk on is under way when it lands.
+    turn_on: bool,
+    /// The walk on from this stop as last seen, and the road metres at which it passed its
+    /// boundary or junction (turned round beyond it, the way back runs up to it).
+    underway: Underway,
+    pub(crate) handed: Option<f64>,
     /// The shrine last rested at (where death wakes the hero), as the stop rested in.
     pub checkpoint: String,
     /// Every shrine rested at, to travel between from the sanctum.
@@ -155,6 +195,23 @@ pub struct World {
     pub met_smith: bool,
     /// Times each has been talked to (the keeper, the smith): the next thing they say.
     pub talks: [u32; 2],
+    /// The news each has told (the keeper, the smith), a bit a beat (`voices::Speaker::talk`).
+    pub heard: [u32; 2],
+    /// Bosses someone else killed while the hero was elsewhere (`World::story_moves`): gone, and
+    /// nothing of theirs for the hero.
+    pub claimed: Vec<&'static str>,
+    /// The meetings on the road already had (`visitors::VISITS`).
+    pub meetings: Vec<&'static str>,
+    /// The meeting just had, whose visitor stays until the hero leaves the place.
+    pub lingering: Option<&'static str>,
+    /// The bounties Gruk has posted to the hero and paid for.
+    pub guild: crate::guild::Guild,
+    /// What the horror in the fog hollow has taken of Krix and Lurz.
+    pub hunters: crate::hunters::Hunters,
+    /// What the hero said back when asked (`summons::ASKS`), and who answered a call at the veil
+    /// here (gone once the boss falls, the hero does, or the place is left).
+    pub answers: Vec<&'static str>,
+    pub called: Option<crate::allies::Summoner>,
     /// What the hero owns and wears.
     pub gear: crate::gear::Loadout,
     /// The arrows and bolts carried as last kept (`fight::Hero::quiver` is the one shot from).
@@ -163,6 +220,8 @@ pub struct World {
     /// in for chance.
     pub fallen: [u32; Archetype::ALL.len()],
     pub luck: u32,
+    /// A parry made since the last kill (the Collector's Tally pays on the next one). Not kept.
+    pub parried: bool,
     /// Places whose boss has fallen, this pilgrimage.
     pub beaten: Vec<&'static str>,
     /// Places whose boss has been faced at least once (its entrance plays only the first time).
@@ -206,16 +265,20 @@ pub struct Detour { pub from: String, pub at: f64, pub foes: Vec<Enemy>, pub sid
 impl World {
     pub fn new(walked: f64) -> World {
         World {
-            at: START.into(), base: walked, entered: 0.0, sent: false, warping: None, warp_into: 0.0, checkpoint: START.into(), rested: Vec::new(), souls: 0, stain: None,
-            pilgrimages: 0, signpost: None, lean: None, chose: false, chose_at: None, took: None, shards: [0; 3], met_keeper: false, met_smith: false, talks: [0, 0],
-            gear: crate::gear::Loadout::starting(), ammo: crate::fight::Quiver::SETTING_OUT, fallen: [0; Archetype::ALL.len()], luck: 0, beaten: Vec::new(), faced: Vec::new(), keys: Vec::new(), remnants: Vec::new(), opened: Vec::new(),
+            at: START.into(), base: walked, entered: 0.0, sent: false, warping: None, warp_into: 0.0, turn_short: None, turn_on: false, underway: Underway::default(), handed: None, checkpoint: START.into(), rested: Vec::new(), souls: 0, stain: None,
+            pilgrimages: 0, signpost: None, lean: None, chose: false, chose_at: None, took: None, shards: [0; 3], met_keeper: false, met_smith: false, talks: [0, 0], heard: [0, 0], claimed: Vec::new(), meetings: Vec::new(), lingering: None, guild: crate::guild::Guild::default(), hunters: crate::hunters::Hunters::default(), answers: Vec::new(), called: None,
+            gear: crate::gear::Loadout::starting(), ammo: crate::fight::Quiver::SETTING_OUT, fallen: [0; Archetype::ALL.len()], luck: 0, parried: false, beaten: Vec::new(), faced: Vec::new(), keys: Vec::new(), remnants: Vec::new(), opened: Vec::new(),
             seen: vec![atlas::node(START)], slain: Vec::new(), spawned: Vec::new(), detour: None, explored: Vec::new(), taken: Vec::new(),
             cleared: Vec::new(), told: false, lane: None, keep_hero: false, held_told: false, carry: None,
         }
     }
 
     /// The place the hero is in.
-    pub fn here(&self) -> &'static Place { atlas::place_of(atlas::node(&self.at)).unwrap_or(&atlas::PLACES[0]) }
+    pub fn here(&self) -> &'static Place {
+        let id = atlas::node(&self.at);
+        let place = if atlas::is_junction(&self.at) { atlas::junction(id) } else { atlas::place_of(id) };
+        place.unwrap_or(&atlas::PLACES[0])
+    }
     /// The road the hero walked in by (None in a side path).
     fn from(&self) -> Option<&str> { atlas::came_from(&self.at) }
     /// Whether the place is walked the way it is laid out.
@@ -226,7 +289,7 @@ impl World {
     /// Metres into the place, as walked now, of something `m` metres in as laid out.
     fn along(&self, m: f32) -> f32 { if self.forward() { m } else { (self.here().length - m).max(0.0) } }
     /// The road metres of something `m` metres into the place as laid out.
-    fn road_at(&self, m: f32) -> f64 { self.base + (HERO_D + self.along(m)) as f64 }
+    pub(crate) fn road_at(&self, m: f32) -> f64 { self.base + (HERO_D + self.along(m)) as f64 }
 
     /// How strong the place's enemies are against the road's first: (health, blows). Deeper
     /// regions and each pilgrimage again make them stronger.
@@ -238,14 +301,15 @@ impl World {
     /// The enemies' (health, blows) in a region of `tier`, `pilgrimages` in: deeper, harder, and
     /// harder again by what the smith's levels a hero is expected to carry there (`forged_at`)
     /// add past those the curve was first set against (one weapon and one armour level, 8% and
-    /// 5%, every second tier), so a blow still takes about as many to kill, and to be killed by.
+    /// 5%, every second tier). Blows answer only half the armour: a forged hero is felt to be
+    /// tougher, and a late boss's blow takes about a third of an expected hero's health, not half.
     pub fn scale_at(tier: u32, pilgrimages: u32) -> (f32, f32) {
         let t = tier as f32 - 1.0;
         let again = 1.0 + 0.5 * pilgrimages as f32;
         let ((main, armour), first) = (Self::forged_at(tier), (tier / 2) as f32);
         let health = (1.0 + crate::gear::MAIN_STEP * main as f32) / (1.0 + 0.08 * first);
-        let blows = (1.0 - 0.05 * first) / (1.0 - crate::gear::ARMOUR_STEP * armour as f32);
-        ((1.0 + 0.3 * t).max(0.8) * again * health, (1.0 + 0.22 * t).max(0.85) * again * blows)
+        let blows = (1.0 - 0.05 * first) / (1.0 - 0.5 * crate::gear::ARMOUR_STEP * armour as f32);
+        ((1.0 + 0.3 * t).max(0.8) * again * health, (1.0 + 0.16 * t).max(0.85) * again * blows)
     }
 
     /// The smith's levels a hero is expected to have by a region of `tier`, from the shards the
@@ -312,6 +376,8 @@ impl World {
     /// Arrived at `stop` (`walked` metres in, or `into` metres into it after a turn): its enemies,
     /// and what to say. `level` is the hero's, to warn them of a region far beyond it.
     pub fn arrive(&mut self, stop: &str, walked: f64, into: f32, level: u32) -> (Vec<Enemy>, Vec<Note>) {
+        // Whoever was met here has moved on once the hero is elsewhere.
+        if atlas::node(stop) != self.here().id { (self.lingering, self.called) = (None, None); }
         let was = self.here();
         let first = self.seen.is_empty();
         self.at = stop.to_owned();
@@ -325,6 +391,7 @@ impl World {
         self.chose = false;
         self.chose_at = None;
         self.took = None;
+        self.handed = None;
         // Off any fork's lane: the next time a branch is taken, even the same one (after dying,
         // or turning back), it leads on again rather than running on as an endless lane.
         self.lane = None;
@@ -374,35 +441,97 @@ impl World {
         Some(Go::Warp(from))
     }
 
-    /// Whether the hero can turn round here: on the road (not down a side path, nor mid-fork,
-    /// nor waiting on a warp), no enemy close.
+    /// Whether the hero can turn round here: on the road (not down a side path, nor waiting on a
+    /// warp), no enemy close. Past a fork's junction too, the way back running up to it; not
+    /// between a Y's junction and the branch's boundary behind it, which no stop walks back.
     pub fn can_turn(&self, fight: &Fight, walked: f64) -> bool {
-        self.detour.is_none() && self.warping.is_none() && !self.chose && self.from().is_some() && !fight.hero.dead
+        self.detour.is_none() && self.warping.is_none() && self.from().is_some() && !fight.hero.dead
+            && (self.handed.is_none() || self.heading().is_some())
+            && !(atlas::is_junction(&self.at) && self.handed.is_none())
             && fight.enemies.iter().all(|e| !e.alive() || e.gap(walked).abs() > 8.0)
     }
 
     /// Turn round: the walk goes back the way it came, from where the hero stands (from a dead
-    /// end, back up the road out of it).
+    /// end, back up the road out of it). Past the place's end, short of the next boundary or
+    /// junction, the place walked the other way starts that much behind the hero; past it, the
+    /// way back runs up to it.
     pub fn turn(&mut self, fight: &Fight, walked: f64) -> Option<Go> {
         let from = self.from()?.to_owned();
         self.mark_slain(fight);
-        let p = self.here();
-        let into = ((walked - self.base) as f32).clamp(0.0, p.length);
-        let to = atlas::turned(p.id, &from);
-        let in_place = atlas::node(&to) == p.id;
-        let back_into = if in_place { p.length - into } else { 0.0 };
+        self.keep_hero = true;
+        if let Some(at) = self.handed { return self.turn_past((walked - at).max(0.0) as f32); }
+        let place = self.here();
+        let into = (walked - self.base) as f32;
+        let to = atlas::turned(place.id, &from);
+        let in_place = atlas::node(&to) == place.id;
+        let back_into = if in_place { place.length - into } else { 0.0 };
         // Turned about where they stand: what was behind is ahead, as it was.
         self.carry = in_place.then(|| fight.enemies.iter().zip(&self.spawned).filter(|(e, _)| e.alive()).map(|(e, &i)| (i, e.clone(), e.gap(walked))).collect());
-        self.keep_hero = true;
         self.warping = Some(to.clone());
         self.warp_into = back_into;
+        // Short of where this place was walked into: the way back out of it is under way.
+        if back_into > place.length {
+            self.turn_on = true;
+            return Some(Go::WalkOn(to, back_into - place.length));
+        }
         Some(Go::WarpAt(to, back_into))
+    }
+
+    /// Turned round `behind` metres past the boundary or junction the walk on from here went
+    /// through: the place it leads into, walked the other way, that far short of it.
+    fn turn_past(&mut self, behind: f32) -> Option<Go> {
+        let lead = self.heading()?;
+        let back = match self.took {
+            Some(_) => self.back_to_junction(&lead),
+            None => atlas::turned(atlas::node(&lead.stop), atlas::came_from(&lead.stop)?),
+        };
+        self.carry = None;
+        self.warping = Some(back.clone());
+        if self.took.is_none() && atlas::node(&back) != atlas::node(&lead.stop) {
+            // Over the boundary into a Y's junction: back into the branch, short of its start.
+            self.warp_into = -behind;
+            return Some(Go::WarpAt(back, -behind));
+        }
+        self.turn_short = Some(behind);
+        Some(Go::TurnInto(back, behind))
+    }
+
+    /// The way the walk on from here takes: the branch taken at a fork, else the way on.
+    fn heading(&self) -> Option<atlas::Lead> {
+        match self.took { Some(b) => self.branch(b), None => self.ahead().into_iter().next() }
+    }
+
+    /// The stop whose walk on is the junction `lead` went through, walked from `lead`'s side: the
+    /// Y up its trunk when the branch taken was its trunk (down it, or into the place it comes
+    /// from), else the Y's junction walked in from that branch.
+    fn back_to_junction(&self, lead: &atlas::Lead) -> String {
+        let y = self.here().id;
+        let into = atlas::node(&lead.stop);
+        if into == y || into == atlas::trunk(y) { return atlas::stop(y, atlas::trunk(y)); }
+        atlas::stop(y, into)
+    }
+
+    /// The road's walk on from here as the frame shown has it (`shown`: its walked metres): kept
+    /// for a turn, and where it passed its boundary or junction.
+    pub fn follow(&mut self, shown: f64, underway: Underway) {
+        self.underway = underway;
+        if self.handed.is_some() || self.warping.is_some() { return; }
+        if let (Some(travel), Some(handover)) = (underway.travel, underway.handover) {
+            if travel >= handover { self.handed = Some(shown - f64::from(travel - handover)); }
+        }
     }
 
     /// What is left at a place's end: its key item, else the piece laid there, else a piece of
     /// gear the hero lacks (not a boss's, nor one the smith forges, nor one laid somewhere), or
     /// souls.
-    fn open_cache(&mut self) -> Vec<Note> {
+    pub(crate) fn open_cache(&mut self) -> Vec<Note> {
+        let mut notes = self.cache_piece();
+        notes.extend(self.glass_won(crate::vials::By::Chest));
+        notes
+    }
+
+    /// The piece (or souls) a place's cache holds, taken.
+    fn cache_piece(&mut self) -> Vec<Note> {
         self.taken.push(self.here().id);
         if let Some(k) = self.here().relic {
             if !self.keys.contains(&k) { self.keys.push(k); return vec![Note::Found(k.name())]; }
@@ -424,7 +553,7 @@ impl World {
     }
 
     /// Whether the place's boss has fallen this pilgrimage.
-    pub fn boss_beaten(&self) -> bool { self.beaten.contains(&self.here().id) }
+    pub fn boss_beaten(&self) -> bool { self.beaten.contains(&self.here().id) || self.claimed.contains(&self.here().id) }
 
     /// The pilgrimage done (the last boss beaten): the world begun again, stronger, and the walk
     /// sent back to the first shrine.
@@ -447,13 +576,13 @@ impl World {
         }
     }
 
-    /// At the place's end with the way on held: the walk goes no further.
+    /// At the place's end with the way on held, or none (a dead end): the walk goes no further.
     pub fn held_at_end(&self, fight: &Fight, walked: f64) -> bool {
-        walked - self.base >= self.here().length as f64 && self.held(fight).is_some()
+        walked - self.base >= self.here().length as f64 && (self.held(fight).is_some() || self.at_dead_end())
     }
 
     /// No living enemy within `QUIET` metres, ahead or behind.
-    fn quiet(fight: &Fight, walked: f64) -> bool {
+    pub(crate) fn quiet(fight: &Fight, walked: f64) -> bool {
         fight.enemies.iter().all(|e| !e.alive() || e.gap(walked).abs() > QUIET)
     }
 
@@ -461,23 +590,23 @@ impl World {
     /// `VEIL_AHEAD` past the metre where the boss waits, so a hero held at that metre faces it.
     /// Turned round past it, it hangs behind them, still there.
     pub fn veil(&self) -> Option<f64> {
-        let (at, _) = self.here().boss?;
-        (!self.boss_beaten()).then(|| self.road_at(at + VEIL_AHEAD))
+        let (at, _) = self.boss_here()?;
+        (!self.boss_beaten() && !self.strikes()).then(|| self.road_at(at + VEIL_AHEAD))
     }
 
     /// Whether the walk is held at the veil: the boss here stands, the hero came in short of
     /// it, and has walked up to it. Back is still free.
     pub fn held_at_veil(&self, walked: f64) -> bool {
-        let Some((at, _)) = self.here().boss else { return false };
+        let Some((at, _)) = self.boss_here() else { return false };
         let mark = self.along(at);
-        !self.boss_beaten() && self.entered < mark && walked - self.base >= mark as f64
+        !self.boss_beaten() && !self.strikes() && self.entered < mark && walked - self.base >= mark as f64
     }
 
     /// Whether E steps through the veil: held at it (or a step short of it), nothing on the hero.
     pub fn at_veil(&self, fight: &Fight, walked: f64) -> bool {
-        let Some((at, _)) = self.here().boss else { return false };
+        let Some((at, _)) = self.boss_here() else { return false };
         let mark = self.along(at);
-        !self.boss_beaten() && !fight.hero.dead && self.warping.is_none() && Self::quiet(fight, walked)
+        !self.boss_beaten() && !self.strikes() && !fight.hero.dead && self.warping.is_none() && Self::quiet(fight, walked)
             && self.entered < mark && walked - self.base >= (mark - VEIL_REACH) as f64
     }
 
@@ -492,22 +621,27 @@ impl World {
     /// The boss here, if one steps out now: this place has one not yet beaten, no enemy is on the
     /// hero (one run past may still be coming), and the hero has walked as far as it waits.
     pub fn boss_due(&self, fight: &Fight, walked: f64) -> Option<&'static atlas::Boss> {
-        let (at, boss) = self.here().boss?;
+        let (at, boss) = self.boss_here()?;
         let mark = self.along(at);
         (!self.boss_beaten() && Self::quiet(fight, walked) && self.entered < mark && walked - self.base >= mark as f64).then_some(boss)
     }
 
     /// The boss fell: its souls, what it leaves, and the road open again.
     pub fn boss_felled(&mut self) -> Vec<Note> {
-        let Some((_, boss)) = self.here().boss else { return Vec::new() };
+        let Some((_, boss)) = self.boss_here() else { return Vec::new() };
+        if std::ptr::eq(boss, &crate::alley::HOODED_THING) { return self.alley_fled(); }
         if !self.boss_beaten() { self.beaten.push(self.here().id); }
-        let n = (boss.souls as f32 * self.gear.kit().souls * (1.0 + 0.5 * self.pilgrimages as f32)).round() as u32;
+        // Whoever stood aside for the fight has their say about how it went; whoever was called
+        // to it goes home.
+        (self.lingering, self.called) = (None, None);
+        let n = (boss.souls as f32 * self.kit().souls * (1.0 + 0.5 * self.pilgrimages as f32)).round() as u32;
         self.souls += n;
         let mut notes = vec![Note::Vanquished(boss.name(), n)];
         if let Some(k) = boss.key.filter(|k| !self.keys.contains(k)) {
             self.keys.push(k);
             notes.push(Note::Found(k.name()));
         }
+        notes.extend(self.glass_won(crate::vials::By::Boss));
         if let Some(r) = boss.remnant {
             self.remnants.push(r);
             notes.push(Note::Found(r));
@@ -516,6 +650,8 @@ impl World {
             let bell = crate::gear::find("Warden's Bell");
             if self.gear.gain(bell) { notes.push(Note::Found(crate::gear::ITEMS[bell].name)); }
         }
+        notes.extend(self.echo_leaves(boss));
+        notes.extend(self.story_moves());
         notes
     }
 
@@ -553,7 +689,7 @@ impl World {
     }
 
     /// Where the hero stands on the road: the walk's metres plus the hero's own distance.
-    fn standing(walked: f64) -> f64 { walked + HERO_D as f64 }
+    pub(crate) fn standing(walked: f64) -> f64 { walked + HERO_D as f64 }
 
     /// Whether the hero can rest now: by the shrine with no enemy close.
     pub fn can_rest(&self, fight: &Fight, walked: f64) -> bool {
@@ -568,6 +704,8 @@ impl World {
         self.checkpoint = self.at.clone();
         if !self.rested.contains(&self.at) { self.rested.push(self.at.clone()); }
         self.slain.clear();
+        // Worn again as the hero now is: shrine glass found since melts into its flasks here.
+        fight.hero.stats.kit = self.kit();
         fight.hero = fight.hero.renewed();
         fight.enemies = self.foes();
         vec![Note::Rested]
@@ -585,7 +723,7 @@ impl World {
         json!({
             "checkpoint": self.checkpoint, "rested": self.rested, "souls": self.souls,
             "stain": self.stain.as_ref().map(|s| json!({ "stop": s.stop, "at": s.at, "souls": s.souls })),
-            "pilgrimages": self.pilgrimages, "shards": self.shards, "met_keeper": self.met_keeper, "met_smith": self.met_smith, "talks": self.talks,
+            "pilgrimages": self.pilgrimages, "shards": self.shards, "met_keeper": self.met_keeper, "met_smith": self.met_smith, "talks": self.talks, "heard": self.heard, "claimed": self.claimed, "meetings": self.meetings, "guild": self.guild.saved(), "hunters": self.hunters.saved(), "answers": self.answers,
             "gear": {
                 "owned": self.gear.owned.iter().map(|&i| item(i)).collect::<Vec<_>>(),
                 "worn": self.gear.worn.iter().map(|w| w.map(item)).collect::<Vec<_>>(),
@@ -626,6 +764,12 @@ impl World {
         w.met_keeper = v["met_keeper"].as_bool().unwrap_or(false);
         w.met_smith = v["met_smith"].as_bool().unwrap_or(false);
         for (n, t) in w.talks.iter_mut().enumerate() { *t = v["talks"][n].as_u64().unwrap_or(0) as u32; }
+        w.claimed = strs(&v["claimed"]).iter().filter_map(|id| atlas::PLACES.iter().find(|p| p.id == id).map(|p| p.id)).collect();
+        w.meetings = strs(&v["meetings"]).iter().filter_map(|id| crate::visitors::Visit::every().find(|m| m.id == id).map(|m| m.id)).collect();
+        w.answers = strs(&v["answers"]).iter().filter_map(|id| World::answer_named(id)).collect();
+        for (n, h) in w.heard.iter_mut().enumerate() { *h = u32::try_from(v["heard"][n].as_u64().unwrap_or(0)).unwrap_or(0); }
+        w.guild = crate::guild::Guild::restored(&v["guild"]);
+        w.hunters = crate::hunters::Hunters::restored(&v["hunters"]);
         let piece = |name: &str| crate::gear::ITEMS.iter().position(|i| i.name == name);
         if let Some(owned) = v["gear"]["owned"].as_array() {
             w.gear.owned = owned.iter().filter_map(|n| piece(n.as_str()?)).collect();
@@ -650,6 +794,8 @@ impl World {
         w.beaten = names("beaten");
         w.faced = names("faced");
         w.keys = strs(&v["keys"]).iter().filter_map(|n| Key::ALL.into_iter().find(|k| k.name() == n)).collect();
+        // A pilgrimage kept from before the Screamer left the rune has it all the same.
+        if w.beaten.contains(&"hollowmere") && !w.keys.contains(&Key::Rune) { w.keys.push(Key::Rune); }
         w.remnants = names("remnants");
         w.opened = names("opened");
         w.seen = names("seen");
@@ -670,7 +816,7 @@ impl World {
     /// Off to the shrine last rested at, the hero standing where they stood to rest: as far short
     /// of it as a place walked its own way starts (a shrine rested at walking the place backwards
     /// is near its far end, not where the walk comes in).
-    fn wake(&mut self) -> Go {
+    pub(crate) fn wake(&mut self) -> Go {
         let cp = self.checkpoint.clone();
         let into = atlas::place_of(atlas::node(&cp)).map_or(0.0, |p| {
             let m = p.shrine.unwrap_or(0.0);
@@ -705,6 +851,23 @@ impl World {
     pub fn can_meet_smith(&self, fight: &Fight, walked: f64) -> bool {
         let Some(s) = self.smith_at() else { return false };
         (s - Self::standing(walked)).abs() <= SHRINE_REACH as f64 && !fight.hero.dead && Self::quiet(fight, walked)
+    }
+
+    /// Where the road ends ahead, walked into a dead end: road metres of the wall across it.
+    pub fn end_wall(&self) -> Option<f64> {
+        self.at_dead_end().then(|| self.road_at(self.here().length + END_PAST))
+    }
+
+    /// Where Gruk stands behind his counter at the guild hall's end, road metres: within reach
+    /// of the hero held there.
+    pub fn gruk_at(&self) -> Option<f64> {
+        (self.here().id == crate::guild::HALL && self.at_dead_end()).then(|| self.road_at(self.here().length + GRUK_PAST))
+    }
+
+    /// Whether the hero stands at Gruk's counter with no enemy close.
+    pub fn can_meet_gruk(&self, fight: &Fight, walked: f64) -> bool {
+        let Some(at) = self.gruk_at() else { return false };
+        (at - Self::standing(walked)).abs() <= SHRINE_REACH as f64 && !fight.hero.dead && Self::quiet(fight, walked)
     }
 
     /// Up from rest: back to the shrine's place (its enemies there again, as resting brings them).
@@ -796,7 +959,7 @@ impl World {
     pub fn cap(&mut self, fight: &mut Fight, place: usize, cap: crate::capstone::Capstone) -> Option<Note> {
         let i = self.gear.worn.get(place).copied().flatten()?;
         if !self.gear.cap(i, cap) { return None; }
-        fight.hero.stats.kit = self.gear.kit();
+        fight.hero.stats.kit = self.kit();
         Some(Note::Capped(crate::gear::ITEMS[i].name, cap.name()))
     }
 
@@ -809,18 +972,25 @@ impl World {
         self.gear.reinforce(i);
         self.souls -= souls;
         self.shards[grade] -= shards;
-        fight.hero.stats.kit = self.gear.kit();
+        fight.hero.stats.kit = self.kit();
         Some(Note::Forged(crate::gear::ITEMS[i].name, self.gear.level(i)))
     }
 
     /// The hero fell: the souls stay where they fell (one chance to fetch them; an older stain is
-    /// lost), the world's enemies stand again, and the walk wakes at the last shrine.
+    /// lost), the world's enemies stand again, and the walk wakes at the last shrine. Fallen down a
+    /// side path, it is open to walk again, for the souls and whatever it still holds.
     pub fn died(&mut self, walked: f64) -> Go {
         let into = (Self::standing(walked) - self.base - HERO_D as f64).max(0.0) as f32;
         let at = self.along(into);
         self.stain = (self.souls > 0).then(|| Stain { stop: self.here().id.into(), at, souls: self.souls });
         self.souls = 0;
         self.slain.clear();
+        (self.lingering, self.called) = (None, None);
+        self.hunters_fall_with_the_hero();
+        if self.detour.take().is_some() {
+            let side = self.here().id;
+            self.explored.retain(|&e| e != side);
+        }
         self.wake()
     }
 
@@ -852,7 +1022,7 @@ impl World {
         if self.signpost.is_none() { return Vec::new(); }
         [Branch::Left, Branch::Right].into_iter().filter_map(|b| {
             let l = self.branch(b)?;
-            let keyed = l.through.into_iter().chain([l.road]).find_map(|(a, c)| atlas::gated(a, c))?;
+            let keyed = atlas::gated(l.road.0, l.road.1)?;
             Some((b, keyed, self.barred_to(&l).is_none()))
         }).collect()
     }
@@ -877,15 +1047,37 @@ impl World {
 
     /// The ways on at this stop's end, left first (`atlas::leads`: the same ways the journey was
     /// compiled with, so what the hero is offered is what the walk does).
-    fn ahead(&self) -> Vec<atlas::Lead> { self.from().map_or(Vec::new(), |f| atlas::leads(self.here().id, f)) }
+    /// Walked into a dead end: no way on from its end.
+    fn at_dead_end(&self) -> bool { self.from().is_some() && self.ahead().is_empty() }
+
+    pub(crate) fn ahead(&self) -> Vec<atlas::Lead> { self.from().map_or(Vec::new(), |f| atlas::leads(self.here().id, f)) }
 
     /// Branch `b` of the fork ahead.
     fn branch(&self, b: Branch) -> Option<atlas::Lead> { self.ahead().into_iter().nth(match b { Branch::Left => 0, Branch::Right => 1 }) }
 
-    /// Why a way on cannot be walked now, if it cannot, and the place whose road is barred: the
-    /// road into a junction just ahead, or the road on from it.
+    /// Why a way on cannot be walked now, if it cannot, and the place whose road is barred.
     fn barred_to(&self, l: &atlas::Lead) -> Option<(&'static str, Barred)> {
-        l.through.into_iter().chain([l.road]).find_map(|(a, b)| atlas::barred(a, b, &self.keys, &self.opened).map(|why| (b, why)))
+        let (from, to) = l.road;
+        atlas::barred(from, to, &self.keys, &self.opened).map(|why| (to, why))
+    }
+    /// With the rune carried, the branch of the fork ahead that leads sooner to the next region
+    /// boss still standing (the nearest region first): where the story goes on. None when both
+    /// are as near, or without the rune.
+    pub fn rune_hums(&self) -> Option<Branch> {
+        if !self.keys.contains(&Key::Rune) { return None; }
+        let standing = |p: &atlas::Place| p.boss.is_some_and(|(_, b)| !b.mini && b.sought) && !self.beaten.contains(&p.id) && !self.claimed.contains(&p.id);
+        let next = atlas::PLACES.iter().filter(|p| standing(p)).map(|p| p.region).min()?;
+        let steps = |b| self.branch(b).and_then(|l| atlas::Place::steps(l.road.0, l.road.1, |p| standing(p) && p.region == next));
+        match (steps(Branch::Left), steps(Branch::Right)) {
+            (Some(l), Some(r)) if l != r => Some(if l < r { Branch::Left } else { Branch::Right }),
+            (Some(_), None) => Some(Branch::Left),
+            (None, Some(_)) => Some(Branch::Right),
+            _ => None,
+        }
+    }
+    /// Whether branch `b` of the fork ahead is barred by the heart alone (`hollowed`).
+    pub(crate) fn wants_only_blood(&self, b: Branch) -> bool {
+        self.branch(b).and_then(|l| self.barred_to(&l)).is_some_and(|(_, why)| why == Barred::Keys(vec![Key::Heart]))
     }
     fn branch_barred(&self, b: Branch) -> bool { self.branch(b).is_none_or(|l| self.barred_to(&l).is_some()) }
     fn shown(l: &atlas::Lead) -> &'static str { atlas::place_of(l.shown).map_or("", |p| p.title) }
@@ -899,9 +1091,9 @@ impl World {
     /// Walking a way on: a shortcut it crosses that opens from this side opens.
     fn pass(&mut self, l: &atlas::Lead) -> Vec<Note> {
         let mut notes = Vec::new();
-        for (a, b) in l.through.into_iter().chain([l.road]) {
-            let Some(e) = atlas::edge(a, b).filter(|e| e.gate == atlas::Gate::Shortcut && e.a == a) else { continue };
-            if self.opened.contains(&e.a) { continue; }
+        let (from, to) = l.road;
+        let Some(e) = atlas::edge(from, to).filter(|e| e.gate == atlas::Gate::Shortcut && e.a == from) else { return notes };
+        if !self.opened.contains(&e.a) {
             self.opened.push(e.a);
             notes.push(Note::Opened(atlas::place_of(e.b).map_or(e.b, |p| p.title)));
         }
@@ -911,10 +1103,17 @@ impl World {
     pub fn felled(&mut self, kinds: impl IntoIterator<Item = Archetype>) -> Vec<Note> {
         let mut notes = Vec::new();
         let tier = atlas::REGIONS[self.here().region].tier.saturating_sub(1) as f32;
-        let more = self.gear.kit().souls * (1.0 + 0.6 * tier) * (1.0 + 0.5 * self.pilgrimages as f32);
+        let more = self.kit().souls * (1.0 + 0.6 * tier) * (1.0 + 0.5 * self.pilgrimages as f32);
         let region = atlas::REGIONS[self.here().region].tier;
+        let tally = self.kit().tally;
         for k in kinds {
             self.souls += (k.souls() as f32 * more).round() as u32;
+            // The debt a parry ran up, collected on the next to fall.
+            if std::mem::take(&mut self.parried) && tally > 0.0 {
+                let due = (k.souls() as f32 * more * tally).round() as u32;
+                self.souls += due;
+                notes.push(Note::Tallied(due));
+            }
             // The first of a kind leaves the first piece of its kind the hero lacks; after that,
             // one in eight leaves one of them.
             let n = &mut self.fallen[k as usize];
@@ -937,13 +1136,18 @@ impl World {
     fn begin_again(&mut self) {
         self.pilgrimages += 1;
         self.beaten.clear();
-        self.keys.clear();
+        // The roads' keys are left behind; the flasks' glass goes on with the hero.
+        self.keys.retain(|k| matches!(k, Key::Glass(_)));
         self.opened.clear();
         self.slain.clear();
         self.cleared.clear();
         self.explored.clear();
         self.taken.clear();
         self.rested.clear();
+        // The heart is paid again, so what Helena drew of it can be drawn again.
+        self.answers.retain(|a| !["helena_draws_heart", "helena_heart_kept"].contains(a));
+        self.meetings.retain(|m| *m != "helena_sees_the_heart");
+        self.forget_the_finale();
         self.checkpoint = START.into();
         self.warping = Some(START.into());
         self.warp_into = 0.0;
@@ -959,8 +1163,16 @@ impl World {
             if stop != Some(w.as_str()) { return (None, notes); }
             let w = w.clone();
             self.warping = None;
-            let into = std::mem::take(&mut self.warp_into);
+            let mut into = std::mem::take(&mut self.warp_into);
+            let short = self.turn_short.take();
+            if let Some(short) = short {
+                // Turned past a boundary: the place's end lies `short` less its hand-over behind
+                // the hero, or ahead of them; past it, its walk on is already under way.
+                let length = atlas::length_of(&w);
+                into = length + self.underway.handover.map_or(0.0, |h| h - short);
+            }
             let (foes, n) = self.arrive(&w, walked, into, level);
+            if short.is_some() || std::mem::take(&mut self.turn_on) { self.sent = self.underway.travel.is_some(); }
             fight.enemies = foes;
             if !std::mem::take(&mut self.keep_hero) { fight.hero = fight.hero.renewed(); }
             if let Some(carry) = self.carry.take() {
@@ -1011,9 +1223,13 @@ impl World {
         // barred way is not taken: the hero is told, and the walk waits for the other).
         if let Some(left) = choose_within {
             if self.signpost.is_none() {
-                self.signpost = Some(walked + (left + STEER_M + SIGNPOST_PAST) as f64);
+                // From the junction itself: a walk begun short of it chooses where it begins, not
+                // `STEER_M` before the junction.
+                let junction = self.underway.travel.zip(self.underway.handover).map_or(left + STEER_M, |(travel, at)| at - travel);
+                self.signpost = Some(walked + f64::from(junction + SIGNPOST_PAST));
                 let title = |b| self.branch(b).map_or("", |l| Self::shown(&l));
                 notes.push(Note::Fork(title(Branch::Left), title(Branch::Right)));
+                notes.extend(self.rune_hums().map(Note::Hums));
                 // A barred way is told as soon as it is seen, not only once leaned into: with
                 // one way shut the walk takes the other, and the hero should know why.
                 for b in [Branch::Left, Branch::Right] {
@@ -1057,7 +1273,8 @@ impl World {
         // A side path's end goes nowhere: the hero turns back (`come_back`).
         if self.detour.is_some() { return (None, notes); }
         let far = walked - self.base >= self.here().length as f64;
-        let barred = self.here().boss.is_some() && !self.boss_beaten();
+        // A standing boss bars the way on past it; turned round short of it, the way back is open.
+        let barred = self.boss_here().is_some_and(|(at, _)| self.entered < self.along(at)) && !self.boss_beaten();
         // Held: the walk stops at the end (`held_at_end`) and the hero is told what holds it,
         // while whatever they ran past catches up.
         if let Some(kind) = self.held(fight).filter(|_| far && !self.sent) {
@@ -1065,13 +1282,12 @@ impl World {
             return (None, notes);
         }
         if self.sent || !far || barred { return (None, notes); }
-        // The last boss beaten: the pilgrimage is done.
-        if self.here().id == FINALE {
-            let (go, note) = self.conclude();
-            notes.push(note);
-            return (Some(go), notes);
-        }
         match self.ahead().as_slice() {
+            // A dead end: nothing on; the hero turns round.
+            [] if self.at_dead_end() => {
+                if !std::mem::replace(&mut self.held_told, true) { notes.push(Note::DeadEnd); }
+                return (None, notes);
+            }
             // One road on: walked, unless it is barred; then the hero is told and turns back.
             [l] => {
                 if let Some((to, why)) = self.barred_to(l) {
@@ -1256,6 +1472,140 @@ mod tests {
     }
 
     #[test]
+    fn turned_round_past_a_fork_or_short_of_it_the_way_back_runs_to_that_junction() {
+        let mut w = World::new(0.0);
+        let mut f = Fight::new(w.foes());
+        fell(&mut f);
+        // Past the road's end, short of its fork's junction: the road walked the other way, the
+        // hero that far short of its start.
+        assert_eq!(w.tick(&mut f, 64.0, Some(START), None).0, Some(Go::Next));
+        w.follow(70.0, Underway { travel: Some(6.0), handover: Some(40.0) });
+        assert_eq!(w.turn(&f, 70.0), Some(Go::WarpAt("road@^".into(), -6.0)));
+        w.tick(&mut f, 70.0, Some("road@^"), None);
+        assert!((70.0 - w.base + 6.0).abs() < 1e-9, "6 m short of the road's start: {}", w.base);
+        // Turned again at once: the fork's walk is 6 m along again.
+        assert_eq!(w.turn(&f, 70.0), Some(Go::WalkOn(START.into(), 6.0)));
+        w.follow(70.0, Underway { travel: Some(6.0), handover: Some(40.0) });
+        w.tick(&mut f, 70.0, Some(START), Some(20.0));
+        assert!(w.sent && (70.0 - w.base - 70.0).abs() < 1e-9, "6 m past its end, the fork under way: {}", 70.0 - w.base);
+        // Leaning left and taken, then 5 m past the junction: the road's junction walked in from
+        // the marsh edge, the junction 5 m ahead.
+        f.hero.lane = -1;
+        assert_eq!(w.tick(&mut f, 92.0, Some(START), Some(0.5)).0, Some(Go::Choose(Branch::Left)));
+        w.follow(103.0, Underway { travel: Some(45.0), handover: Some(40.0) });
+        assert!(w.can_turn(&f, 103.0), "TURN is offered past the junction");
+        let back = atlas::stop("road", "vale_edge");
+        assert_eq!(w.turn(&f, 103.0), Some(Go::TurnInto(back.clone(), 5.0)));
+        // Landing with that fork under way (its junction 40 m in): 5 m short of it.
+        w.follow(103.0, Underway { travel: Some(35.0), handover: Some(40.0) });
+        w.tick(&mut f, 103.0, Some(&back), Some(20.0));
+        let length = atlas::JUNCTION_M;
+        assert!(w.sent && w.at == back && (103.0 - w.base - f64::from(length + 35.0)).abs() < 1e-4, "{} m in", 103.0 - w.base);
+    }
+
+    #[test]
+    fn turned_past_a_ys_junction_the_way_back_is_the_one_whose_walk_on_is_that_junction() {
+        let mut w = World::new(0.0);
+        let f = Fight::new(Vec::new());
+        // Each way out of the Warrens' junction, turned round 4 m past it: (walked in by, way taken)
+        // and the stop walked back toward that junction.
+        let cases = [
+            // Out of the guild hall, down the trunk toward Stilt Lane: the Warrens up its trunk.
+            ("warrens@guild_hall", "warrens_lane", "warrens@warrens_lane"),
+            // Up the trunk into the guild hall, or the sewers: the junction walked in from it.
+            ("warrens@warrens_lane", "guild_hall", "warrens@guild_hall"),
+            ("warrens@warrens_lane", "sewers", "warrens@sewers"),
+            // Out of the sewers up into the guild hall: the junction walked in from the hall.
+            ("warrens@sewers", "guild_hall", "warrens@guild_hall"),
+        ];
+        for (at, way, back) in cases {
+            w.arrive(at, 0.0, 0.0, 1);
+            let ways = w.ahead();
+            let side = ways.iter().position(|l| l.road.1 == way).expect("a way there");
+            w.took = Some(if side == 0 { Branch::Left } else { Branch::Right });
+            w.handed = Some(50.0);
+            assert_eq!(w.turn(&f, 54.0), Some(Go::TurnInto(back.into(), 4.0)), "from {at} toward {way}");
+            w.warping = None;
+        }
+    }
+
+    #[test]
+    fn turned_round_in_a_dead_end_the_hero_walks_back_out_from_where_they_stood() {
+        let mut w = World::new(0.0);
+        let mut f = Fight::new(Vec::new());
+        // The guild hall, its boss beaten, turned round 22 m in: the hall walked back out, 8 m in.
+        w.arrive("guild_hall@warrens", 100.0, 0.0, 1);
+        w.beaten.push("guild_hall");
+        assert!(w.can_turn(&f, 122.0));
+        assert_eq!(w.turn(&f, 122.0), Some(Go::WarpAt("guild_hall@guild_office".into(), 8.0)));
+        w.tick(&mut f, 122.0, Some("guild_hall@guild_office"), None);
+        assert!(w.at == "guild_hall@guild_office" && (122.0 - w.base - 8.0).abs() < 1e-9, "{} m in", 122.0 - w.base);
+        assert!(w.boss_due(&f, 122.0).is_none() && w.veil().is_none());
+        // Out of it, into the Warrens at their junction.
+        assert_eq!(w.ahead().into_iter().map(|l| l.stop).collect::<Vec<_>>(), vec!["warrens@guild_hall"]);
+        // Turned again: back in, where they stood.
+        assert_eq!(w.turn(&f, 122.0), Some(Go::WarpAt("guild_hall@warrens".into(), 22.0)));
+        // Turned 3 m past the Warrens' junction toward the hall: the junction walked in from the
+        // hall, 3 m ahead.
+        w.warping = None;
+        w.arrive("warrens@warrens_lane", 200.0, 0.0, 1);
+        w.took = Some(if w.ahead()[0].stop == "guild_hall@warrens" { Branch::Left } else { Branch::Right });
+        w.handed = Some(200.0);
+        assert_eq!(w.turn(&f, 203.0), Some(Go::TurnInto("warrens@guild_hall".into(), 3.0)));
+        // In that junction, short of its fork, no way back is walked: TURN waits for the fork.
+        w.warping = None;
+        w.arrive("warrens@guild_hall", 250.0, 0.0, 1);
+        assert!(!w.can_turn(&f, 251.0) && w.here().foes.is_empty() && w.here().shrine.is_none());
+        // Through the door at the hall's end into Gruk's room, a dead end: the walk is held at its
+        // end with Gruk in reach, the hero is told once, and TURN is offered.
+        w.warping = None;
+        w.arrive("guild_office@guild_hall", 300.0, 0.0, 1);
+        assert!(w.held_at_end(&f, 303.0) && !w.held_at_end(&f, 302.0) && w.can_turn(&f, 303.0));
+        assert!(w.can_meet_gruk(&f, 303.0) && w.end_wall().is_some_and(|at| at > w.gruk_at().unwrap_or(f64::MAX)));
+        assert_eq!(w.tick(&mut f, 303.0, Some("guild_office@guild_hall"), None), (None, vec![Note::DeadEnd]));
+        assert_eq!(w.tick(&mut f, 303.5, Some("guild_office@guild_hall"), None), (None, vec![]));
+        assert_eq!(w.turn(&f, 303.0), Some(Go::WarpAt("guild_office@^".into(), 0.0)));
+    }
+
+    #[test]
+    fn the_collectors_chest_holds_his_tally_and_a_parry_doubles_the_next_kills_souls() {
+        let mut w = World::new(0.0);
+        let mut f = Fight::new(Vec::new());
+        // Behind the Debt Collector, his chest: taken walking up to it once he is down.
+        w.arrive("guild_hall@warrens", 100.0, 0.0, 1);
+        w.beaten.push("guild_hall");
+        let chest = w.cache_at().unwrap_or(0.0);
+        let (_, notes) = w.tick(&mut f, chest - HERO_D as f64, Some("guild_hall@warrens"), None);
+        assert!(notes.contains(&Note::Found("The Collector's Tally")), "{notes:?}");
+        // Unworn, a parry is owed nothing, and the next kill clears it.
+        w.parried = true;
+        let plain = { let before = w.souls; w.felled([Archetype::Husk]); w.souls - before };
+        assert!(!w.parried);
+        let tally = crate::gear::find("The Collector's Tally");
+        w.gear.worn[crate::gear::SLOTS.iter().position(|(s, _)| *s == crate::gear::Slot::Talisman).unwrap_or(0)] = Some(tally);
+        w.parried = true;
+        let before = w.souls;
+        let notes = w.felled([Archetype::Husk, Archetype::Husk]);
+        assert_eq!(w.souls - before, 3 * plain, "the first of the two doubled: {notes:?}");
+        assert_eq!(notes.iter().filter(|n| matches!(n, Note::Tallied(_))).count(), 1);
+    }
+
+    #[test]
+    fn the_rune_hums_toward_the_next_region_boss_and_only_when_one_way_is_nearer() {
+        let mut w = World::new(0.0);
+        w.at = "hollowmere@gate".into();
+        w.beaten = vec!["gate", "hollowmere", "east_gate"];
+        assert_eq!(w.rune_hums(), None, "no rune, no hum");
+        w.keys.push(Key::Rune);
+        let hums = w.rune_hums().expect("one way is nearer the Blackridge chief");
+        assert_eq!(w.branch(hums).map(|l| l.road.1), Some("pine_road"));
+        // At the first fork both ways reach the Hollowmere gate as soon.
+        (w.at, w.beaten) = (START.into(), vec!["east_gate"]);
+        assert_eq!(w.rune_hums(), None);
+        assert_eq!(atlas::Place::steps("road", "vale_edge", |p| p.id == "gate"), Some(2));
+    }
+
+    #[test]
     fn a_cleared_place_walks_on_and_a_fork_goes_the_way_the_hero_stands() {
         let mut w = World::new(0.0);
         let mut f = Fight::new(w.foes());
@@ -1429,15 +1779,13 @@ mod tests {
         w.tick(&mut f, 200.0, Some("chief_hold@ridge_camp"), None);
         fell(&mut f);
         assert_eq!(w.tick(&mut f, 250.0, Some("chief_hold@ridge_camp"), None).0, Some(Go::Next));
-        // Out of the sewers up into the Warrens: at the sewers' end their junction, and either way
-        // on lifts the grate from below; it stays open.
+        // Out of the sewers up into the Warrens' junction: walking on lifts the grate from below;
+        // it stays open.
         assert!(!w.opened.contains(&"sewers"));
         w.tick(&mut f, 300.0, Some("sewers@lower_stairs"), None);
         fell(&mut f);
-        assert_eq!(w.tick(&mut f, 361.0, Some("sewers@lower_stairs"), None).0, Some(Go::Next));
-        f.hero.lane = -1;
-        let (go, notes) = w.tick(&mut f, 362.0, Some("sewers@lower_stairs"), Some(0.5));
-        assert_eq!(go, Some(Go::Choose(Branch::Left)));
+        let (go, notes) = w.tick(&mut f, 361.0, Some("sewers@lower_stairs"), None);
+        assert_eq!(go, Some(Go::Next));
         assert!(notes.contains(&Note::Opened("The Ashen Warrens")) && w.opened.contains(&"sewers"), "{notes:?}");
     }
 
@@ -1516,6 +1864,24 @@ mod tests {
     }
 
     #[test]
+    fn a_hero_fallen_down_a_side_path_can_walk_it_again_and_turn_round() {
+        let mut w = World::new(0.0);
+        let mut f = Fight::new(Vec::new());
+        w.tick(&mut f, 100.0, Some("chapel@chapel_edge"), None);
+        for e in &mut f.enemies { e.ai = Ai::Dead; }
+        w.explore(&f, 108.0, -1.0);
+        w.tick(&mut f, 130.0, Some("hollow"), None);
+        w.souls = 50;
+        let wake = w.died(140.0);
+        assert!(w.detour.is_none() && !w.explored.contains(&"hollow"), "the hollow is open again");
+        assert_eq!(w.stain.as_ref().map(|s| s.stop.as_str()), Some("hollow"), "the souls lie down it");
+        let (Go::Warp(cp) | Go::WarpAt(cp, _)) = wake else { panic!("no waking: {wake:?}") };
+        let mut f = Fight::new(Vec::new());
+        w.tick(&mut f, 300.0, Some(&cp), None);
+        assert!(w.can_turn(&f, 300.0), "the walk is the road's again: {}", w.at);
+    }
+
+    #[test]
     fn a_side_path_is_walked_to_its_end_and_the_road_is_as_it_was_left() {
         let mut w = World::new(0.0);
         let mut f = Fight::new(Vec::new());
@@ -1587,13 +1953,15 @@ mod tests {
         let mut f = Fight::new(Vec::new());
         w.keys = vec![Key::ShardI, Key::ShardII, Key::ShardIII];
         let easy = w.scale();
-        w.tick(&mut f, 200.0, Some("spire_summit@sealed_slab"), None);
+        let chamber = atlas::stop(atlas::FINALE, "penitent_cells");
+        w.tick(&mut f, 200.0, Some(&chamber), None);
         fell(&mut f);
-        assert_eq!(w.tick(&mut f, 236.0, Some("spire_summit@sealed_slab"), None), (None, vec![]), "the Archangel bars the way");
+        assert_eq!(w.tick(&mut f, 236.0, Some(&chamber), None), (None, vec![]), "Exodus bars the way");
         assert!(w.boss_due(&f, 236.0).is_some());
         w.boss_felled();
-        let (go, notes) = w.tick(&mut f, 236.0, Some("spire_summit@sealed_slab"), None);
-        assert_eq!((go, notes), (Some(Go::Warp(START.into())), vec![Note::Pilgrimage(1)]));
+        let (go, notes) = w.tick(&mut f, 241.0, Some(&chamber), None);
+        assert!(go.is_none() && !notes.contains(&Note::Pilgrimage(1)), "walked to its end, only the Eye's choice concludes it");
+        assert_eq!(w.conclude(), (Go::Warp(START.into()), Note::Pilgrimage(1)));
         assert_eq!((w.checkpoint.as_str(), w.keys.len(), w.beaten.len()), (START, 0, 0));
         w.tick(&mut f, 300.0, Some(START), None);
         assert!(w.scale().0 > easy.0, "the world again, harder");
@@ -1616,7 +1984,7 @@ mod tests {
         let shrine = format!("{place}@{}", atlas::PLACES[2].id);
         w.checkpoint = shrine.clone();
         w.rested = vec![START.into(), shrine.clone()];
-        (w.souls, w.shards, w.pilgrimages, w.luck, w.talks) = (812, [4, 2, 1], 1, 9, [2, 1]);
+        (w.souls, w.shards, w.pilgrimages, w.luck, w.talks, w.heard) = (812, [4, 2, 1], 1, 9, [2, 1], [5, 2]);
         (w.met_keeper, w.met_smith) = (true, true);
         w.stain = Some(Stain { stop: shrine.clone(), at: 12.5, souls: 300 });
         let kite = crate::gear::find("Kite Shield");
@@ -1635,7 +2003,7 @@ mod tests {
         let text = serde_json::to_string(&w.saved()).unwrap();
         let back = World::restored(50.0, &serde_json::from_str(&text).unwrap()).expect("a world's save");
         assert_eq!((back.checkpoint.as_str(), back.rested.len(), back.souls, back.shards, back.pilgrimages, back.luck, back.talks), (shrine.as_str(), 2, 812, [4, 2, 1], 1, 9, [2, 1]));
-        assert!(back.met_keeper && back.met_smith);
+        assert!(back.met_keeper && back.met_smith && back.heard == [5, 2]);
         assert_eq!(back.stain.as_ref().map(|s| (s.at, s.souls)), Some((12.5, 300)));
         assert_eq!((back.gear.owned.clone(), back.gear.worn), (w.gear.owned.clone(), w.gear.worn));
         assert_eq!(back.gear.kit().off.map(|o| o.art), Some("kite_shield"));

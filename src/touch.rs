@@ -19,10 +19,12 @@ use quartz::TouchPhase;
 /// What the controls are for now.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Ui {
-    /// On the road: the stick and the fight's buttons, `Use` when there is something to use.
-    Road { prompt: bool, ranged: bool, cast: bool, art: bool },
+    /// On the road: the stick and the fight's buttons, `Use` when there is something to use,
+    /// `Turn` when the hero can turn round.
+    Road { prompt: bool, ranged: bool, cast: bool, art: bool, turn: bool },
     /// The side-on fight.
-    Side { ranged: bool, cast: bool, art: bool },
+    /// `Use` when the rune can be thrown (`game::Pilgrimage::can_bait`).
+    Side { prompt: bool, ranged: bool, cast: bool, art: bool },
     /// A menu or words to read: a tap picks, `Back` goes back.
     Menu,
     /// A cutscene, or the title: a tap goes on.
@@ -80,10 +82,12 @@ impl Held {
 /// Where the stick takes a thumb: anywhere left of this, below the bars at the top.
 pub const STICK_RIGHT: f32 = 1500.0;
 pub const STICK_TOP: f32 = 560.0;
-/// Pushed this far from where it came down is a way; this far, a run. A thumb pushed past the
-/// rim drags the middle after it, so coming back the other way answers at once.
+/// Pushed this far from where it came down is a way on or back; this far aside, a lane step;
+/// this far, near the rim, a run (so a firm walk does not spend stamina). A thumb pushed past
+/// the rim drags the middle after it, so coming back the other way answers at once.
 pub const DEAD: f32 = 110.0;
-pub const RUN: f32 = 300.0;
+pub const SIDE: f32 = 170.0;
+pub const RUN: f32 = 350.0;
 pub const RIM: f32 = 380.0;
 /// A tap in a menu is a finger that came down and up without moving further than this; a swipe,
 /// one that went this far one way (twice as far as the other), and is the arrow that way.
@@ -97,7 +101,7 @@ pub fn layout(ui: Ui) -> Vec<Button> {
     // Below the foe's bar and name (top right, game.rs `bar_foe`), not over them.
     let top = [b(Btn::Pause, 3700.0, 330.0, 95.0)];
     let mut v: Vec<Button> = match ui {
-        Ui::Road { ranged, cast, art, .. } | Ui::Side { ranged, cast, art } => {
+        Ui::Road { ranged, cast, art, .. } | Ui::Side { ranged, cast, art, .. } => {
             let side = matches!(ui, Ui::Side { .. });
             let mut v = vec![
                 b(Btn::Light, 3420.0, 1760.0, 210.0),
@@ -111,10 +115,11 @@ pub fn layout(ui: Ui) -> Vec<Button> {
             if ranged { v.push(b(Btn::Loose, 2650.0, 1690.0, 105.0)); }
             if cast { v.push(b(Btn::Cast, 3030.0, 1290.0, 105.0)); }
             if art { v.push(b(Btn::Art, 2700.0, 1380.0, 110.0)); }
-            if let Ui::Road { prompt, .. } = ui {
+            if let Ui::Side { prompt: true, .. } = ui { v.push(b(Btn::Use, 1920.0, 1940.0, 210.0)); }
+            if let Ui::Road { prompt, turn, .. } = ui {
                 // The prompt plate itself (game.rs PROMPT_Y, low in the middle) is the button.
 if prompt { v.push(b(Btn::Use, 1920.0, 1940.0, 210.0)); }
-                v.push(b(Btn::Turn, 3420.0, 330.0, 95.0));
+                if turn { v.push(b(Btn::Turn, 3420.0, 330.0, 95.0)); }
                 v.push(b(Btn::Map, 3140.0, 330.0, 95.0));
             }
             v
@@ -201,11 +206,11 @@ impl Pad {
         let mut h = Held { guard: self.pressed(Btn::Guard), ..Held::default() };
         if let Some((mid, at)) = self.stick() {
             let (dx, dy) = (at.0 - mid.0, at.1 - mid.1);
-            // The way the thumb leans most, and the other only past twice the dead zone, so a
-            // push up and a little aside is still straight on.
+            // The way the thumb leans most; aside only when pushed well aside and more aside than
+            // half as much again up or down, so a push up and a little aside is still straight on.
             let (ax, ay) = (dx.abs(), dy.abs());
-            h.left = dx < -DEAD && ax >= 0.5 * ay;
-            h.right = dx > DEAD && ax >= 0.5 * ay;
+            h.left = dx < -SIDE && ax >= 0.75 * ay;
+            h.right = dx > SIDE && ax >= 0.75 * ay;
             h.up = dy < -DEAD && ay >= 0.5 * ax;
             h.down = dy > DEAD && ay >= 0.5 * ax;
             h.run = (dx * dx + dy * dy).sqrt() >= RUN;
@@ -238,7 +243,7 @@ fn dist(a: (f32, f32), b: (f32, f32)) -> f32 { ((a.0 - b.0).powi(2) + (a.1 - b.1
 mod tests {
     use super::*;
 
-    const ROAD: Ui = Ui::Road { prompt: false, ranged: false, cast: false, art: false };
+    const ROAD: Ui = Ui::Road { prompt: false, ranged: false, cast: false, art: false, turn: true };
 
     fn at(b: Btn, ui: Ui) -> (f32, f32) { layout(ui).into_iter().find(|x| x.btn == b).unwrap().at }
 
@@ -281,7 +286,25 @@ mod tests {
         assert_eq!(out, vec![Out::Key('a')], "held is not pressed again");
         // Far left past the rim, then back a little right: the way turns at once.
         p.feed(1, TouchPhase::Moved, (100.0, 1600.0), ROAD, &bs);
-        p.feed(1, TouchPhase::Moved, (100.0 + RIM + 2.0 * DEAD, 1600.0), ROAD, &bs);
+        p.feed(1, TouchPhase::Moved, (100.0 + RIM + 2.0 * SIDE, 1600.0), ROAD, &bs);
+        assert!(p.tick(&mut out).right);
+    }
+
+    #[test]
+    fn a_firm_walk_neither_steps_aside_nor_runs() {
+        let mut p = Pad::default();
+        let bs = layout(ROAD);
+        let mut out = Vec::new();
+        // Up firmly and a fair way aside: a walk on, no lane, no run.
+        p.feed(1, TouchPhase::Started, (900.0, 1600.0), ROAD, &bs);
+        p.feed(1, TouchPhase::Moved, (900.0 + 150.0, 1600.0 - 300.0), ROAD, &bs);
+        let held = p.tick(&mut out);
+        assert!(held.up && !held.right && !held.run, "{held:?}");
+        // To the rim: a run.
+        p.feed(1, TouchPhase::Moved, (900.0, 1600.0 - RIM), ROAD, &bs);
+        assert!(p.tick(&mut out).run);
+        // Well aside: a lane.
+        p.feed(1, TouchPhase::Moved, (900.0 + SIDE + 20.0, 1600.0 - 100.0), ROAD, &bs);
         assert!(p.tick(&mut out).right);
     }
 
@@ -303,13 +326,13 @@ mod tests {
 
     #[test]
     fn the_yard_has_a_jump_and_the_road_its_use_only_when_asked() {
-        let side = Ui::Side { ranged: true, cast: false, art: false };
+        let side = Ui::Side { prompt: false, ranged: true, cast: false, art: false };
         let has = |ui, b| layout(ui).iter().any(|x| x.btn == b);
         assert!(has(side, Btn::Jump) && has(side, Btn::Loose) && !has(side, Btn::Cast) && !has(side, Btn::Use));
-        assert!(!has(ROAD, Btn::Use) && has(Ui::Road { prompt: true, ranged: false, cast: false, art: false }, Btn::Use));
-        assert!(!has(ROAD, Btn::Art) && has(Ui::Side { ranged: false, cast: false, art: true }, Btn::Art), "ART only with a forged weapon");
+        assert!(!has(ROAD, Btn::Use) && has(Ui::Road { prompt: true, ranged: false, cast: false, art: false, turn: true }, Btn::Use));
+        assert!(!has(ROAD, Btn::Art) && has(Ui::Side { prompt: false, ranged: false, cast: false, art: true }, Btn::Art), "ART only with a forged weapon");
         // No two buttons overlap.
-        for ui in [ROAD, side, Ui::Road { prompt: true, ranged: true, cast: true, art: true }, Ui::Side { ranged: true, cast: true, art: true }] {
+        for ui in [ROAD, side, Ui::Road { prompt: true, ranged: true, cast: true, art: true, turn: true }, Ui::Side { prompt: true, ranged: true, cast: true, art: true }] {
             let bs = layout(ui);
             for (i, a) in bs.iter().enumerate() {
                 for b in &bs[i + 1..] { assert!(dist(a.at, b.at) > a.r + b.r, "{:?} overlaps {:?}", a.btn, b.btn); }

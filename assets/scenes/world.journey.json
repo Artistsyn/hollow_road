@@ -7,7 +7,7 @@
       "scene": "warrens.json",
       "next": {
         "Go": {
-          "to": "warrens_lane@warrens",
+          "to": "warrens@^",
           "transition": {
             "blend_m": 6.0
           }
@@ -33,7 +33,7 @@
           "right": "~sewers@warrens",
           "fork": {
             "steer_m": 6.0,
-            "approach_m": 40.0,
+            "approach_m": 20.0,
             "wedge_m": -1.0,
             "default_branch": "Left"
           }
@@ -74,7 +74,7 @@
           "right": "~warrens_lane@warrens",
           "fork": {
             "steer_m": 6.0,
-            "approach_m": 40.0,
+            "approach_m": 20.0,
             "wedge_m": -1.0,
             "default_branch": "Left"
           }
@@ -94,25 +94,110 @@
       "scene": "guild_hall.json",
       "next": {
         "Go": {
+          "to": "guild_office@guild_hall",
+          "transition": {
+            "threshold": "Doorway",
+            "door": [
+              0.65,
+              2.4
+            ]
+          }
+        }
+      }
+    },
+    "guild_hall@guild_office": {
+      "scene": "guild_hall.json",
+      "next": {
+        "Go": {
           "to": "warrens@guild_hall",
           "transition": {}
+        }
+      }
+    },
+    "~road@warrens_lane": {
+      "scene": "warrens_lane.json",
+      "next": {
+        "Go": {
+          "to": "warrens_lane@^",
+          "transition": {
+            "blend_m": 6.0
+          }
+        }
+      }
+    },
+    "~east_gate@warrens_lane": {
+      "scene": "warrens_lane.json",
+      "next": {
+        "Go": {
+          "to": "east_gate@warrens_lane",
+          "transition": {
+            "threshold": "Gate",
+            "marker": "Gate"
+          }
         }
       }
     },
     "warrens_lane@warrens": {
       "scene": "warrens_lane.json",
       "next": {
+        "Fork": {
+          "left": "~road@warrens_lane",
+          "right": "~east_gate@warrens_lane",
+          "fork": {
+            "steer_m": 6.0,
+            "approach_m": 20.0,
+            "wedge_m": -1.0,
+            "default_branch": "Left"
+          }
+        }
+      }
+    },
+    "~warrens@warrens_lane": {
+      "scene": "warrens_lane.json",
+      "next": {
         "Go": {
-          "to": "road@warrens_lane",
-          "transition": {}
+          "to": "warrens@warrens_lane",
+          "transition": {
+            "blend_m": 6.0
+          }
+        }
+      }
+    },
+    "warrens_lane@east_gate": {
+      "scene": "warrens_lane.json",
+      "next": {
+        "Fork": {
+          "left": "~warrens@warrens_lane",
+          "right": "~road@warrens_lane",
+          "fork": {
+            "steer_m": 6.0,
+            "approach_m": 20.0,
+            "wedge_m": -1.0,
+            "default_branch": "Left"
+          }
         }
       }
     },
     "warrens_lane@road": {
       "scene": "warrens_lane.json",
       "next": {
+        "Fork": {
+          "left": "~east_gate@warrens_lane",
+          "right": "~warrens@warrens_lane",
+          "fork": {
+            "steer_m": 6.0,
+            "approach_m": 40.0,
+            "wedge_m": -1.0,
+            "default_branch": "Left"
+          }
+        }
+      }
+    },
+    "warrens_lane@^": {
+      "scene": "warrens_lane.json",
+      "next": {
         "Go": {
-          "to": "warrens@warrens_lane",
+          "to": "road@warrens_lane",
           "transition": {}
         }
       }
@@ -158,7 +243,7 @@
       "scene": "road_to_hollowmere.json",
       "next": {
         "Go": {
-          "to": "warrens_lane@road",
+          "to": "road@^",
           "transition": {
             "blend_m": 6.0
           }
@@ -173,7 +258,7 @@
           "right": "~warrens_lane@road",
           "fork": {
             "steer_m": 6.0,
-            "approach_m": 40.0,
+            "approach_m": 20.0,
             "wedge_m": -1.0,
             "default_branch": "Left"
           }
@@ -188,7 +273,7 @@
           "right": "~vale_edge@road",
           "fork": {
             "steer_m": 6.0,
-            "approach_m": 40.0,
+            "approach_m": 20.0,
             "wedge_m": -1.0,
             "default_branch": "Left"
           }
@@ -204,7 +289,18 @@
         }
       }
     },
-    "vale_edge@road": {
+    "~drowned_fingers@vale_edge": {
+      "scene": "vale_edge.json",
+      "next": {
+        "Go": {
+          "to": "drowned_fingers@vale_edge",
+          "transition": {
+            "blend_m": 5.0
+          }
+        }
+      }
+    },
+    "~vale@vale_edge": {
       "scene": "vale_edge.json",
       "next": {
         "Go": {
@@ -215,22 +311,26 @@
         }
       }
     },
-    "~chapel_edge@road|vale_edge@vale": {
+    "vale_edge@road": {
       "scene": "vale_edge.json",
       "next": {
-        "Go": {
-          "to": "chapel_edge@road",
-          "transition": {
-            "blend_m": 6.0
+        "Fork": {
+          "left": "~drowned_fingers@vale_edge",
+          "right": "~vale@vale_edge",
+          "fork": {
+            "steer_m": 6.0,
+            "approach_m": 40.0,
+            "wedge_m": -1.0,
+            "default_branch": "Left"
           }
         }
       }
     },
-    "~road@^|vale_edge@vale": {
+    "~road@vale_edge": {
       "scene": "vale_edge.json",
       "next": {
         "Go": {
-          "to": "road@^",
+          "to": "vale_edge@^",
           "transition": {
             "blend_m": 6.0
           }
@@ -241,14 +341,38 @@
       "scene": "vale_edge.json",
       "next": {
         "Fork": {
-          "left": "~chapel_edge@road|vale_edge@vale",
-          "right": "~road@^|vale_edge@vale",
+          "left": "~road@vale_edge",
+          "right": "~drowned_fingers@vale_edge",
           "fork": {
             "steer_m": 6.0,
-            "approach_m": 40.0,
+            "approach_m": 20.0,
             "wedge_m": -1.0,
             "default_branch": "Left"
           }
+        }
+      }
+    },
+    "vale_edge@drowned_fingers": {
+      "scene": "vale_edge.json",
+      "next": {
+        "Fork": {
+          "left": "~vale@vale_edge",
+          "right": "~road@vale_edge",
+          "fork": {
+            "steer_m": 6.0,
+            "approach_m": 20.0,
+            "wedge_m": -1.0,
+            "default_branch": "Left"
+          }
+        }
+      }
+    },
+    "vale_edge@^": {
+      "scene": "vale_edge.json",
+      "next": {
+        "Go": {
+          "to": "road@vale_edge",
+          "transition": {}
         }
       }
     },
@@ -264,40 +388,12 @@
         }
       }
     },
-    "~road@^|chapel_edge@chapel": {
-      "scene": "chapel_edge.json",
-      "next": {
-        "Go": {
-          "to": "road@^",
-          "transition": {
-            "blend_m": 6.0
-          }
-        }
-      }
-    },
-    "~vale_edge@road|chapel_edge@chapel": {
-      "scene": "chapel_edge.json",
-      "next": {
-        "Go": {
-          "to": "vale_edge@road",
-          "transition": {
-            "blend_m": 6.0
-          }
-        }
-      }
-    },
     "chapel_edge@chapel": {
       "scene": "chapel_edge.json",
       "next": {
-        "Fork": {
-          "left": "~road@^|chapel_edge@chapel",
-          "right": "~vale_edge@road|chapel_edge@chapel",
-          "fork": {
-            "steer_m": 6.0,
-            "approach_m": 40.0,
-            "wedge_m": -1.0,
-            "default_branch": "Left"
-          }
+        "Go": {
+          "to": "road@chapel_edge",
+          "transition": {}
         }
       }
     },
@@ -342,9 +438,9 @@
       "scene": "wretched_vale.json",
       "next": {
         "Go": {
-          "to": "vale_edge@vale",
+          "to": "vale@^",
           "transition": {
-            "blend_m": 5.0
+            "blend_m": 6.0
           }
         }
       }
@@ -357,7 +453,7 @@
           "right": "~drowned_mill@vale",
           "fork": {
             "steer_m": 6.0,
-            "approach_m": 40.0,
+            "approach_m": 20.0,
             "wedge_m": -1.0,
             "default_branch": "Left"
           }
@@ -372,7 +468,7 @@
           "right": "~vale_edge@vale",
           "fork": {
             "steer_m": 6.0,
-            "approach_m": 40.0,
+            "approach_m": 20.0,
             "wedge_m": -1.0,
             "default_branch": "Left"
           }
@@ -431,10 +527,9 @@
       "scene": "chapel_road.json",
       "next": {
         "Go": {
-          "to": "chapel_edge@chapel",
+          "to": "chapel@^",
           "transition": {
-            "threshold": "Gate",
-            "marker": "RuinedArch"
+            "blend_m": 6.0
           }
         }
       }
@@ -447,7 +542,7 @@
           "right": "~chapel_edge@chapel",
           "fork": {
             "steer_m": 6.0,
-            "approach_m": 40.0,
+            "approach_m": 20.0,
             "wedge_m": -1.0,
             "default_branch": "Right"
           }
@@ -462,7 +557,7 @@
           "right": "~gate@chapel",
           "fork": {
             "steer_m": 6.0,
-            "approach_m": 40.0,
+            "approach_m": 20.0,
             "wedge_m": -1.0,
             "default_branch": "Left"
           }
@@ -522,7 +617,7 @@
       "scene": "hollowmere_gate.json",
       "next": {
         "Go": {
-          "to": "vale@gate",
+          "to": "gate@^",
           "transition": {
             "blend_m": 6.0
           }
@@ -537,7 +632,7 @@
           "right": "~hollowmere@gate",
           "fork": {
             "steer_m": 6.0,
-            "approach_m": 40.0,
+            "approach_m": 20.0,
             "wedge_m": -1.0,
             "default_branch": "Left"
           }
@@ -552,31 +647,9 @@
           "right": "~vale@gate",
           "fork": {
             "steer_m": 6.0,
-            "approach_m": 40.0,
+            "approach_m": 20.0,
             "wedge_m": -1.0,
             "default_branch": "Left"
-          }
-        }
-      }
-    },
-    "~vale@^|gate@^": {
-      "scene": "hollowmere_gate.json",
-      "next": {
-        "Go": {
-          "to": "vale@^",
-          "transition": {
-            "blend_m": 6.0
-          }
-        }
-      }
-    },
-    "~drowned_mill@vale|gate@^": {
-      "scene": "hollowmere_gate.json",
-      "next": {
-        "Go": {
-          "to": "drowned_mill@vale",
-          "transition": {
-            "blend_m": 6.0
           }
         }
       }
@@ -584,15 +657,9 @@
     "gate@^": {
       "scene": "hollowmere_gate.json",
       "next": {
-        "Fork": {
-          "left": "~vale@^|gate@^",
-          "right": "~drowned_mill@vale|gate@^",
-          "fork": {
-            "steer_m": 6.0,
-            "approach_m": 40.0,
-            "wedge_m": -1.0,
-            "default_branch": "Left"
-          }
+        "Go": {
+          "to": "vale@gate",
+          "transition": {}
         }
       }
     },
@@ -637,7 +704,7 @@
       "scene": "hollowmere.json",
       "next": {
         "Go": {
-          "to": "gate@hollowmere",
+          "to": "hollowmere@^",
           "transition": {
             "blend_m": 6.0
           }
@@ -652,7 +719,7 @@
           "right": "~gate@hollowmere",
           "fork": {
             "steer_m": 6.0,
-            "approach_m": 40.0,
+            "approach_m": 20.0,
             "wedge_m": -1.0,
             "default_branch": "Left"
           }
@@ -667,31 +734,9 @@
           "right": "~drowned_mill@hollowmere",
           "fork": {
             "steer_m": 6.0,
-            "approach_m": 40.0,
+            "approach_m": 20.0,
             "wedge_m": -1.0,
             "default_branch": "Left"
-          }
-        }
-      }
-    },
-    "~chapel@gate|hollowmere@^": {
-      "scene": "hollowmere.json",
-      "next": {
-        "Go": {
-          "to": "chapel@gate",
-          "transition": {
-            "blend_m": 6.0
-          }
-        }
-      }
-    },
-    "~gate@^|hollowmere@^": {
-      "scene": "hollowmere.json",
-      "next": {
-        "Go": {
-          "to": "gate@^",
-          "transition": {
-            "blend_m": 6.0
           }
         }
       }
@@ -699,34 +744,28 @@
     "hollowmere@^": {
       "scene": "hollowmere.json",
       "next": {
-        "Fork": {
-          "left": "~chapel@gate|hollowmere@^",
-          "right": "~gate@^|hollowmere@^",
-          "fork": {
-            "steer_m": 6.0,
-            "approach_m": 40.0,
-            "wedge_m": -1.0,
-            "default_branch": "Left"
-          }
+        "Go": {
+          "to": "gate@hollowmere",
+          "transition": {}
         }
       }
     },
-    "~gate@vale|drowned_mill@hollowmere": {
+    "~vale@drowned_mill": {
       "scene": "drowned_mill.json",
       "next": {
         "Go": {
-          "to": "gate@vale",
+          "to": "vale@drowned_mill",
           "transition": {
             "blend_m": 6.0
           }
         }
       }
     },
-    "~vale@^|drowned_mill@hollowmere": {
+    "~drowned_fingers@drowned_mill": {
       "scene": "drowned_mill.json",
       "next": {
         "Go": {
-          "to": "vale@^",
+          "to": "drowned_fingers@drowned_mill",
           "transition": {
             "blend_m": 6.0
           }
@@ -737,8 +776,8 @@
       "scene": "drowned_mill.json",
       "next": {
         "Fork": {
-          "left": "~gate@vale|drowned_mill@hollowmere",
-          "right": "~vale@^|drowned_mill@hollowmere",
+          "left": "~vale@drowned_mill",
+          "right": "~drowned_fingers@drowned_mill",
           "fork": {
             "steer_m": 6.0,
             "approach_m": 40.0,
@@ -748,22 +787,11 @@
         }
       }
     },
-    "~pine_road@hollowmere|drowned_mill@vale": {
+    "~hollowmere@drowned_mill": {
       "scene": "drowned_mill.json",
       "next": {
         "Go": {
-          "to": "pine_road@hollowmere",
-          "transition": {
-            "blend_m": 6.0
-          }
-        }
-      }
-    },
-    "~hollowmere@^|drowned_mill@vale": {
-      "scene": "drowned_mill.json",
-      "next": {
-        "Go": {
-          "to": "hollowmere@^",
+          "to": "drowned_mill@^",
           "transition": {
             "blend_m": 6.0
           }
@@ -774,14 +802,38 @@
       "scene": "drowned_mill.json",
       "next": {
         "Fork": {
-          "left": "~pine_road@hollowmere|drowned_mill@vale",
-          "right": "~hollowmere@^|drowned_mill@vale",
+          "left": "~drowned_fingers@drowned_mill",
+          "right": "~hollowmere@drowned_mill",
           "fork": {
             "steer_m": 6.0,
-            "approach_m": 40.0,
+            "approach_m": 20.0,
+            "wedge_m": -1.0,
+            "default_branch": "Right"
+          }
+        }
+      }
+    },
+    "drowned_mill@drowned_fingers": {
+      "scene": "drowned_mill.json",
+      "next": {
+        "Fork": {
+          "left": "~hollowmere@drowned_mill",
+          "right": "~vale@drowned_mill",
+          "fork": {
+            "steer_m": 6.0,
+            "approach_m": 20.0,
             "wedge_m": -1.0,
             "default_branch": "Left"
           }
+        }
+      }
+    },
+    "drowned_mill@^": {
+      "scene": "drowned_mill.json",
+      "next": {
+        "Go": {
+          "to": "hollowmere@drowned_mill",
+          "transition": {}
         }
       }
     },
@@ -826,7 +878,7 @@
       "scene": "pine_road.json",
       "next": {
         "Go": {
-          "to": "hollowmere@pine_road",
+          "to": "pine_road@^",
           "transition": {
             "blend_m": 6.0
           }
@@ -841,7 +893,7 @@
           "right": "~hollowmere@pine_road",
           "fork": {
             "steer_m": 6.0,
-            "approach_m": 40.0,
+            "approach_m": 20.0,
             "wedge_m": -1.0,
             "default_branch": "Right"
           }
@@ -856,31 +908,9 @@
           "right": "~ridge_camp@pine_road",
           "fork": {
             "steer_m": 6.0,
-            "approach_m": 40.0,
+            "approach_m": 20.0,
             "wedge_m": -1.0,
             "default_branch": "Left"
-          }
-        }
-      }
-    },
-    "~hollowmere@^|pine_road@^": {
-      "scene": "pine_road.json",
-      "next": {
-        "Go": {
-          "to": "hollowmere@^",
-          "transition": {
-            "blend_m": 6.0
-          }
-        }
-      }
-    },
-    "~drowned_mill@hollowmere|pine_road@^": {
-      "scene": "pine_road.json",
-      "next": {
-        "Go": {
-          "to": "drowned_mill@hollowmere",
-          "transition": {
-            "blend_m": 6.0
           }
         }
       }
@@ -888,15 +918,9 @@
     "pine_road@^": {
       "scene": "pine_road.json",
       "next": {
-        "Fork": {
-          "left": "~hollowmere@^|pine_road@^",
-          "right": "~drowned_mill@hollowmere|pine_road@^",
-          "fork": {
-            "steer_m": 6.0,
-            "approach_m": 40.0,
-            "wedge_m": -1.0,
-            "default_branch": "Left"
-          }
+        "Go": {
+          "to": "hollowmere@pine_road",
+          "transition": {}
         }
       }
     },
@@ -941,7 +965,7 @@
       "scene": "ridge_camp.json",
       "next": {
         "Go": {
-          "to": "pine_road@ridge_camp",
+          "to": "ridge_camp@^",
           "transition": {
             "blend_m": 6.0
           }
@@ -956,7 +980,7 @@
           "right": "~chief_hold@ridge_camp",
           "fork": {
             "steer_m": 6.0,
-            "approach_m": 40.0,
+            "approach_m": 20.0,
             "wedge_m": -1.0,
             "default_branch": "Left"
           }
@@ -971,31 +995,9 @@
           "right": "~pine_road@ridge_camp",
           "fork": {
             "steer_m": 6.0,
-            "approach_m": 40.0,
+            "approach_m": 20.0,
             "wedge_m": -1.0,
             "default_branch": "Left"
-          }
-        }
-      }
-    },
-    "~cliff_path@pine_road|ridge_camp@^": {
-      "scene": "ridge_camp.json",
-      "next": {
-        "Go": {
-          "to": "cliff_path@pine_road",
-          "transition": {
-            "blend_m": 6.0
-          }
-        }
-      }
-    },
-    "~pine_road@^|ridge_camp@^": {
-      "scene": "ridge_camp.json",
-      "next": {
-        "Go": {
-          "to": "pine_road@^",
-          "transition": {
-            "blend_m": 6.0
           }
         }
       }
@@ -1003,14 +1005,30 @@
     "ridge_camp@^": {
       "scene": "ridge_camp.json",
       "next": {
-        "Fork": {
-          "left": "~cliff_path@pine_road|ridge_camp@^",
-          "right": "~pine_road@^|ridge_camp@^",
-          "fork": {
-            "steer_m": 6.0,
-            "approach_m": 40.0,
-            "wedge_m": -1.0,
-            "default_branch": "Right"
+        "Go": {
+          "to": "pine_road@ridge_camp",
+          "transition": {}
+        }
+      }
+    },
+    "~fog_hollow@bandit_hollows": {
+      "scene": "bandit_hollows.json",
+      "next": {
+        "Go": {
+          "to": "fog_hollow@bandit_hollows",
+          "transition": {
+            "blend_m": 5.0
+          }
+        }
+      }
+    },
+    "~stone_gate@bandit_hollows": {
+      "scene": "bandit_hollows.json",
+      "next": {
+        "Go": {
+          "to": "stone_gate@bandit_hollows",
+          "transition": {
+            "blend_m": 6.0
           }
         }
       }
@@ -1018,28 +1036,23 @@
     "bandit_hollows@ridge_camp": {
       "scene": "bandit_hollows.json",
       "next": {
-        "Go": {
-          "to": "stone_gate@bandit_hollows",
-          "transition": {}
-        }
-      }
-    },
-    "~ridge_camp@^|bandit_hollows@stone_gate": {
-      "scene": "bandit_hollows.json",
-      "next": {
-        "Go": {
-          "to": "ridge_camp@^",
-          "transition": {
-            "blend_m": 6.0
+        "Fork": {
+          "left": "~fog_hollow@bandit_hollows",
+          "right": "~stone_gate@bandit_hollows",
+          "fork": {
+            "steer_m": 6.0,
+            "approach_m": 40.0,
+            "wedge_m": -1.0,
+            "default_branch": "Left"
           }
         }
       }
     },
-    "~chief_hold@ridge_camp|bandit_hollows@stone_gate": {
+    "~ridge_camp@bandit_hollows": {
       "scene": "bandit_hollows.json",
       "next": {
         "Go": {
-          "to": "chief_hold@ridge_camp",
+          "to": "bandit_hollows@^",
           "transition": {
             "blend_m": 6.0
           }
@@ -1050,14 +1063,38 @@
       "scene": "bandit_hollows.json",
       "next": {
         "Fork": {
-          "left": "~ridge_camp@^|bandit_hollows@stone_gate",
-          "right": "~chief_hold@ridge_camp|bandit_hollows@stone_gate",
+          "left": "~ridge_camp@bandit_hollows",
+          "right": "~fog_hollow@bandit_hollows",
           "fork": {
             "steer_m": 6.0,
-            "approach_m": 40.0,
+            "approach_m": 20.0,
             "wedge_m": -1.0,
             "default_branch": "Left"
           }
+        }
+      }
+    },
+    "bandit_hollows@fog_hollow": {
+      "scene": "bandit_hollows.json",
+      "next": {
+        "Fork": {
+          "left": "~stone_gate@bandit_hollows",
+          "right": "~ridge_camp@bandit_hollows",
+          "fork": {
+            "steer_m": 6.0,
+            "approach_m": 20.0,
+            "wedge_m": -1.0,
+            "default_branch": "Left"
+          }
+        }
+      }
+    },
+    "bandit_hollows@^": {
+      "scene": "bandit_hollows.json",
+      "next": {
+        "Go": {
+          "to": "ridge_camp@bandit_hollows",
+          "transition": {}
         }
       }
     },
@@ -1070,40 +1107,12 @@
         }
       }
     },
-    "~bandit_hollows@ridge_camp|chief_hold@cliff_path": {
-      "scene": "chief_hold.json",
-      "next": {
-        "Go": {
-          "to": "bandit_hollows@ridge_camp",
-          "transition": {
-            "blend_m": 6.0
-          }
-        }
-      }
-    },
-    "~ridge_camp@^|chief_hold@cliff_path": {
-      "scene": "chief_hold.json",
-      "next": {
-        "Go": {
-          "to": "ridge_camp@^",
-          "transition": {
-            "blend_m": 6.0
-          }
-        }
-      }
-    },
     "chief_hold@cliff_path": {
       "scene": "chief_hold.json",
       "next": {
-        "Fork": {
-          "left": "~bandit_hollows@ridge_camp|chief_hold@cliff_path",
-          "right": "~ridge_camp@^|chief_hold@cliff_path",
-          "fork": {
-            "steer_m": 6.0,
-            "approach_m": 40.0,
-            "wedge_m": -1.0,
-            "default_branch": "Left"
-          }
+        "Go": {
+          "to": "ridge_camp@chief_hold",
+          "transition": {}
         }
       }
     },
@@ -1148,7 +1157,7 @@
       "scene": "cliff_path.json",
       "next": {
         "Go": {
-          "to": "chief_hold@cliff_path",
+          "to": "cliff_path@^",
           "transition": {
             "blend_m": 6.0
           }
@@ -1163,7 +1172,7 @@
           "right": "~chief_hold@cliff_path",
           "fork": {
             "steer_m": 6.0,
-            "approach_m": 40.0,
+            "approach_m": 20.0,
             "wedge_m": -1.0,
             "default_branch": "Left"
           }
@@ -1178,7 +1187,7 @@
           "right": "~stone_upper@cliff_path",
           "fork": {
             "steer_m": 6.0,
-            "approach_m": 40.0,
+            "approach_m": 20.0,
             "wedge_m": -1.0,
             "default_branch": "Right"
           }
@@ -1253,7 +1262,7 @@
       "scene": "lower_stairs.json",
       "next": {
         "Go": {
-          "to": "stone_gate@lower_stairs",
+          "to": "lower_stairs@^",
           "transition": {
             "blend_m": 6.0
           }
@@ -1268,7 +1277,7 @@
           "right": "~stone_gate@lower_stairs",
           "fork": {
             "steer_m": 6.0,
-            "approach_m": 40.0,
+            "approach_m": 20.0,
             "wedge_m": -1.0,
             "default_branch": "Left"
           }
@@ -1283,7 +1292,7 @@
           "right": "~stone_market@lower_stairs",
           "fork": {
             "steer_m": 6.0,
-            "approach_m": 40.0,
+            "approach_m": 20.0,
             "wedge_m": -1.0,
             "default_branch": "Left"
           }
@@ -1340,7 +1349,7 @@
       "scene": "stone_market.json",
       "next": {
         "Go": {
-          "to": "lower_stairs@stone_market",
+          "to": "stone_market@^",
           "transition": {
             "blend_m": 6.0
           }
@@ -1355,7 +1364,7 @@
           "right": "~stone_upper@stone_market",
           "fork": {
             "steer_m": 6.0,
-            "approach_m": 40.0,
+            "approach_m": 20.0,
             "wedge_m": -1.0,
             "default_branch": "Left"
           }
@@ -1370,31 +1379,9 @@
           "right": "~lower_stairs@stone_market",
           "fork": {
             "steer_m": 6.0,
-            "approach_m": 40.0,
+            "approach_m": 20.0,
             "wedge_m": -1.0,
             "default_branch": "Left"
-          }
-        }
-      }
-    },
-    "~sewers@lower_stairs|stone_market@^": {
-      "scene": "stone_market.json",
-      "next": {
-        "Go": {
-          "to": "sewers@lower_stairs",
-          "transition": {
-            "blend_m": 6.0
-          }
-        }
-      }
-    },
-    "~lower_stairs@^|stone_market@^": {
-      "scene": "stone_market.json",
-      "next": {
-        "Go": {
-          "to": "lower_stairs@^",
-          "transition": {
-            "blend_m": 6.0
           }
         }
       }
@@ -1402,89 +1389,27 @@
     "stone_market@^": {
       "scene": "stone_market.json",
       "next": {
-        "Fork": {
-          "left": "~sewers@lower_stairs|stone_market@^",
-          "right": "~lower_stairs@^|stone_market@^",
-          "fork": {
-            "steer_m": 6.0,
-            "approach_m": 40.0,
-            "wedge_m": -1.0,
-            "default_branch": "Left"
-          }
-        }
-      }
-    },
-    "~guild_hall@warrens|sewers@lower_stairs": {
-      "scene": "sewers.json",
-      "next": {
         "Go": {
-          "to": "guild_hall@warrens",
-          "transition": {
-            "blend_m": 6.0
-          }
-        }
-      }
-    },
-    "~warrens@^|sewers@lower_stairs": {
-      "scene": "sewers.json",
-      "next": {
-        "Go": {
-          "to": "warrens@^",
-          "transition": {
-            "blend_m": 6.0
-          }
+          "to": "lower_stairs@stone_market",
+          "transition": {}
         }
       }
     },
     "sewers@lower_stairs": {
       "scene": "sewers.json",
       "next": {
-        "Fork": {
-          "left": "~guild_hall@warrens|sewers@lower_stairs",
-          "right": "~warrens@^|sewers@lower_stairs",
-          "fork": {
-            "steer_m": 6.0,
-            "approach_m": 40.0,
-            "wedge_m": -1.0,
-            "default_branch": "Left"
-          }
-        }
-      }
-    },
-    "~lower_stairs@^|sewers@warrens": {
-      "scene": "sewers.json",
-      "next": {
         "Go": {
-          "to": "lower_stairs@^",
-          "transition": {
-            "blend_m": 6.0
-          }
-        }
-      }
-    },
-    "~stone_market@lower_stairs|sewers@warrens": {
-      "scene": "sewers.json",
-      "next": {
-        "Go": {
-          "to": "stone_market@lower_stairs",
-          "transition": {
-            "blend_m": 6.0
-          }
+          "to": "warrens@sewers",
+          "transition": {}
         }
       }
     },
     "sewers@warrens": {
       "scene": "sewers.json",
       "next": {
-        "Fork": {
-          "left": "~lower_stairs@^|sewers@warrens",
-          "right": "~stone_market@lower_stairs|sewers@warrens",
-          "fork": {
-            "steer_m": 6.0,
-            "approach_m": 40.0,
-            "wedge_m": -1.0,
-            "default_branch": "Left"
-          }
+        "Go": {
+          "to": "lower_stairs@sewers",
+          "transition": {}
         }
       }
     },
@@ -1529,7 +1454,7 @@
       "scene": "bridge_ward.json",
       "next": {
         "Go": {
-          "to": "stone_market@bridge_ward",
+          "to": "bridge_ward@^",
           "transition": {
             "blend_m": 6.0
           }
@@ -1544,7 +1469,7 @@
           "right": "~husk_pens@bridge_ward",
           "fork": {
             "steer_m": 6.0,
-            "approach_m": 40.0,
+            "approach_m": 20.0,
             "wedge_m": -1.0,
             "default_branch": "Left"
           }
@@ -1559,31 +1484,9 @@
           "right": "~stone_market@bridge_ward",
           "fork": {
             "steer_m": 6.0,
-            "approach_m": 40.0,
+            "approach_m": 20.0,
             "wedge_m": -1.0,
             "default_branch": "Right"
-          }
-        }
-      }
-    },
-    "~stone_market@^|bridge_ward@^": {
-      "scene": "bridge_ward.json",
-      "next": {
-        "Go": {
-          "to": "stone_market@^",
-          "transition": {
-            "blend_m": 6.0
-          }
-        }
-      }
-    },
-    "~stone_upper@stone_market|bridge_ward@^": {
-      "scene": "bridge_ward.json",
-      "next": {
-        "Go": {
-          "to": "stone_upper@stone_market",
-          "transition": {
-            "blend_m": 6.0
           }
         }
       }
@@ -1591,15 +1494,9 @@
     "bridge_ward@^": {
       "scene": "bridge_ward.json",
       "next": {
-        "Fork": {
-          "left": "~stone_market@^|bridge_ward@^",
-          "right": "~stone_upper@stone_market|bridge_ward@^",
-          "fork": {
-            "steer_m": 6.0,
-            "approach_m": 40.0,
-            "wedge_m": -1.0,
-            "default_branch": "Left"
-          }
+        "Go": {
+          "to": "stone_market@bridge_ward",
+          "transition": {}
         }
       }
     },
@@ -1618,7 +1515,7 @@
       "scene": "stone_upper.json",
       "next": {
         "Go": {
-          "to": "stone_market@stone_upper",
+          "to": "stone_upper@^",
           "transition": {
             "blend_m": 6.0
           }
@@ -1633,7 +1530,7 @@
           "right": "~stone_market@stone_upper",
           "fork": {
             "steer_m": 6.0,
-            "approach_m": 40.0,
+            "approach_m": 20.0,
             "wedge_m": -1.0,
             "default_branch": "Left"
           }
@@ -1674,31 +1571,9 @@
           "right": "~cliff_path@stone_upper",
           "fork": {
             "steer_m": 6.0,
-            "approach_m": 40.0,
+            "approach_m": 20.0,
             "wedge_m": -1.0,
             "default_branch": "Left"
-          }
-        }
-      }
-    },
-    "~bridge_ward@stone_market|stone_upper@^": {
-      "scene": "stone_upper.json",
-      "next": {
-        "Go": {
-          "to": "bridge_ward@stone_market",
-          "transition": {
-            "blend_m": 6.0
-          }
-        }
-      }
-    },
-    "~stone_market@^|stone_upper@^": {
-      "scene": "stone_upper.json",
-      "next": {
-        "Go": {
-          "to": "stone_market@^",
-          "transition": {
-            "blend_m": 6.0
           }
         }
       }
@@ -1706,15 +1581,9 @@
     "stone_upper@^": {
       "scene": "stone_upper.json",
       "next": {
-        "Fork": {
-          "left": "~bridge_ward@stone_market|stone_upper@^",
-          "right": "~stone_market@^|stone_upper@^",
-          "fork": {
-            "steer_m": 6.0,
-            "approach_m": 40.0,
-            "wedge_m": -1.0,
-            "default_branch": "Left"
-          }
+        "Go": {
+          "to": "stone_market@stone_upper",
+          "transition": {}
         }
       }
     },
@@ -1759,7 +1628,7 @@
       "scene": "magistrate.json",
       "next": {
         "Go": {
-          "to": "stone_upper@magistrate",
+          "to": "magistrate@^",
           "transition": {
             "blend_m": 6.0
           }
@@ -1774,7 +1643,7 @@
           "right": "~whisper_altars@magistrate",
           "fork": {
             "steer_m": 6.0,
-            "approach_m": 40.0,
+            "approach_m": 20.0,
             "wedge_m": -1.0,
             "default_branch": "Left"
           }
@@ -1789,31 +1658,9 @@
           "right": "~stone_upper@magistrate",
           "fork": {
             "steer_m": 6.0,
-            "approach_m": 40.0,
+            "approach_m": 20.0,
             "wedge_m": -1.0,
             "default_branch": "Right"
-          }
-        }
-      }
-    },
-    "~stone_upper@^|magistrate@^": {
-      "scene": "magistrate.json",
-      "next": {
-        "Go": {
-          "to": "stone_upper@^",
-          "transition": {
-            "blend_m": 6.0
-          }
-        }
-      }
-    },
-    "~cliff_path@stone_upper|magistrate@^": {
-      "scene": "magistrate.json",
-      "next": {
-        "Go": {
-          "to": "cliff_path@stone_upper",
-          "transition": {
-            "blend_m": 6.0
           }
         }
       }
@@ -1821,15 +1668,9 @@
     "magistrate@^": {
       "scene": "magistrate.json",
       "next": {
-        "Fork": {
-          "left": "~stone_upper@^|magistrate@^",
-          "right": "~cliff_path@stone_upper|magistrate@^",
-          "fork": {
-            "steer_m": 6.0,
-            "approach_m": 40.0,
-            "wedge_m": -1.0,
-            "default_branch": "Left"
-          }
+        "Go": {
+          "to": "stone_upper@magistrate",
+          "transition": {}
         }
       }
     },
@@ -1842,40 +1683,12 @@
         }
       }
     },
-    "~bridge_ward@^|sunken_steps@vine_halls": {
-      "scene": "sunken_steps.json",
-      "next": {
-        "Go": {
-          "to": "bridge_ward@^",
-          "transition": {
-            "blend_m": 6.0
-          }
-        }
-      }
-    },
-    "~husk_pens@bridge_ward|sunken_steps@vine_halls": {
-      "scene": "sunken_steps.json",
-      "next": {
-        "Go": {
-          "to": "husk_pens@bridge_ward",
-          "transition": {
-            "blend_m": 6.0
-          }
-        }
-      }
-    },
     "sunken_steps@vine_halls": {
       "scene": "sunken_steps.json",
       "next": {
-        "Fork": {
-          "left": "~bridge_ward@^|sunken_steps@vine_halls",
-          "right": "~husk_pens@bridge_ward|sunken_steps@vine_halls",
-          "fork": {
-            "steer_m": 6.0,
-            "approach_m": 40.0,
-            "wedge_m": -1.0,
-            "default_branch": "Left"
-          }
+        "Go": {
+          "to": "bridge_ward@sunken_steps",
+          "transition": {}
         }
       }
     },
@@ -1911,7 +1724,7 @@
             "steer_m": 6.0,
             "approach_m": 40.0,
             "wedge_m": -1.0,
-            "default_branch": "Left"
+            "default_branch": "Right"
           }
         }
       }
@@ -1920,7 +1733,7 @@
       "scene": "vine_halls.json",
       "next": {
         "Go": {
-          "to": "sunken_steps@vine_halls",
+          "to": "vine_halls@^",
           "transition": {
             "blend_m": 6.0
           }
@@ -1935,7 +1748,7 @@
           "right": "~sunken_steps@vine_halls",
           "fork": {
             "steer_m": 6.0,
-            "approach_m": 40.0,
+            "approach_m": 20.0,
             "wedge_m": -1.0,
             "default_branch": "Left"
           }
@@ -1950,7 +1763,7 @@
           "right": "~wraith_sanctum@vine_halls",
           "fork": {
             "steer_m": 6.0,
-            "approach_m": 40.0,
+            "approach_m": 20.0,
             "wedge_m": -1.0,
             "default_branch": "Left"
           }
@@ -1968,6 +1781,10 @@
     },
     "wraith_sanctum@vine_halls": {
       "scene": "wraith_sanctum.json",
+      "next": "End"
+    },
+    "wraith_sanctum@^": {
+      "scene": "wraith_sanctum.json",
       "next": {
         "Go": {
           "to": "vine_halls@wraith_sanctum",
@@ -1975,77 +1792,21 @@
         }
       }
     },
-    "~chapel@^|rune_vault@vine_halls": {
-      "scene": "rune_vault.json",
-      "next": {
-        "Go": {
-          "to": "chapel@^",
-          "transition": {
-            "blend_m": 6.0
-          }
-        }
-      }
-    },
-    "~gate@chapel|rune_vault@vine_halls": {
-      "scene": "rune_vault.json",
-      "next": {
-        "Go": {
-          "to": "gate@chapel",
-          "transition": {
-            "blend_m": 6.0
-          }
-        }
-      }
-    },
     "rune_vault@vine_halls": {
       "scene": "rune_vault.json",
       "next": {
-        "Fork": {
-          "left": "~chapel@^|rune_vault@vine_halls",
-          "right": "~gate@chapel|rune_vault@vine_halls",
-          "fork": {
-            "steer_m": 6.0,
-            "approach_m": 40.0,
-            "wedge_m": -1.0,
-            "default_branch": "Left"
-          }
-        }
-      }
-    },
-    "~vine_halls@^|rune_vault@chapel": {
-      "scene": "rune_vault.json",
-      "next": {
         "Go": {
-          "to": "vine_halls@^",
-          "transition": {
-            "blend_m": 6.0
-          }
-        }
-      }
-    },
-    "~wraith_sanctum@vine_halls|rune_vault@chapel": {
-      "scene": "rune_vault.json",
-      "next": {
-        "Go": {
-          "to": "wraith_sanctum@vine_halls",
-          "transition": {
-            "blend_m": 6.0
-          }
+          "to": "chapel@rune_vault",
+          "transition": {}
         }
       }
     },
     "rune_vault@chapel": {
       "scene": "rune_vault.json",
       "next": {
-        "Fork": {
-          "left": "~vine_halls@^|rune_vault@chapel",
-          "right": "~wraith_sanctum@vine_halls|rune_vault@chapel",
-          "fork": {
-            "steer_m": 6.0,
-            "approach_m": 40.0,
-            "wedge_m": -1.0,
-            "default_branch": "Left"
-          }
+        "Go": {
+          "to": "vine_halls@rune_vault",
+          "transition": {}
         }
       }
     },
@@ -2058,40 +1819,12 @@
         }
       }
     },
-    "~magistrate@^|violet_road@varnholt": {
-      "scene": "violet_road.json",
-      "next": {
-        "Go": {
-          "to": "magistrate@^",
-          "transition": {
-            "blend_m": 6.0
-          }
-        }
-      }
-    },
-    "~whisper_altars@magistrate|violet_road@varnholt": {
-      "scene": "violet_road.json",
-      "next": {
-        "Go": {
-          "to": "whisper_altars@magistrate",
-          "transition": {
-            "blend_m": 6.0
-          }
-        }
-      }
-    },
     "violet_road@varnholt": {
       "scene": "violet_road.json",
       "next": {
-        "Fork": {
-          "left": "~magistrate@^|violet_road@varnholt",
-          "right": "~whisper_altars@magistrate|violet_road@varnholt",
-          "fork": {
-            "steer_m": 6.0,
-            "approach_m": 40.0,
-            "wedge_m": -1.0,
-            "default_branch": "Left"
-          }
+        "Go": {
+          "to": "magistrate@violet_road",
+          "transition": {}
         }
       }
     },
@@ -2101,7 +1834,11 @@
         "Go": {
           "to": "cathedral@varnholt",
           "transition": {
-            "blend_m": 6.0
+            "threshold": "Doorway",
+            "door": [
+              2.6,
+              5.5
+            ]
           }
         }
       }
@@ -2136,7 +1873,7 @@
       "scene": "varnholt.json",
       "next": {
         "Go": {
-          "to": "violet_road@varnholt",
+          "to": "varnholt@^",
           "transition": {
             "blend_m": 6.0
           }
@@ -2151,7 +1888,7 @@
           "right": "~cathedral@varnholt",
           "fork": {
             "steer_m": 6.0,
-            "approach_m": 40.0,
+            "approach_m": 20.0,
             "wedge_m": -1.0,
             "default_branch": "Left"
           }
@@ -2166,7 +1903,7 @@
           "right": "~violet_road@varnholt",
           "fork": {
             "steer_m": 6.0,
-            "approach_m": 40.0,
+            "approach_m": 20.0,
             "wedge_m": -1.0,
             "default_branch": "Left"
           }
@@ -2182,77 +1919,21 @@
         }
       }
     },
-    "~sunken_steps@bridge_ward|husk_pens@varnholt": {
-      "scene": "husk_pens.json",
-      "next": {
-        "Go": {
-          "to": "sunken_steps@bridge_ward",
-          "transition": {
-            "blend_m": 6.0
-          }
-        }
-      }
-    },
-    "~bridge_ward@^|husk_pens@varnholt": {
-      "scene": "husk_pens.json",
-      "next": {
-        "Go": {
-          "to": "bridge_ward@^",
-          "transition": {
-            "blend_m": 6.0
-          }
-        }
-      }
-    },
     "husk_pens@varnholt": {
       "scene": "husk_pens.json",
       "next": {
-        "Fork": {
-          "left": "~sunken_steps@bridge_ward|husk_pens@varnholt",
-          "right": "~bridge_ward@^|husk_pens@varnholt",
-          "fork": {
-            "steer_m": 6.0,
-            "approach_m": 40.0,
-            "wedge_m": -1.0,
-            "default_branch": "Left"
-          }
-        }
-      }
-    },
-    "~varnholt@^|husk_pens@bridge_ward": {
-      "scene": "husk_pens.json",
-      "next": {
         "Go": {
-          "to": "varnholt@^",
-          "transition": {
-            "blend_m": 6.0
-          }
-        }
-      }
-    },
-    "~cathedral@varnholt|husk_pens@bridge_ward": {
-      "scene": "husk_pens.json",
-      "next": {
-        "Go": {
-          "to": "cathedral@varnholt",
-          "transition": {
-            "blend_m": 6.0
-          }
+          "to": "bridge_ward@husk_pens",
+          "transition": {}
         }
       }
     },
     "husk_pens@bridge_ward": {
       "scene": "husk_pens.json",
       "next": {
-        "Fork": {
-          "left": "~varnholt@^|husk_pens@bridge_ward",
-          "right": "~cathedral@varnholt|husk_pens@bridge_ward",
-          "fork": {
-            "steer_m": 6.0,
-            "approach_m": 40.0,
-            "wedge_m": -1.0,
-            "default_branch": "Left"
-          }
+        "Go": {
+          "to": "varnholt@husk_pens",
+          "transition": {}
         }
       }
     },
@@ -2261,28 +1942,12 @@
       "next": {
         "Go": {
           "to": "blackwood@cathedral",
-          "transition": {}
-        }
-      }
-    },
-    "~husk_pens@varnholt|cathedral@blackwood": {
-      "scene": "cathedral.json",
-      "next": {
-        "Go": {
-          "to": "husk_pens@varnholt",
           "transition": {
-            "blend_m": 6.0
-          }
-        }
-      }
-    },
-    "~varnholt@^|cathedral@blackwood": {
-      "scene": "cathedral.json",
-      "next": {
-        "Go": {
-          "to": "varnholt@^",
-          "transition": {
-            "blend_m": 6.0
+            "threshold": "Doorway",
+            "door": [
+              2.6,
+              5.5
+            ]
           }
         }
       }
@@ -2290,9 +1955,46 @@
     "cathedral@blackwood": {
       "scene": "cathedral.json",
       "next": {
+        "Go": {
+          "to": "varnholt@cathedral",
+          "transition": {
+            "threshold": "Doorway",
+            "door": [
+              2.6,
+              5.5
+            ]
+          }
+        }
+      }
+    },
+    "~angel_ruins@blackwood": {
+      "scene": "blackwood.json",
+      "next": {
+        "Go": {
+          "to": "angel_ruins@blackwood",
+          "transition": {
+            "blend_m": 6.0
+          }
+        }
+      }
+    },
+    "~void_wood@blackwood": {
+      "scene": "blackwood.json",
+      "next": {
+        "Go": {
+          "to": "void_wood@blackwood",
+          "transition": {
+            "blend_m": 6.0
+          }
+        }
+      }
+    },
+    "blackwood@cathedral": {
+      "scene": "blackwood.json",
+      "next": {
         "Fork": {
-          "left": "~husk_pens@varnholt|cathedral@blackwood",
-          "right": "~varnholt@^|cathedral@blackwood",
+          "left": "~angel_ruins@blackwood",
+          "right": "~void_wood@blackwood",
           "fork": {
             "steer_m": 6.0,
             "approach_m": 40.0,
@@ -2302,21 +2004,59 @@
         }
       }
     },
-    "blackwood@cathedral": {
+    "~cathedral@blackwood": {
       "scene": "blackwood.json",
       "next": {
         "Go": {
-          "to": "angel_ruins@blackwood",
-          "transition": {}
+          "to": "blackwood@^",
+          "transition": {
+            "blend_m": 6.0
+          }
         }
       }
     },
     "blackwood@angel_ruins": {
       "scene": "blackwood.json",
       "next": {
+        "Fork": {
+          "left": "~void_wood@blackwood",
+          "right": "~cathedral@blackwood",
+          "fork": {
+            "steer_m": 6.0,
+            "approach_m": 20.0,
+            "wedge_m": -1.0,
+            "default_branch": "Left"
+          }
+        }
+      }
+    },
+    "blackwood@void_wood": {
+      "scene": "blackwood.json",
+      "next": {
+        "Fork": {
+          "left": "~cathedral@blackwood",
+          "right": "~angel_ruins@blackwood",
+          "fork": {
+            "steer_m": 6.0,
+            "approach_m": 20.0,
+            "wedge_m": -1.0,
+            "default_branch": "Left"
+          }
+        }
+      }
+    },
+    "blackwood@^": {
+      "scene": "blackwood.json",
+      "next": {
         "Go": {
           "to": "cathedral@blackwood",
-          "transition": {}
+          "transition": {
+            "threshold": "Doorway",
+            "door": [
+              2.6,
+              5.5
+            ]
+          }
         }
       }
     },
@@ -2361,7 +2101,7 @@
       "scene": "angel_ruins.json",
       "next": {
         "Go": {
-          "to": "blackwood@angel_ruins",
+          "to": "angel_ruins@^",
           "transition": {
             "blend_m": 6.0
           }
@@ -2376,7 +2116,7 @@
           "right": "~blackwood@angel_ruins",
           "fork": {
             "steer_m": 6.0,
-            "approach_m": 40.0,
+            "approach_m": 20.0,
             "wedge_m": -1.0,
             "default_branch": "Left"
           }
@@ -2391,7 +2131,7 @@
           "right": "~whisper_altars@angel_ruins",
           "fork": {
             "steer_m": 6.0,
-            "approach_m": 40.0,
+            "approach_m": 20.0,
             "wedge_m": -1.0,
             "default_branch": "Left"
           }
@@ -2407,77 +2147,34 @@
         }
       }
     },
-    "~violet_road@magistrate|whisper_altars@angel_ruins": {
-      "scene": "whisper_altars.json",
-      "next": {
-        "Go": {
-          "to": "violet_road@magistrate",
-          "transition": {
-            "blend_m": 6.0
-          }
-        }
-      }
+    "void_wood@blackwood": {
+      "scene": "void_wood.json",
+      "next": "End"
     },
-    "~magistrate@^|whisper_altars@angel_ruins": {
-      "scene": "whisper_altars.json",
+    "void_wood@^": {
+      "scene": "void_wood.json",
       "next": {
         "Go": {
-          "to": "magistrate@^",
-          "transition": {
-            "blend_m": 6.0
-          }
+          "to": "blackwood@void_wood",
+          "transition": {}
         }
       }
     },
     "whisper_altars@angel_ruins": {
       "scene": "whisper_altars.json",
       "next": {
-        "Fork": {
-          "left": "~violet_road@magistrate|whisper_altars@angel_ruins",
-          "right": "~magistrate@^|whisper_altars@angel_ruins",
-          "fork": {
-            "steer_m": 6.0,
-            "approach_m": 40.0,
-            "wedge_m": -1.0,
-            "default_branch": "Left"
-          }
-        }
-      }
-    },
-    "~statue_court@angel_ruins|whisper_altars@magistrate": {
-      "scene": "whisper_altars.json",
-      "next": {
         "Go": {
-          "to": "statue_court@angel_ruins",
-          "transition": {
-            "blend_m": 6.0
-          }
-        }
-      }
-    },
-    "~angel_ruins@^|whisper_altars@magistrate": {
-      "scene": "whisper_altars.json",
-      "next": {
-        "Go": {
-          "to": "angel_ruins@^",
-          "transition": {
-            "blend_m": 6.0
-          }
+          "to": "magistrate@whisper_altars",
+          "transition": {}
         }
       }
     },
     "whisper_altars@magistrate": {
       "scene": "whisper_altars.json",
       "next": {
-        "Fork": {
-          "left": "~statue_court@angel_ruins|whisper_altars@magistrate",
-          "right": "~angel_ruins@^|whisper_altars@magistrate",
-          "fork": {
-            "steer_m": 6.0,
-            "approach_m": 40.0,
-            "wedge_m": -1.0,
-            "default_branch": "Left"
-          }
+        "Go": {
+          "to": "angel_ruins@whisper_altars",
+          "transition": {}
         }
       }
     },
@@ -2485,39 +2182,153 @@
       "scene": "statue_court.json",
       "next": {
         "Go": {
-          "to": "spire_stair@statue_court",
+          "to": "starlit_wastes@statue_court",
           "transition": {}
         }
       }
     },
-    "~angel_ruins@^|statue_court@spire_stair": {
+    "statue_court@starlit_wastes": {
       "scene": "statue_court.json",
       "next": {
         "Go": {
-          "to": "angel_ruins@^",
+          "to": "angel_ruins@statue_court",
+          "transition": {}
+        }
+      }
+    },
+    "~spire_stair@starlit_wastes": {
+      "scene": "starlit_wastes.json",
+      "next": {
+        "Go": {
+          "to": "spire_stair@starlit_wastes",
           "transition": {
             "blend_m": 6.0
           }
         }
       }
     },
-    "~whisper_altars@angel_ruins|statue_court@spire_stair": {
-      "scene": "statue_court.json",
+    "~sky_peaks@starlit_wastes": {
+      "scene": "starlit_wastes.json",
       "next": {
         "Go": {
-          "to": "whisper_altars@angel_ruins",
+          "to": "sky_peaks@starlit_wastes",
           "transition": {
             "blend_m": 6.0
           }
         }
       }
     },
-    "statue_court@spire_stair": {
-      "scene": "statue_court.json",
+    "starlit_wastes@statue_court": {
+      "scene": "starlit_wastes.json",
       "next": {
         "Fork": {
-          "left": "~angel_ruins@^|statue_court@spire_stair",
-          "right": "~whisper_altars@angel_ruins|statue_court@spire_stair",
+          "left": "~spire_stair@starlit_wastes",
+          "right": "~sky_peaks@starlit_wastes",
+          "fork": {
+            "steer_m": 6.0,
+            "approach_m": 40.0,
+            "wedge_m": -1.0,
+            "default_branch": "Right"
+          }
+        }
+      }
+    },
+    "~statue_court@starlit_wastes": {
+      "scene": "starlit_wastes.json",
+      "next": {
+        "Go": {
+          "to": "starlit_wastes@^",
+          "transition": {
+            "blend_m": 6.0
+          }
+        }
+      }
+    },
+    "starlit_wastes@sky_peaks": {
+      "scene": "starlit_wastes.json",
+      "next": {
+        "Fork": {
+          "left": "~spire_stair@starlit_wastes",
+          "right": "~statue_court@starlit_wastes",
+          "fork": {
+            "steer_m": 6.0,
+            "approach_m": 20.0,
+            "wedge_m": -1.0,
+            "default_branch": "Right"
+          }
+        }
+      }
+    },
+    "starlit_wastes@spire_stair": {
+      "scene": "starlit_wastes.json",
+      "next": {
+        "Fork": {
+          "left": "~sky_peaks@starlit_wastes",
+          "right": "~statue_court@starlit_wastes",
+          "fork": {
+            "steer_m": 6.0,
+            "approach_m": 20.0,
+            "wedge_m": -1.0,
+            "default_branch": "Left"
+          }
+        }
+      }
+    },
+    "starlit_wastes@^": {
+      "scene": "starlit_wastes.json",
+      "next": {
+        "Go": {
+          "to": "statue_court@starlit_wastes",
+          "transition": {}
+        }
+      }
+    },
+    "sky_peaks@starlit_wastes": {
+      "scene": "sky_peaks.json",
+      "next": {
+        "Go": {
+          "to": "spire_stair@sky_peaks",
+          "transition": {}
+        }
+      }
+    },
+    "sky_peaks@spire_stair": {
+      "scene": "sky_peaks.json",
+      "next": {
+        "Go": {
+          "to": "starlit_wastes@sky_peaks",
+          "transition": {}
+        }
+      }
+    },
+    "~starlit_wastes@spire_stair": {
+      "scene": "spire_stair.json",
+      "next": {
+        "Go": {
+          "to": "starlit_wastes@spire_stair",
+          "transition": {
+            "blend_m": 6.0
+          }
+        }
+      }
+    },
+    "~sealed_slab@spire_stair": {
+      "scene": "spire_stair.json",
+      "next": {
+        "Go": {
+          "to": "sealed_slab@spire_stair",
+          "transition": {
+            "blend_m": 6.0
+          }
+        }
+      }
+    },
+    "spire_stair@sky_peaks": {
+      "scene": "spire_stair.json",
+      "next": {
+        "Fork": {
+          "left": "~starlit_wastes@spire_stair",
+          "right": "~sealed_slab@spire_stair",
           "fork": {
             "steer_m": 6.0,
             "approach_m": 40.0,
@@ -2527,34 +2338,135 @@
         }
       }
     },
-    "spire_stair@statue_court": {
+    "~sky_peaks@spire_stair": {
       "scene": "spire_stair.json",
       "next": {
         "Go": {
-          "to": "sealed_slab@spire_stair",
-          "transition": {}
+          "to": "spire_stair@^",
+          "transition": {
+            "blend_m": 6.0
+          }
+        }
+      }
+    },
+    "spire_stair@starlit_wastes": {
+      "scene": "spire_stair.json",
+      "next": {
+        "Fork": {
+          "left": "~sealed_slab@spire_stair",
+          "right": "~sky_peaks@spire_stair",
+          "fork": {
+            "steer_m": 6.0,
+            "approach_m": 20.0,
+            "wedge_m": -1.0,
+            "default_branch": "Right"
+          }
         }
       }
     },
     "spire_stair@sealed_slab": {
       "scene": "spire_stair.json",
       "next": {
+        "Fork": {
+          "left": "~sky_peaks@spire_stair",
+          "right": "~starlit_wastes@spire_stair",
+          "fork": {
+            "steer_m": 6.0,
+            "approach_m": 20.0,
+            "wedge_m": -1.0,
+            "default_branch": "Left"
+          }
+        }
+      }
+    },
+    "spire_stair@^": {
+      "scene": "spire_stair.json",
+      "next": {
         "Go": {
-          "to": "statue_court@spire_stair",
+          "to": "sky_peaks@spire_stair",
           "transition": {}
+        }
+      }
+    },
+    "~spire_summit@sealed_slab": {
+      "scene": "sealed_slab.json",
+      "next": {
+        "Go": {
+          "to": "spire_summit@sealed_slab",
+          "transition": {
+            "blend_m": 6.0
+          }
+        }
+      }
+    },
+    "~radiant_gate@sealed_slab": {
+      "scene": "sealed_slab.json",
+      "next": {
+        "Go": {
+          "to": "radiant_gate@sealed_slab",
+          "transition": {
+            "blend_m": 6.0
+          }
         }
       }
     },
     "sealed_slab@spire_stair": {
       "scene": "sealed_slab.json",
       "next": {
+        "Fork": {
+          "left": "~spire_summit@sealed_slab",
+          "right": "~radiant_gate@sealed_slab",
+          "fork": {
+            "steer_m": 6.0,
+            "approach_m": 40.0,
+            "wedge_m": -1.0,
+            "default_branch": "Left"
+          }
+        }
+      }
+    },
+    "~spire_stair@sealed_slab": {
+      "scene": "sealed_slab.json",
+      "next": {
         "Go": {
-          "to": "spire_summit@sealed_slab",
-          "transition": {}
+          "to": "sealed_slab@^",
+          "transition": {
+            "blend_m": 6.0
+          }
         }
       }
     },
     "sealed_slab@spire_summit": {
+      "scene": "sealed_slab.json",
+      "next": {
+        "Fork": {
+          "left": "~spire_stair@sealed_slab",
+          "right": "~radiant_gate@sealed_slab",
+          "fork": {
+            "steer_m": 6.0,
+            "approach_m": 20.0,
+            "wedge_m": -1.0,
+            "default_branch": "Left"
+          }
+        }
+      }
+    },
+    "sealed_slab@radiant_gate": {
+      "scene": "sealed_slab.json",
+      "next": {
+        "Fork": {
+          "left": "~spire_summit@sealed_slab",
+          "right": "~spire_stair@sealed_slab",
+          "fork": {
+            "steer_m": 6.0,
+            "approach_m": 20.0,
+            "wedge_m": -1.0,
+            "default_branch": "Left"
+          }
+        }
+      }
+    },
+    "sealed_slab@^": {
       "scene": "sealed_slab.json",
       "next": {
         "Go": {
@@ -2567,13 +2479,340 @@
       "scene": "spire_summit.json",
       "next": {
         "Go": {
+          "to": "crimson_stair@spire_summit",
+          "transition": {}
+        }
+      }
+    },
+    "spire_summit@crimson_stair": {
+      "scene": "spire_summit.json",
+      "next": {
+        "Go": {
           "to": "sealed_slab@spire_summit",
           "transition": {}
         }
       }
     },
+    "crimson_stair@spire_summit": {
+      "scene": "crimson_stair.json",
+      "next": {
+        "Go": {
+          "to": "radiant_gate@crimson_stair",
+          "transition": {}
+        }
+      }
+    },
+    "crimson_stair@radiant_gate": {
+      "scene": "crimson_stair.json",
+      "next": {
+        "Go": {
+          "to": "spire_summit@crimson_stair",
+          "transition": {}
+        }
+      }
+    },
+    "~sealed_slab@radiant_gate": {
+      "scene": "radiant_gate.json",
+      "next": {
+        "Go": {
+          "to": "sealed_slab@radiant_gate",
+          "transition": {
+            "blend_m": 6.0
+          }
+        }
+      }
+    },
+    "~penitent_cells@radiant_gate": {
+      "scene": "radiant_gate.json",
+      "next": {
+        "Go": {
+          "to": "penitent_cells@radiant_gate",
+          "transition": {
+            "blend_m": 6.0
+          }
+        }
+      }
+    },
+    "radiant_gate@crimson_stair": {
+      "scene": "radiant_gate.json",
+      "next": {
+        "Fork": {
+          "left": "~sealed_slab@radiant_gate",
+          "right": "~penitent_cells@radiant_gate",
+          "fork": {
+            "steer_m": 6.0,
+            "approach_m": 40.0,
+            "wedge_m": -1.0,
+            "default_branch": "Right"
+          }
+        }
+      }
+    },
+    "~crimson_stair@radiant_gate": {
+      "scene": "radiant_gate.json",
+      "next": {
+        "Go": {
+          "to": "radiant_gate@^",
+          "transition": {
+            "blend_m": 6.0
+          }
+        }
+      }
+    },
+    "radiant_gate@sealed_slab": {
+      "scene": "radiant_gate.json",
+      "next": {
+        "Fork": {
+          "left": "~penitent_cells@radiant_gate",
+          "right": "~crimson_stair@radiant_gate",
+          "fork": {
+            "steer_m": 6.0,
+            "approach_m": 20.0,
+            "wedge_m": -1.0,
+            "default_branch": "Left"
+          }
+        }
+      }
+    },
+    "radiant_gate@penitent_cells": {
+      "scene": "radiant_gate.json",
+      "next": {
+        "Fork": {
+          "left": "~crimson_stair@radiant_gate",
+          "right": "~sealed_slab@radiant_gate",
+          "fork": {
+            "steer_m": 6.0,
+            "approach_m": 20.0,
+            "wedge_m": -1.0,
+            "default_branch": "Left"
+          }
+        }
+      }
+    },
+    "radiant_gate@^": {
+      "scene": "radiant_gate.json",
+      "next": {
+        "Go": {
+          "to": "crimson_stair@radiant_gate",
+          "transition": {}
+        }
+      }
+    },
+    "~unit_foundry@penitent_cells": {
+      "scene": "penitent_cells.json",
+      "next": {
+        "Go": {
+          "to": "unit_foundry@penitent_cells",
+          "transition": {
+            "blend_m": 6.0
+          }
+        }
+      }
+    },
+    "~eye_chamber@penitent_cells": {
+      "scene": "penitent_cells.json",
+      "next": {
+        "Go": {
+          "to": "eye_chamber@penitent_cells",
+          "transition": {
+            "blend_m": 6.0
+          }
+        }
+      }
+    },
+    "penitent_cells@radiant_gate": {
+      "scene": "penitent_cells.json",
+      "next": {
+        "Fork": {
+          "left": "~unit_foundry@penitent_cells",
+          "right": "~eye_chamber@penitent_cells",
+          "fork": {
+            "steer_m": 6.0,
+            "approach_m": 40.0,
+            "wedge_m": -1.0,
+            "default_branch": "Left"
+          }
+        }
+      }
+    },
+    "~radiant_gate@penitent_cells": {
+      "scene": "penitent_cells.json",
+      "next": {
+        "Go": {
+          "to": "penitent_cells@^",
+          "transition": {
+            "blend_m": 6.0
+          }
+        }
+      }
+    },
+    "penitent_cells@unit_foundry": {
+      "scene": "penitent_cells.json",
+      "next": {
+        "Fork": {
+          "left": "~eye_chamber@penitent_cells",
+          "right": "~radiant_gate@penitent_cells",
+          "fork": {
+            "steer_m": 6.0,
+            "approach_m": 20.0,
+            "wedge_m": -1.0,
+            "default_branch": "Left"
+          }
+        }
+      }
+    },
+    "penitent_cells@eye_chamber": {
+      "scene": "penitent_cells.json",
+      "next": {
+        "Fork": {
+          "left": "~radiant_gate@penitent_cells",
+          "right": "~unit_foundry@penitent_cells",
+          "fork": {
+            "steer_m": 6.0,
+            "approach_m": 20.0,
+            "wedge_m": -1.0,
+            "default_branch": "Left"
+          }
+        }
+      }
+    },
+    "penitent_cells@^": {
+      "scene": "penitent_cells.json",
+      "next": {
+        "Go": {
+          "to": "radiant_gate@penitent_cells",
+          "transition": {}
+        }
+      }
+    },
+    "unit_foundry@penitent_cells": {
+      "scene": "unit_foundry.json",
+      "next": "End"
+    },
+    "unit_foundry@^": {
+      "scene": "unit_foundry.json",
+      "next": {
+        "Go": {
+          "to": "penitent_cells@unit_foundry",
+          "transition": {}
+        }
+      }
+    },
+    "eye_chamber@penitent_cells": {
+      "scene": "eye_chamber.json",
+      "next": "End"
+    },
+    "eye_chamber@^": {
+      "scene": "eye_chamber.json",
+      "next": {
+        "Go": {
+          "to": "penitent_cells@eye_chamber",
+          "transition": {}
+        }
+      }
+    },
+    "guild_office@guild_hall": {
+      "scene": "guild_office.json",
+      "next": "End"
+    },
+    "guild_office@^": {
+      "scene": "guild_office.json",
+      "next": {
+        "Go": {
+          "to": "guild_hall@guild_office",
+          "transition": {
+            "threshold": "Doorway",
+            "door": [
+              0.65,
+              2.4
+            ]
+          }
+        }
+      }
+    },
+    "east_gate@warrens_lane": {
+      "scene": "east_gate.json",
+      "next": {
+        "Go": {
+          "to": "black_water@east_gate",
+          "transition": {
+            "blend_m": 5.0
+          }
+        }
+      }
+    },
+    "east_gate@black_water": {
+      "scene": "east_gate.json",
+      "next": {
+        "Go": {
+          "to": "warrens_lane@east_gate",
+          "transition": {
+            "threshold": "Gate",
+            "marker": "Gate"
+          }
+        }
+      }
+    },
+    "black_water@east_gate": {
+      "scene": "black_water.json",
+      "next": "End"
+    },
+    "black_water@^": {
+      "scene": "black_water.json",
+      "next": {
+        "Go": {
+          "to": "east_gate@black_water",
+          "transition": {
+            "blend_m": 5.0
+          }
+        }
+      }
+    },
+    "drowned_fingers@vale_edge": {
+      "scene": "drowned_fingers.json",
+      "next": {
+        "Go": {
+          "to": "drowned_mill@drowned_fingers",
+          "transition": {}
+        }
+      }
+    },
+    "drowned_fingers@drowned_mill": {
+      "scene": "drowned_fingers.json",
+      "next": {
+        "Go": {
+          "to": "vale_edge@drowned_fingers",
+          "transition": {
+            "blend_m": 5.0
+          }
+        }
+      }
+    },
+    "fog_hollow@bandit_hollows": {
+      "scene": "fog_hollow.json",
+      "next": "End"
+    },
+    "fog_hollow@^": {
+      "scene": "fog_hollow.json",
+      "next": {
+        "Go": {
+          "to": "bandit_hollows@fog_hollow",
+          "transition": {
+            "blend_m": 5.0
+          }
+        }
+      }
+    },
     "hollow": {
       "scene": "side_hollow.json",
+      "next": "End"
+    },
+    "bandit_cave": {
+      "scene": "bandit_cave.json",
+      "next": "End"
+    },
+    "broken_spire": {
+      "scene": "broken_spire.json",
       "next": "End"
     },
     "sanctum": {

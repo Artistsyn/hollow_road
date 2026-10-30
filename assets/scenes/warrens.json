@@ -137,7 +137,7 @@
       ]
     },
     "fork": {
-      "enabled": false,
+      "enabled": true,
       "spacing": 24.0,
       "offset": 14.0,
       "side": "Alternate",
@@ -866,7 +866,8 @@
       "blur": 0.008,
       "band": 0.62,
       "band_width": 0.16
-    }
+    },
+    "keep_dark": false
   },
   "style": {
     "pixel_size": 1,
