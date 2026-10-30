@@ -1,7 +1,7 @@
 {
   "version": 1,
   "name": "The Shattered Realms",
-  "start": "road@warrens_lane",
+  "start": "warrens@warrens_lane",
   "stops": {
     "~warrens_lane@warrens": {
       "scene": "warrens.json",

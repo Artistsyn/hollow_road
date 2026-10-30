@@ -212,6 +212,8 @@ pub fn stops(&self) -> Vec<&'static str> {
         out
     }
     pub fn hero(&self) -> bool { self.shot().is_some_and(|s| s.hero) }
+    /// The stop the shot under way is set on: its own, else the last one a shot before it cut to.
+    pub fn road(&self) -> Option<&'static str> { self.shots[..(self.i + 1).min(self.shots.len())].iter().rev().find_map(|s| s.stop).map(|(stop, _)| stop) }
     /// The music the shots so far asked for, if any did (None: leave it as it is).
     pub fn tune(&self) -> Option<Option<Tune>> { self.shots[..=self.i.min(self.shots.len().saturating_sub(1))].iter().rev().find_map(|s| s.tune) }
 

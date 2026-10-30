@@ -435,8 +435,9 @@ pub const EDGES: &[Edge] = &[
     road("penitent_cells", "eye_chamber"),
 ];
 
-/// Where the pilgrimage begins: the road out of the Warrens, walked away from them.
-pub const START: &str = "road@warrens_lane";
+/// Where the pilgrimage begins: the Ashen Warrens, at their shrine, walked in toward the guild
+/// hall, where Gruk's board holds the bounty that starts it (`docs/story.md` §2.0).
+pub const START: &str = "warrens@warrens_lane";
 /// Where the Eye is made whole, and taken (`finale`).
 pub const SUMMIT: &str = "spire_summit";
 /// The last place: its boss beaten and the Eye chosen for, the pilgrimage is done.

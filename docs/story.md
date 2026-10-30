@@ -831,10 +831,10 @@ atlas and each line's gate; then every side quest was traced for cause and effec
 
 | Off hand | Parry, live ticks | Perfect block, ticks |
 |---|---|---|
-| Buckler | 13 | 11 |
-| Duelist's Parma | 19 | 8 |
-| Kite Shield, Warden's Bulwark | 11 (slower to raise) | 14 |
-| No shield (blade deflect) | 9 | — |
+| Buckler | 12 | 9 |
+| Duelist's Parma | 17 | 8 |
+| Kite Shield, Warden's Bulwark | 10 (slower to raise) | 11 |
+| No shield (blade deflect) | 8 | — |
 
 **Tuning yardstick.** `side::tests::boss_bots` adds a Human bot to the frame-perfect Reader. It sees a windup 15 ticks (250 ms) late, times its answers up to 3 ticks off, and carries the flasks expected at the tier (`Glass::expected_at`). It still carries no rings, extra levels, boss weapons, arts or allies, so it understates a real player late on.
 

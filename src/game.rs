@@ -2104,7 +2104,9 @@ impl Pilgrimage {
             Mode::Out(Next::Detour(side)) => peek_walk((hx, hd), side, 1.0 + 0.4 * self.fade.0),
             _ => (hx, hd),
         };
-        let shown = !matches!(self.mode, Mode::Scene(_)) || self.scene.as_ref().is_some_and(Cutscene::hero);
+        // In a cutscene, only once the road drawn is the shot's: not over the place cut from.
+        let shown = !matches!(self.mode, Mode::Scene(_))
+            || self.scene.as_ref().is_some_and(|cs| cs.hero() && cs.road().is_none_or(|s| pf.state().stop.as_deref() == Some(s)));
         let mut pulse_source = None;
         let hero = match self.hero_sheet.as_ref().and_then(|s| Some((s, self.hero_frame(s, walked)?))) {
             _ if !shown => None,
@@ -3200,6 +3202,8 @@ impl Pilgrimage {
     pub(crate) fn playing(&self) -> bool { self.mode == Mode::Play }
     /// Whether a cutscene is playing.
     pub(crate) fn in_scene(&self) -> bool { self.scene.is_some() }
+    /// The stop the cutscene playing is set on, if one plays.
+    pub(crate) fn scene_road(&self) -> Option<&'static str> { self.scene.as_ref().and_then(Cutscene::road) }
     /// The cutscene playing: its name, shot and ticks into it.
     #[cfg(test)]
     pub(crate) fn scene_at(&self) -> Option<(&'static str, usize, u32)> { self.scene.as_ref().map(|s| (s.name, s.i, s.t)) }
@@ -4122,8 +4126,9 @@ impl QuartzPlugin for Pilgrimage {
         self.dead_for = if let Mode::Dying(t) = self.mode { t } else { 0 };
         // The world follows the road everywhere but the sanctum (it is not a place).
         let tutoring = self.prologue.is_some() || matches!(self.mode, Mode::Out(Next::Prologue) | Mode::Cut(After::Prologue));
-        // (Nor in a cutscene on its own: its cuts to other places are not the hero going there.)
-        if !self.at_rest() && !matches!(self.mode, Mode::Front(_) | Mode::Scene(_) | Mode::Out(Next::Opening(_))) && !tutoring {
+        // (Nor in a cutscene on its own: its cuts to other places are not the hero going there; nor
+        // fading out of one to set out, its last road still under the fade.)
+        if !self.at_rest() && !matches!(self.mode, Mode::Front(_) | Mode::Scene(_) | Mode::Out(Next::Opening(_) | Next::Start)) && !tutoring {
             let Some(pf) = c.get_plugin::<PathForgePlugin>() else { return };
             let st = pf.state();
             let (stop, within) = (st.stop.clone(), st.choose_within);
@@ -4146,7 +4151,7 @@ impl QuartzPlugin for Pilgrimage {
             }
         }
         // The wall the road ends at, walked into a dead end (the guild's board in its foot).
-        let end = self.world.end_wall().filter(|_| !self.at_rest() && !tutoring && !matches!(self.mode, Mode::Front(_) | Mode::Scene(_)));
+        let end = self.world.end_wall().filter(|_| !self.at_rest() && !tutoring && !matches!(self.mode, Mode::Front(_) | Mode::Scene(_) | Mode::Out(Next::Start)));
         if end != self.end_sent {
             let wall = self.end_barrier();
             if let Some(pf) = c.get_plugin_mut::<PathForgePlugin>() { pf.set_end(end.map(|at| (at, wall))); }

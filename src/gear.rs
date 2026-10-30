@@ -147,7 +147,7 @@ impl Ward {
     /// Ticks a guard raised fresh before a blow lands still blocks it perfectly: widest on the
     /// shields built to block, tightest on the parma, built to parry.
     pub fn perfect_ticks(self) -> u32 {
-        match self { Ward::Kite | Ward::Bulwark => 14, Ward::Buckler => 11, Ward::Parma => crate::fight::PERFECT_BLOCK }
+        match self { Ward::Kite | Ward::Bulwark => 11, Ward::Buckler => 9, Ward::Parma => crate::fight::PERFECT_BLOCK }
     }
 }
 
@@ -392,7 +392,7 @@ pub const ITEMS: &[Item] = &[
     weapon("Lancer's Shortspear", 4.0, Arms { base: 1.0, needs: [1, 3, 0], scales: [D, B, No], class: Class::Spear, art: "lancer_spear" }, "reaches past their blades", |_| {}),
     shield("Kite Shield", 6.0, Off { guard: Guard::Kite, art: "kite_shield" }, "blocks cost 35% less, half the chip; slower parries. A Warden's ward: blocks fill it; a perfect block bashes the foe flat, stamina back", |k| { k.guard *= 0.65; k.chip *= 0.5; k.ward = Some(Ward::Kite); }),
     shield("Warden's Bulwark", 7.0, Off { guard: Guard::Kite, art: "warden_bulwark" }, "blocks cost 30% less, half the chip, +20 poise. A Warden's ward: blocks fill it; a perfect block bursts it into the foe and all near it", |k| { k.ward = Some(Ward::Bulwark); k.guard *= 0.7; k.chip *= 0.5; k.poise += 20.0; }),
-    shield("Duelist's Parma", 1.0, Off { guard: Guard::Parma, art: "duelist_parma" }, "parry live 6 ticks longer. A Warden's ward: parries fill it most; the next riposte spends it, far harder and drinking", |k| { k.parry += 6; k.ward = Some(Ward::Parma); }),
+    shield("Duelist's Parma", 1.0, Off { guard: Guard::Parma, art: "duelist_parma" }, "parry live 5 ticks longer. A Warden's ward: parries fill it most; the next riposte spends it, far harder and drinking", |k| { k.parry += 5; k.ward = Some(Ward::Parma); }),
     item("Iron Helm", Slot::Head, 3.0, "-5% damage taken, +5 poise", |k| { k.taken *= 0.95; k.poise += 5.0; }),
     // The Order Agent's, from the chest behind it in the Bridge Ward.
     item("Order Agent's Beaked Mask", Slot::Head, 1.5, "the Order's gas does a third of its harm", |k| k.gas *= 0.33),

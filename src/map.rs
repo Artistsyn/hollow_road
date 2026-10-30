@@ -155,7 +155,7 @@ mod tests {
         let mut w = World::new(0.0);
         let blank = draw(&w);
         assert_eq!(label_at(&w).len(), 1);
-        w.seen.extend(["vale_edge", "vale", "warrens_lane", "warrens"]);
+        w.seen.extend(["vale_edge", "vale", "warrens_lane", "road"]);
         w.rested.push(crate::world::START.into());
         assert_eq!(label_at(&w).len(), 5);
         assert_ne!(draw(&w), blank);

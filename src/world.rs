@@ -1325,6 +1325,17 @@ fn intern(name: &str) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The Road to Hollowmere, walked out of Stilt Lane: the first place these tests walk.
+    const ROAD: &str = "road@warrens_lane";
+
+    /// A world begun on the Road to Hollowmere, the start before the Warrens were walked first.
+    fn on_road() -> World {
+        let mut w = World::new(0.0);
+        (w.at, w.checkpoint) = (ROAD.into(), ROAD.into());
+        w.seen = vec![atlas::node(ROAD)];
+        w
+    }
     use crate::fight::Ai;
     use Archetype::{Husk, Lancer, Wretch};
 
@@ -1409,7 +1420,7 @@ mod tests {
     /// back into the lane before it, not walked forever waiting on them.
     #[test]
     fn turning_back_at_the_start_leaves_the_roads_enemies_behind_and_walks_on() {
-        let mut w = World::new(0.0);
+        let mut w = on_road();
         let mut f = Fight::new(w.foes());
         let Some(Go::WarpAt(to, into)) = w.turn(&f, 2.0) else { panic!("no turn") };
         assert_eq!((to.as_str(), into), ("road@^", 62.0));
@@ -1428,21 +1439,21 @@ mod tests {
     /// end, told why, until it falls. Walked back, nothing is held.
     #[test]
     fn a_kept_way_holds_until_its_keeper_falls_and_the_rest_can_be_run_past() {
-        let mut w = World::new(0.0);
+        let mut w = on_road();
         let mut f = Fight::new(w.foes());
         assert_eq!(f.enemies[3].kind, Archetype::Shieldbearer);
         for e in &mut f.enemies[..3] { e.ai = Ai::Dead; }
-        let (go, notes) = w.tick(&mut f, 64.0, Some(START), None);
+        let (go, notes) = w.tick(&mut f, 64.0, Some(ROAD), None);
         assert_eq!((go, notes), (None, vec![Note::Held(Archetype::Shieldbearer, false)]));
         assert!(w.held_at_end(&f, 64.0) && !w.held_at_end(&f, 60.0));
-        assert_eq!(w.tick(&mut f, 64.5, Some(START), None), (None, vec![]), "told once");
+        assert_eq!(w.tick(&mut f, 64.5, Some(ROAD), None), (None, vec![]), "told once");
         // Its keeper down and the others standing: on.
-        let mut v = World::new(0.0);
+        let mut v = on_road();
         let mut g = Fight::new(v.foes());
         g.enemies[3].ai = Ai::Dead;
-        assert_eq!(v.tick(&mut g, 66.0, Some(START), None).0, Some(Go::Next));
+        assert_eq!(v.tick(&mut g, 66.0, Some(ROAD), None).0, Some(Go::Next));
         // Walked back the trunk, the same keeper holds nothing.
-        let mut b = World::new(0.0);
+        let mut b = on_road();
         let f = Fight::new(b.foes());
         b.turn(&f, 2.0);
         let mut f = f;
@@ -1454,7 +1465,7 @@ mod tests {
     /// the one run past is ahead now, still hurt and still after the hero.
     #[test]
     fn turning_round_keeps_the_enemies_where_they_stood() {
-        let mut w = World::new(0.0);
+        let mut w = on_road();
         let mut f = Fight::new(w.foes());
         let husk = &mut f.enemies[0];
         (husk.hp, husk.idle, husk.lane) = (10.0, None, 1);
@@ -1473,25 +1484,25 @@ mod tests {
 
     #[test]
     fn turned_round_past_a_fork_or_short_of_it_the_way_back_runs_to_that_junction() {
-        let mut w = World::new(0.0);
+        let mut w = on_road();
         let mut f = Fight::new(w.foes());
         fell(&mut f);
         // Past the road's end, short of its fork's junction: the road walked the other way, the
         // hero that far short of its start.
-        assert_eq!(w.tick(&mut f, 64.0, Some(START), None).0, Some(Go::Next));
+        assert_eq!(w.tick(&mut f, 64.0, Some(ROAD), None).0, Some(Go::Next));
         w.follow(70.0, Underway { travel: Some(6.0), handover: Some(40.0) });
         assert_eq!(w.turn(&f, 70.0), Some(Go::WarpAt("road@^".into(), -6.0)));
         w.tick(&mut f, 70.0, Some("road@^"), None);
         assert!((70.0 - w.base + 6.0).abs() < 1e-9, "6 m short of the road's start: {}", w.base);
         // Turned again at once: the fork's walk is 6 m along again.
-        assert_eq!(w.turn(&f, 70.0), Some(Go::WalkOn(START.into(), 6.0)));
+        assert_eq!(w.turn(&f, 70.0), Some(Go::WalkOn(ROAD.into(), 6.0)));
         w.follow(70.0, Underway { travel: Some(6.0), handover: Some(40.0) });
-        w.tick(&mut f, 70.0, Some(START), Some(20.0));
+        w.tick(&mut f, 70.0, Some(ROAD), Some(20.0));
         assert!(w.sent && (70.0 - w.base - 70.0).abs() < 1e-9, "6 m past its end, the fork under way: {}", 70.0 - w.base);
         // Leaning left and taken, then 5 m past the junction: the road's junction walked in from
         // the marsh edge, the junction 5 m ahead.
         f.hero.lane = -1;
-        assert_eq!(w.tick(&mut f, 92.0, Some(START), Some(0.5)).0, Some(Go::Choose(Branch::Left)));
+        assert_eq!(w.tick(&mut f, 92.0, Some(ROAD), Some(0.5)).0, Some(Go::Choose(Branch::Left)));
         w.follow(103.0, Underway { travel: Some(45.0), handover: Some(40.0) });
         assert!(w.can_turn(&f, 103.0), "TURN is offered past the junction");
         let back = atlas::stop("road", "vale_edge");
@@ -1592,7 +1603,7 @@ mod tests {
 
     #[test]
     fn the_rune_hums_toward_the_next_region_boss_and_only_when_one_way_is_nearer() {
-        let mut w = World::new(0.0);
+        let mut w = on_road();
         w.at = "hollowmere@gate".into();
         w.beaten = vec!["gate", "hollowmere", "east_gate"];
         assert_eq!(w.rune_hums(), None, "no rune, no hum");
@@ -1600,45 +1611,45 @@ mod tests {
         let hums = w.rune_hums().expect("one way is nearer the Blackridge chief");
         assert_eq!(w.branch(hums).map(|l| l.road.1), Some("pine_road"));
         // At the first fork both ways reach the Hollowmere gate as soon.
-        (w.at, w.beaten) = (START.into(), vec!["east_gate"]);
+        (w.at, w.beaten) = (ROAD.into(), vec!["east_gate"]);
         assert_eq!(w.rune_hums(), None);
         assert_eq!(atlas::Place::steps("road", "vale_edge", |p| p.id == "gate"), Some(2));
     }
 
     #[test]
     fn a_cleared_place_walks_on_and_a_fork_goes_the_way_the_hero_stands() {
-        let mut w = World::new(0.0);
+        let mut w = on_road();
         let mut f = Fight::new(w.foes());
         assert_eq!(f.enemies.len(), 4);
         // Not while an enemy stands ahead (no walk passes one), nor before the place is walked.
         let last = f.enemies[3].s;
         f.enemies[3].s = 75.0 + HERO_D as f64;
-        assert_eq!(w.tick(&mut f, 70.0, Some(START), None).0, None);
+        assert_eq!(w.tick(&mut f, 70.0, Some(ROAD), None).0, None);
         f.enemies[3].s = last;
         fell(&mut f);
-        assert_eq!(w.tick(&mut f, 30.0, Some(START), None).0, None);
-        assert_eq!(w.tick(&mut f, 64.0, Some(START), None).0, Some(Go::Next));
-        assert_eq!(w.tick(&mut f, 65.0, Some(START), None).0, None, "sent once");
+        assert_eq!(w.tick(&mut f, 30.0, Some(ROAD), None).0, None);
+        assert_eq!(w.tick(&mut f, 64.0, Some(ROAD), None).0, Some(Go::Next));
+        assert_eq!(w.tick(&mut f, 65.0, Some(ROAD), None).0, None, "sent once");
         // The fork: nothing chosen in the middle lane, and at the last moment the walk waits.
-        let (go, notes) = w.tick(&mut f, 66.0, Some(START), Some(12.0));
+        let (go, notes) = w.tick(&mut f, 66.0, Some(ROAD), Some(12.0));
         assert_eq!((go, notes), (None, vec![Note::Fork("The Marsh Edge", "The Chapel Edge")]));
         assert!(w.signpost.is_some_and(|s| s > 66.0 + 12.0 + STEER_M as f64));
         assert!(!w.holds_at_fork(Some(12.0), 0) && w.holds_at_fork(Some(1.0), 0));
         // Leaning right is not yet a choice, and leaning left again changes it.
         f.hero.lane = 1;
-        assert_eq!(w.tick(&mut f, 67.0, Some(START), Some(11.0)), (None, vec![Note::Lean(Branch::Right, "The Chapel Edge")]));
+        assert_eq!(w.tick(&mut f, 67.0, Some(ROAD), Some(11.0)), (None, vec![Note::Lean(Branch::Right, "The Chapel Edge")]));
         f.hero.lane = -1;
-        assert_eq!(w.tick(&mut f, 70.0, Some(START), Some(8.0)).1, vec![Note::Lean(Branch::Left, "The Marsh Edge")]);
+        assert_eq!(w.tick(&mut f, 70.0, Some(ROAD), Some(8.0)).1, vec![Note::Lean(Branch::Left, "The Marsh Edge")]);
         f.hero.lane = 1;
-        w.tick(&mut f, 74.0, Some(START), Some(4.0));
+        w.tick(&mut f, 74.0, Some(ROAD), Some(4.0));
         assert!(!w.holds_at_fork(Some(0.5), 1), "a side is held: walk on");
         // At the last moment the lane held is the branch, and the hero steps back to the middle.
-        assert_eq!(w.tick(&mut f, 77.5, Some(START), Some(0.5)).0, Some(Go::Choose(Branch::Right)));
-        assert_eq!((f.hero.lane, w.tick(&mut f, 77.6, Some(START), Some(0.4)).0), (0, None), "once");
+        assert_eq!(w.tick(&mut f, 77.5, Some(ROAD), Some(0.5)).0, Some(Go::Choose(Branch::Right)));
+        assert_eq!((f.hero.lane, w.tick(&mut f, 77.6, Some(ROAD), Some(0.4)).0), (0, None), "once");
         // Past the junction, the branch's lane walks on into where it leads, once.
         assert_eq!(w.tick(&mut f, 80.0, Some("~chapel_edge@road"), None).0, Some(Go::Next));
         assert_eq!(w.tick(&mut f, 81.0, Some("~chapel_edge@road"), None), (None, vec![]));
-        assert_eq!(w.at, START, "a lane is not a place");
+        assert_eq!(w.at, ROAD, "a lane is not a place");
         // Arriving: the chapel edge's enemies, placed from there.
         let (_, notes) = w.tick(&mut f, 90.0, Some("chapel_edge@road"), None);
         assert_eq!(notes, vec![Note::Arrived("The Chapel Edge")]);
@@ -1668,7 +1679,7 @@ mod tests {
 
     #[test]
     fn death_wakes_at_the_last_shrine_and_leaves_the_souls_where_the_hero_fell() {
-        let mut w = World::new(0.0);
+        let mut w = on_road();
         let mut f = Fight::new(w.foes());
         let found = w.felled([Husk, Lancer]);
         assert_eq!(found, vec![Note::Found("Husk Cleaver"), Note::Found("Lancer's Shortspear")], "the first of each kind leaves its first piece");
@@ -1677,11 +1688,11 @@ mod tests {
         w.tick(&mut f, 100.0, Some("vale@vale_edge"), None);
         f.hero.hp = 0.0;
         f.hero.dead = true;
-        assert_eq!(w.died(120.0), Go::Warp(START.into()));
+        assert_eq!(w.died(120.0), Go::Warp(ROAD.into()));
         assert_eq!((w.souls, w.stain.clone()), (0, Some(Stain { stop: "vale".into(), at: 20.0, souls: 70 })));
         // Nothing happens until the walk shows the shrine's stop; then the road is full again.
         assert_eq!(w.tick(&mut f, 121.0, Some("vale@vale_edge"), None), (None, vec![]));
-        let (_, notes) = w.tick(&mut f, 122.0, Some(START), None);
+        let (_, notes) = w.tick(&mut f, 122.0, Some(ROAD), None);
         assert_eq!(notes, vec![Note::Arrived("The Road to Hollowmere"), Note::ShrineFound]);
         assert!(!f.hero.dead && f.hero.hp == f.hero.stats.max_hp() && f.enemies.len() == 4 && f.enemies.iter().all(|e| e.alive()));
         // Back in the vale, walking over the stain fetches them.
@@ -1693,12 +1704,12 @@ mod tests {
 
     #[test]
     fn waking_stands_the_hero_by_the_shrine_rested_at_whichever_way_it_was_walked() {
-        let mut w = World::new(0.0);
+        let mut w = on_road();
         let mut f = Fight::new(w.foes());
         // Walked in its own way, the shrine is where the walk comes in.
         w.rest(&mut f);
-        assert_eq!(w.leave_rest(), Go::Warp(START.into()));
-        w.tick(&mut f, 10.0, Some(START), None);
+        assert_eq!(w.leave_rest(), Go::Warp(ROAD.into()));
+        w.tick(&mut f, 10.0, Some(ROAD), None);
         assert!(w.can_rest(&f, 10.0));
         // Turned round and rested walking back: the shrine is near the walk's far end, and the
         // hero wakes as far short of it, rising and after a fall alike.
@@ -1720,7 +1731,7 @@ mod tests {
 
     #[test]
     fn resting_makes_the_hero_whole_brings_the_enemies_back_and_souls_buy_levels() {
-        let mut w = World::new(0.0);
+        let mut w = on_road();
         let mut f = Fight::new(w.foes());
         assert!(w.can_rest(&f, 0.0), "the road starts at a shrine");
         assert!(!w.can_rest(&f, 10.0), "too far past it");
@@ -1729,7 +1740,7 @@ mod tests {
         f.hero.flasks = 0;
         w.rest(&mut f);
         assert_eq!((f.hero.hp, f.hero.flasks, f.enemies.iter().filter(|e| e.alive()).count()), (100.0, crate::fight::FLASKS, 4));
-        assert_eq!(w.travel_list(), vec![("The Road to Hollowmere", START.to_owned())]);
+        assert_eq!(w.travel_list(), vec![("The Road to Hollowmere", ROAD.to_owned())]);
         assert_eq!(w.rise(&mut f, 0), None, "no souls");
         w.souls = 145;
         assert_eq!(w.rise(&mut f, 0), Some(Note::Rose(1)));
@@ -1741,7 +1752,7 @@ mod tests {
 
     #[test]
     fn the_dead_stay_dead_walking_back_until_a_rest() {
-        let mut w = World::new(0.0);
+        let mut w = on_road();
         let mut f = Fight::new(w.foes());
         f.enemies[0].ai = Ai::Dead;
         // Turn round 20 m in: the walk goes back out the way it came, from where the hero stood.

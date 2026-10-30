@@ -352,9 +352,9 @@ impl Move {
         }
         match (self, off) {
             // No shield to flick: the blade turns the blow, in a tighter window.
-            (Move::Parry, None) => return s((7, 9, 26), 0.0, None, 0.0, 0.0, 0.0),
+            (Move::Parry, None) => return s((7, 8, 26), 0.0, None, 0.0, 0.0, 0.0),
             // A tall shield swings round slower, and its window is a little tighter.
-            (Move::Parry, Some(Guard::Kite)) => return s((8, 11, 25), 0.0, None, 0.0, 0.0, 0.0),
+            (Move::Parry, Some(Guard::Kite)) => return s((8, 10, 25), 0.0, None, 0.0, 0.0, 0.0),
             _ => {}
         }
         match self {
@@ -364,8 +364,8 @@ impl Move {
             Move::Step(_) | Move::Tumble => s((3, 18, 13), 12.0, Some((1, 21)), 0.0, 0.0, 0.0),
             Move::Lane(_) => s((0, SIDESTEP, 2), 0.0, None, 0.0, 0.0, 0.0),
             Move::Backstep => s((2, 16, 6), 14.0, Some((2, 18)), 0.0, 0.0, 0.0),
-            // 13 ticks live (0.22 s): a parry a person can time, not only a frame-perfect one.
-            Move::Parry => s((6, 13, 22), 0.0, None, 0.0, 0.0, 0.0),
+            // 12 ticks live (0.2 s): a parry a person can time, not only a frame-perfect one.
+            Move::Parry => s((6, 12, 22), 0.0, None, 0.0, 0.0, 0.0),
             Move::Flask => s((36, 1, 17), 0.0, None, 0.0, 0.0, 0.0),
             Move::Riposte => s((18, 4, 28), 0.0, Some((0, 50)), 2.9, 60.0, 0.0),
             Move::Loose => Move::loose_spec(crate::gear::Ranged::Bow),

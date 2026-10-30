@@ -36,7 +36,8 @@ impl Play {
         Play { ctx, canvas, renderer: pollster::block_on(HeadlessRenderer::new(screen().0 as u32, screen().1 as u32)).ok(), dir }
     }
 
-    /// Past the title: the first slot, the Wayfarer chosen, awake at the first shrine and on the road.
+    /// Past the title: the first slot, the Wayfarer chosen, awake at the first shrine, then on the
+    /// Road to Hollowmere, the first road these captures walk (a pilgrimage begins in the Warrens).
     fn started() -> Play {
         let mut p = Play::new();
         p.ticks(5);
@@ -44,7 +45,16 @@ impl Play {
         p.tap("e");
         p.skip_prologue();
         assert!(p.until_playing(600), "never reached the road");
+        p.warp("road@warrens_lane");
         p
+    }
+
+    /// Cut to `stop`, the world with it, and play on from there.
+    fn warp(&mut self, stop: &str) {
+        self.game().world.warping = Some(stop.into());
+        self.canvas.run(Action::RunPlugin { name: "path_forge".into(), data: format!("warp:{stop}") });
+        assert!(self.walk_until(3000, false, |s| s.stop.as_deref() == Some(stop)), "never reached {stop}");
+        assert!(self.until_playing(600), "never played at {stop}");
     }
 
     /// Asked whether to play the prologue: no.
@@ -2077,7 +2087,7 @@ fn prologue() {
     p.tap("e");
     // The memory's road is not announced on the way out: the first word is the road itself.
     let told = p.banners_over(900);
-    assert_eq!(told.first().map(String::as_str), Some("The Road to Hollowmere"), "{told:?}");
+    assert_eq!(told.first().map(String::as_str), Some("The Ashen Warrens"), "{told:?}");
     assert!(p.until_mode(900, |m| matches!(m, Mode::Wake(_) | Mode::Play)), "never woke: {}", p.status());
     assert!(p.game().prologue.is_none());
     assert_eq!(p.walk_state().stop.as_deref(), Some(crate::world::START), "woke on the prologue's road");
@@ -2105,7 +2115,7 @@ fn prologue() {
     p.tap("e");
     // The memory's road is not announced on the way out: the first word is the road itself.
     let told = p.banners_over(900);
-    assert_eq!(told.first().map(String::as_str), Some("The Road to Hollowmere"), "{told:?}");
+    assert_eq!(told.first().map(String::as_str), Some("The Ashen Warrens"), "{told:?}");
     assert!(p.until_mode(900, |m| matches!(m, Mode::Wake(_) | Mode::Play)), "never set out: {}", p.status());
     assert!(p.game().prologue.is_none());
     assert_eq!(p.walk_state().stop.as_deref(), Some(crate::world::START));
@@ -3536,4 +3546,36 @@ fn atrael_ravens() {
     p.ticks(40);
     p.shot("ar03_flung");
     assert!(arena(&mut p).side.allies.iter().all(|a| !a.standing()), "never thrown out");
+}
+
+/// A first pilgrimage set out from its opening, played through: the only place named is the one
+/// it begins in (the opening's roads and the fade after them are not the hero's), and the hero is
+/// never drawn over a road the opening has cut away from. `cargo test --release new_game_begins
+/// -- --ignored --test-threads=1`.
+#[test]
+#[ignore]
+fn new_game_begins_where_the_opening_says() {
+    let mut p = Play::new();
+    p.ticks(5);
+    p.tap("e");
+    p.tap("e");
+    p.tap("s");
+    p.tap("e");
+    let mut told: Vec<String> = Vec::new();
+    for _ in 0..8000 {
+        p.ticks(1);
+        let line = p.game().banner.0.clone();
+        let quiet = matches!(p.mode(), crate::game::Mode::Scene(_) | crate::game::Mode::Out(_));
+        assert!(!quiet || line.is_empty(), "\"{line}\" said in {:?}, on {:?}", p.mode(), p.walk_state().stop);
+        if !line.is_empty() && told.last() != Some(&line) { told.push(line); }
+        let road = p.canvas.get_plugin::<crate::game::Pilgrimage>().unwrap().scene_road();
+        let shown = p.canvas.get_game_object("hero").is_some_and(|o| o.visible);
+        if let (Some(road), true) = (road, shown) {
+            assert_eq!(p.walk_state().stop.as_deref(), Some(road), "the hero drawn over another road: {}", p.status());
+        }
+        if matches!(p.mode(), crate::game::Mode::Play) { break; }
+    }
+    assert!(matches!(p.mode(), crate::game::Mode::Play), "never set out: {}", p.status());
+    assert_eq!(told, vec!["The Ashen Warrens".to_string()], "named on the way in");
+    assert_eq!(p.walk_state().stop.as_deref(), Some(crate::world::START));
 }
