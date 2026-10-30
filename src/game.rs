@@ -3051,7 +3051,8 @@ impl Pilgrimage {
     /// What the road ends at, walked into a dead end: a wall of its own walls' stone (the guild's
     /// board in its foot), or, out where it has no walls, fallen stones heaped across the path.
     fn end_barrier(&self) -> quartz_path_forge::Barrier {
-        let scene = crate::assets::path(format!("scenes/{}", self.world.here().scene));
+        let room = self.world.dead_end_at(|_| 0.0).map_or(self.world.here(), |(p, _)| p);
+        let scene = crate::assets::path(format!("scenes/{}", room.scene));
         let walled = std::fs::read(scene).ok().and_then(|bytes| serde_json::from_slice::<serde_json::Value>(&bytes).ok())
             .is_none_or(|v| v["walls"]["enabled"].as_bool() != Some(false));
         let art = |rel: &str| crate::assets::path(rel).to_string_lossy().into_owned();
@@ -4005,6 +4006,7 @@ impl QuartzPlugin for Pilgrimage {
                 let i = if first { input } else { Input { forward: input.forward, back: input.back, run: input.run, guard: input.guard, ..Input::default() } };
                 if first { self.pending = Input::default(); }
                 first = false;
+                self.fight.doorway = self.world.narrows();
                 events.extend(self.fight.tick(&i, ahead));
             }
         } else if matches!(self.mode, Mode::Side(_)) {
@@ -4060,7 +4062,7 @@ impl QuartzPlugin for Pilgrimage {
         let speed = if self.mode == Mode::Play && !held && self.fight.hero.act.is_none_or(|a| matches!(a.mv, Move::Lane(_))) { self.eased_walk(speed, dt) } else { speed };
         // A way held: no further on at the place's end, nor through the veil before a
         // standing boss (back is still free); stepping through it, at its own pace.
-        let speed = if speed > 0.0 && (self.world.held_at_end(&self.fight, ahead) || self.world.held_at_veil(ahead)) { 0.0 } else { speed };
+        let speed = if speed > 0.0 && (self.world.held_at_end(&self.fight, ahead) || self.world.held_at_veil(ahead) || self.world.held_at_door(self.fight.hero.x)) { 0.0 } else { speed };
         let speed = if matches!(self.mode, Mode::Cross(_)) { CROSS_SPEED } else { speed };
         // A cutscene on the road walks it at its own pace.
         let speed = self.scene.as_ref().filter(|s| s.owns_road).map_or(speed, Cutscene::walk);

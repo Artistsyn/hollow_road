@@ -2836,8 +2836,19 @@ fn dead_end() {
     // On to the door at the hall's end, and through it into Gruk's counting room.
     assert!(p.walk_until(2400, true, |s| s.stop.as_deref() == Some(start) && s.handover.zip(s.travel).is_some_and(|(at, t)| at - t < 9.0)), "no door ahead: {}", p.status());
     p.shot("d00b_the_door_to_gruks_room");
-    // The hero in the doorway: through its middle, the room's end wall already standing.
+    // Walked at the door in a side lane: its walls close the side lanes and the hero steps into
+    // the middle, so they go through the doorway, never the wall beside it.
+    p.tap("d");
+    p.ticks(20);
+    let lane = p.fight().hero.lane;
+    assert_eq!(lane, 1, "stepped aside short of the door: {}", p.status());
     assert!(p.walk_until(2400, true, |s| s.handover.zip(s.travel).is_some_and(|(at, t)| t >= at - crate::fight::HERO_D)), "never at the door: {}", p.status());
+    let lane = p.fight().hero.lane;
+    assert_eq!(lane, 0, "in the doorway in a side lane: {}", p.status());
+    p.tap("d");
+    p.ticks(4);
+    let lane = p.fight().hero.lane;
+    assert_eq!(lane, 0, "stepped aside in the doorway: {}", p.status());
     p.shot("d00c_in_the_doorway");
     let office = "guild_office@guild_hall";
     // Walked on and on: the walk stops at the room's end, nothing under way.

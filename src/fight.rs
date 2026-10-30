@@ -1253,11 +1253,14 @@ pub struct Fight {
     pub bolts: Vec<Bolt>,
     /// The Chieftain's Cleaver thrown (`arts::WeaponArt::Hatchet`), out or on its way back.
     pub hatchets: Vec<Hatchet>,
+    /// The road narrows to its middle lane (a doorway): no stepping or rolling into a side lane,
+    /// and a hero standing in one steps into the middle.
+    pub doorway: bool,
     rng: u64,
 }
 
 impl Fight {
-    pub fn new(enemies: Vec<Enemy>) -> Fight { Fight { hero: Hero::new(), enemies, missiles: Vec::new(), bolts: Vec::new(), hatchets: Vec::new(), rng: 0x9E37_79B9_7F4A_7C15 } }
+    pub fn new(enemies: Vec<Enemy>) -> Fight { Fight { hero: Hero::new(), enemies, missiles: Vec::new(), bolts: Vec::new(), hatchets: Vec::new(), doorway: false, rng: 0x9E37_79B9_7F4A_7C15 } }
 
     fn roll(&mut self, n: u32) -> u32 {
         self.rng ^= self.rng << 13; self.rng ^= self.rng >> 7; self.rng ^= self.rng << 17;
@@ -1398,6 +1401,9 @@ impl Fight {
         if h.poise_wait > POISE_DELAY { h.poise = (h.poise + POISE_REGEN).min(h.stats.poise()); }
         // Presses wait in the buffer for the hero to be free.
         if let Some(m) = input.press() { h.buffer = Some((m, 0)); }
+        // A doorway's walls close the side lanes: whoever stands in one steps into the middle.
+        let edge = if self.doorway { 0 } else { 1 };
+        if edge == 0 && h.lane != 0 && h.free() && h.buffer.is_none() { h.buffer = Some((Move::Lane(-h.lane.signum()), 0)); }
         if let Some((m, age)) = h.buffer { h.buffer = (age < BUFFER).then_some((m, age + 1)); }
         h.guarding = input.guard && h.free();
         h.bulwark.tick(h.guarding, calm);
@@ -1405,7 +1411,7 @@ impl Fight {
             if let Some((m, _)) = h.buffer {
                 // A roll toward the road's edge, with no lane beyond, is a roll forward: the
                 // dodge still comes when it is asked for (dropped, it read as rolls not working).
-                let m = match m { Move::Step(dir) if !(-1..=1).contains(&(h.lane + dir)) => Move::Tumble, m => m };
+                let m = match m { Move::Step(dir) if !(-edge..=edge).contains(&(h.lane + dir)) => Move::Tumble, m => m };
                 let m = self.riposte_for(m, walked).unwrap_or(m);
                 let kit = self.hero.stats.kit;
                 let spec = match (m, kit.shot(m == Move::Cast), kit.art) {
@@ -1423,8 +1429,8 @@ impl Fight {
                     h.buffer = None;
                 } else if (m == Move::Loose && !h.can_loose()) || (m == Move::Cast && !h.can_cast()) || (m == Move::Art && !h.can_art()) {
                     h.buffer = None;
-                } else if matches!(m, Move::Lane(dir) if !(-1..=1).contains(&(h.lane + dir))) {
-                    // No stepping off the road's edge.
+                } else if matches!(m, Move::Lane(dir) if (h.lane + dir).abs() > edge.max(h.lane.abs())) {
+                    // No stepping off the road's edge, nor further out where a doorway narrows it.
                     h.buffer = None;
                 } else {
                     h.buffer = None;
@@ -2759,6 +2765,28 @@ mod tests {
         let ev = run(&mut f, 2_000, |_, _| idle(), |f, _| f.hero.dead);
         assert!(ev.contains(&Event::Died), "{ev:?}");
         assert!(f.tick(&Input { light: true, ..idle() }, 0.0).is_empty());
+    }
+
+    #[test]
+    fn a_doorway_closes_the_side_lanes_and_whoever_stands_in_one_steps_into_the_middle() {
+        let walk = Input { forward: true, ..idle() };
+        let mut f = Fight::new(Vec::new());
+        f.hero.lane = 1;
+        f.hero.x = LANE_W;
+        f.doorway = true;
+        for _ in 0..SIDESTEP + 2 { f.tick(&walk, 0.0); }
+        assert_eq!((f.hero.lane, f.hero.x), (0, 0.0), "stepped into the middle");
+        // No step back out, nor a roll aside: a roll there goes forward.
+        f.tick(&Input { lane: -1, ..walk }, 0.0);
+        assert_eq!(f.hero.lane, 0);
+        for _ in 0..BUFFER + 2 { f.tick(&walk, 0.0); }
+        f.tick(&Input { step: 1, ..walk }, 0.0);
+        assert!(f.hero.lane == 0 && f.hero.act.is_some_and(|a| a.mv == Move::Tumble), "{:?}", f.hero.act.map(|a| a.mv));
+        // Past the door the lanes open again.
+        f.doorway = false;
+        for _ in 0..60 { f.tick(&walk, 0.0); }
+        f.tick(&Input { lane: 1, ..walk }, 0.0);
+        assert_eq!(f.hero.lane, 1);
     }
 
     #[test]

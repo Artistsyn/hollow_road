@@ -26,8 +26,14 @@ pub const SHRINE_REACH: f32 = 3.0;
 /// (within `SHRINE_REACH`), metres.
 pub const END_PAST: f32 = 5.0;
 pub const GRUK_PAST: f32 = 2.6;
-/// Metres either side of a door over which the hero is drawn into its middle.
+/// Metres before a door from which its walls close the side lanes and draw the hero to its middle.
 const DOOR_FUNNEL: f32 = 4.0;
+/// Metres past a door the hero's body is still in it.
+const DOOR_PAST: f32 = 1.0;
+/// Metres before a door at which a hero outside its opening meets the wall.
+const DOOR_FACE: f32 = 0.5;
+/// Half the hero's width, metres: what must fit inside a door's opening.
+const HERO_HALF: f32 = 0.35;
 /// Metres within which a living enemy, ahead or behind, keeps what wants a quiet moment (a cache
 /// taken, a boss stepping out, a side path left) from happening.
 const QUIET: f32 = 8.0;
@@ -858,43 +864,55 @@ impl World {
         (s - Self::standing(walked)).abs() <= SHRINE_REACH as f64 && !fight.hero.dead && Self::quiet(fight, walked)
     }
 
-    /// Where the road ends ahead, walked into a dead end or on the way into one: road metres of
-    /// the wall across it.
-    pub fn end_wall(&self) -> Option<f64> {
-        if self.at_dead_end() { return Some(self.road_at(self.here().length + END_PAST)); }
+    /// The dead end the hero stands in or is walking into, and the road metres of `m` (given the
+    /// place) metres into it. One walked into begins where the walk arrives there, entered forward.
+    pub(crate) fn dead_end_at(&self, m: impl Fn(&Place) -> f32) -> Option<(&'static Place, f64)> {
+        if self.at_dead_end() { return Some((self.here(), self.road_at(m(self.here())))); }
         let Underway { travel: Some(travel), length: Some(length), .. } = self.underway else { return None };
         let lead = self.heading()?;
         let next = atlas::place_of(lead.road.1)?;
-        let dead_end = atlas::leads(next.id, lead.road.0).is_empty();
-        // The next place begins where the walk arrives there, entered forward from its road.
-        dead_end.then(|| self.shown + f64::from(length - travel) + f64::from(HERO_D + next.length + END_PAST))
+        atlas::leads(next.id, lead.road.0).is_empty().then(|| (next, self.shown + f64::from(length - travel + HERO_D + m(next))))
     }
 
-    /// How far ahead of the hero the door the walk on goes through stands (behind them once
-    /// passed), while a crossing through a door is under way.
-    fn door_ahead(&self) -> Option<f32> {
+    /// Where the road ends ahead, walked into a dead end or on the way into one: road metres of
+    /// the wall across it.
+    pub fn end_wall(&self) -> Option<f64> { self.dead_end_at(|p| p.length + END_PAST).map(|(_, at)| at) }
+
+    /// The door the walk on goes through, while a crossing through one is under way: metres from
+    /// the hero to it (negative once passed) and its half width.
+    fn door_ahead(&self) -> Option<(f32, f32)> {
         let Underway { travel: Some(travel), handover: Some(handover), .. } = self.underway else { return None };
         let lead = self.heading()?;
-        matches!(atlas::edge(lead.road.0, lead.road.1)?.via, atlas::Via::Door(..)).then_some(handover - travel - HERO_D)
+        let atlas::Via::Door(half, _) = atlas::edge(lead.road.0, lead.road.1)?.via else { return None };
+        Some((handover - travel - HERO_D, half))
+    }
+
+    /// Whether the road narrows to its middle lane: a door close ahead, or the hero in it.
+    pub fn narrows(&self) -> bool { self.door_ahead().is_some_and(|(gap, _)| gap > -DOOR_PAST && gap < DOOR_FUNNEL) }
+
+    /// Whether the wall beside a door stops a hero standing `x` metres out: at its face, not
+    /// inside the opening.
+    pub fn held_at_door(&self, x: f32) -> bool {
+        self.door_ahead().is_some_and(|(gap, half)| (0.0..DOOR_FACE).contains(&gap) && x.abs() + HERO_HALF > half)
     }
 
     /// Where the hero is drawn across the road, `x` metres out: drawn into the middle of a door
     /// as they pass through it, so they go through the opening and not the wall beside it.
     pub fn through_door(&self, x: f32) -> f32 {
-        let Some(gap) = self.door_ahead() else { return x };
+        let Some((gap, _)) = self.door_ahead() else { return x };
         let k = ((DOOR_FUNNEL - gap.abs()) / (DOOR_FUNNEL - 1.0)).clamp(0.0, 1.0);
         x * (1.0 - k * k * (3.0 - 2.0 * k))
     }
 
     /// Where Gruk stands behind his counter at the guild hall's end, road metres: within reach
-    /// of the hero held there.
+    /// of the hero held there, and already there as the room comes into view through its door.
     pub fn gruk_at(&self) -> Option<f64> {
-        (self.here().id == crate::guild::HALL && self.at_dead_end()).then(|| self.road_at(self.here().length + GRUK_PAST))
+        self.dead_end_at(|p| p.length + GRUK_PAST).filter(|(p, _)| p.id == crate::guild::HALL).map(|(_, at)| at)
     }
 
     /// Whether the hero stands at Gruk's counter with no enemy close.
     pub fn can_meet_gruk(&self, fight: &Fight, walked: f64) -> bool {
-        let Some(at) = self.gruk_at() else { return false };
+        let Some(at) = self.gruk_at().filter(|_| self.at_dead_end()) else { return false };
         (at - Self::standing(walked)).abs() <= SHRINE_REACH as f64 && !fight.hero.dead && Self::quiet(fight, walked)
     }
 
@@ -1577,12 +1595,17 @@ mod tests {
         w.follow(120.0, Underway { travel: Some(20.0), handover: Some(handover), length: Some(length) });
         let seen = w.end_wall().expect("the office's wall stands while the door is ahead");
         assert!((w.through_door(1.0) - 1.0).abs() < 1e-6, "far from the door the hero walks their lane");
+        assert!(w.gruk_at().is_some_and(|at| at < seen), "Gruk behind his counter is in the room from the door on");
+        assert!(!w.narrows() && !w.held_at_door(crate::fight::LANE_W), "far from the door every lane is open");
+        w.follow(136.0 - f64::from(HERO_D) - 0.2, Underway { travel: Some(handover - HERO_D - 0.2), handover: Some(handover), length: Some(length) });
+        assert!(w.narrows() && w.held_at_door(crate::fight::LANE_W) && !w.held_at_door(0.0), "at the door's face a side lane meets the wall, the middle goes through");
         w.follow(136.0 - f64::from(HERO_D), Underway { travel: Some(handover - HERO_D), handover: Some(handover), length: Some(length) });
         assert!(w.through_door(1.0).abs() < 1e-6, "at the door the hero is in its middle");
         // Arrived, the wall is where it stood all along.
         w.arrive(&atlas::stop("guild_office", "guild_hall"), 120.0 + f64::from(length - 20.0), 0.0, 0);
         w.follow(141.0, Underway::default());
         assert!(w.end_wall().is_some_and(|at| (at - seen).abs() < 1e-3), "{seen} then {:?}", w.end_wall());
+        assert!(!w.narrows(), "through the door, the room's lanes are open");
     }
 
     #[test]
