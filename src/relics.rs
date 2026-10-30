@@ -1,4 +1,4 @@
-//! Vren's relic trade (`docs/story.md`, side quest 4): at the Broken Spire, once he has seen the
+//! Vren's relic trade (`docs/story.md`, side quest 4): down Suspicious Alley, once he has seen the
 //! rune, he asks after what the hero's kills left behind (the Screamer's voice, the cage's bone,
 //! the Mother's finger) and pays for each in echoes and in what he knows. A relic sold is gone,
 //! and the smith can no longer forge it: what Vren tells is the price of the weapon. The last he

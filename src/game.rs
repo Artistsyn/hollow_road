@@ -2097,7 +2097,7 @@ impl Pilgrimage {
         let sheet_at = |s: &Sheet, x: f32, d: f32, metres: f32| -> Option<((f32, f32), (f32, f32))> {
             Some(s.place(pf.project_on(c, x, 0.0, d)?, metres, pf.scale_on(c, d)?))
         };
-        let (hx, hd) = (h.x + SHOULDER, HERO_D - self.knocked_back());
+        let (hx, hd) = (self.world.through_door(h.x + SHOULDER), HERO_D - self.knocked_back());
         // Turning down a side path the hero walks into its mouth while the view turns after them.
         let (hx, hd) = match self.mode {
             Mode::Peek(t, side) => peek_walk((hx, hd), side, t as f32 / PEEK_T as f32),
@@ -4132,7 +4132,7 @@ impl QuartzPlugin for Pilgrimage {
             let Some(pf) = c.get_plugin::<PathForgePlugin>() else { return };
             let st = pf.state();
             let (stop, within) = (st.stop.clone(), st.choose_within);
-            self.world.follow(st.walked, crate::world::Underway { travel: st.travel, handover: st.handover });
+            self.world.follow(st.walked, crate::world::Underway { travel: st.travel, handover: st.handover, length: st.length });
             let (go, n) = self.world.tick(&mut self.fight, ahead, stop.as_deref(), within);
             notes.extend(n);
             if let Some(go) = go { Self::send(c, go); }

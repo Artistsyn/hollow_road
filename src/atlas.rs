@@ -340,7 +340,7 @@ pub const PLACES: &[Place] = &[
         ..place("unit_foundry", "The Unit Foundry", 8, (76.0, 8.0), "penitent_cells", "unit_foundry.json", 30.0, &[(Husk, 10.0, 0), (Husk, 11.5, 1), (Brute, 24.0, 0)]) },
     Place { boss: Some((30.0, &EXODUS_LIGHTFOOT)), ..place("eye_chamber", "The Chamber of the Eye", 8, (73.0, 1.0), "penitent_cells", "eye_chamber.json", 40.0, &[]) },
     // ── The Warrens guild's back room, through the door at the guild hall's end: Gruk's counter.
-    place("guild_office", "Gruk's Counting Room", 0, (1.5, 58.0), "guild_hall", "guild_office.json", 3.0, &[]),
+    place("guild_office", "Gruk's Counting Room", 0, (1.5, 58.0), "guild_hall", "guild_office.json", 0.5, &[]),
     // Off Stilt Lane, out through the Warrens' east gate, a lashed arch, to where the mire begins:
     // the book's bone thing and its hounds. Open from the start; the story sends the hero only
     // after Hollowmere.
@@ -356,7 +356,7 @@ pub const PLACES: &[Place] = &[
     Place { boss: Some((34.0, &BLACK_WATER_MOTHER)), cache: Some(41.0), loot: Some("Mara's Whistle"), ..place("black_water", "The Black Water", 0, (26.0, 56.0), "east_gate", "black_water.json", 44.0,
         &[(Wretch, 12.0, -1), (Wretch, 13.5, 1), (Husk, 22.0, 0)]) },
     // Down a side path at the Warrens' fringe, a crooked tower half-sunk in the mire: Vren's.
-    place("broken_spire", "The Broken Spire", 0, (4.0, 40.0), "", "broken_spire.json", 26.0, &[(Wretch, 12.0, 0)]),
+    place("broken_spire", "Suspicious Alley", 0, (4.0, 40.0), "", "broken_spire.json", 26.0, &[(Wretch, 12.0, 0)]),
     // North off the Marsh Edge, a ruin of old stones in the mud, where the rune-marked blade lay
     // until a shaken hunter found it once the Hollowmere bounty was paid (`World::story_moves`).
     // Its far end meets a ladder up from the Drowned Mill, kicked down from below only.
@@ -371,7 +371,7 @@ pub const PLACES: &[Place] = &[
 /// The roads.
 pub const EDGES: &[Edge] = &[
     road("warrens", "guild_hall"),
-    Edge { via: Via::Door(0.65, 2.4), ..road("guild_hall", "guild_office") },
+    Edge { via: Via::Door(1.0, 2.4), ..road("guild_hall", "guild_office") },
     road("warrens", "warrens_lane"),
     Edge { via: Via::Arch("Gate"), ..road("warrens_lane", "east_gate") },
     Edge { via: Via::Blend(5.0), ..road("east_gate", "black_water") },

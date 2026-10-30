@@ -264,19 +264,19 @@ pub const VISITS: &[Visit] = &[
     ] },
     // Tusk at his cart once the hero carries the rune, whose mark he knows from a blade a shaken
     // hunter sold him, out of the Drowned Fingers; or, if the hero was there first, the hunter
-    // came back with nothing. Vren at the Broken Spire reads the rune, and the bone after it.
+    // came back with nothing. Vren down Suspicious Alley reads the rune, and the bone after it.
     Visit { id: "tusk_sold_it", who: Visitor::Tusk, place: MARKET_W, at: 30.0, when: |w| w.carries_rune() && w.blade_found_by() == Some(false), pages: &[
         "Oi, hunter! Got silver to spend, or just sniffin' round my wares?",
         "...Funny mark, that. On your stone. Seen it before. On a blade.",
         "Shaken hunter sold it me. Said it came from a ruin up north, past the vale. Place called the Drowned Fingers.",
         "Muttered about whispers in the dark. Sold it cheap. Wanted it gone fast.",
-        "I flipped it to some brainy type with a hood. Lives at the Broken Spire, edge of the Warrens. Vren. Watch yer step round him; he don't trade straight.",
+        "I flipped it to some brainy type with a hood. Lives down Suspicious Alley, edge of the Warrens. Vren. Watch yer step round him; he don't trade straight.",
     ] },
     Visit { id: "tusk_beaten_to_it", who: Visitor::Tusk, place: MARKET_W, at: 30.0, when: |w| w.carries_rune() && w.blade_found_by() == Some(true), pages: &[
         "Oi, hunter! ...Funny mark, that. On your stone.",
         "Hunter came by a while back, shaking. Been up to a ruin past the vale, the Drowned Fingers. Said there was meant to be a blade there, with marks like that.",
         "Said somebody'd beat him to it. Box pried open, mud everywhere, nothing in it.",
-        "...That on your belt? Ha! Don't show Vren, out at the Broken Spire. He'll want it. He don't trade straight.",
+        "...That on your belt? Ha! Don't show Vren, down Suspicious Alley. He'll want it. He don't trade straight.",
     ] },
     Visit { id: "vren_shows_blade", who: Visitor::Vren, place: SPIRE_B, at: 20.0, when: |w| w.carries_rune() && w.blade_found_by() == Some(false) && !w.met("vren_asks_blade"), pages: &[
         "Trader sent you? ...Show me. Old, yes. Very old.",

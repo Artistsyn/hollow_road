@@ -2571,7 +2571,7 @@ fn fog_hollow() {
 }
 
 /// Tusk and Vren once the hero carries the rune and the shaken hunter found the blade first: Tusk
-/// at his Warrens cart, then down the Warrens' side path to the Broken Spire, where Vren shows it.
+/// at his Warrens cart, then down the Warrens' side path to Suspicious Alley, where Vren shows it.
 /// `cargo test --release --lib -- --ignored --exact shots::tusk_and_vren` writes target/shots/tv*.png.
 #[test]
 #[ignore]
@@ -2610,7 +2610,7 @@ fn tusk_and_vren() {
     assert!(mouth, "no side path opened: {}", p.status());
     p.tap("e");
     assert!(p.until_mode(20, |m| matches!(m, Mode::Peek(..))), "E did not turn down it: {:?}", p.mode());
-    assert!(p.walk_until(1200, false, |s| s.stop.as_deref() == Some("broken_spire")), "never reached the Broken Spire");
+    assert!(p.walk_until(1200, false, |s| s.stop.as_deref() == Some("broken_spire")), "never reached Suspicious Alley");
     assert!(p.until_playing(400));
     p.ticks(30);
     p.shot("tv03_broken_spire");
@@ -2836,6 +2836,9 @@ fn dead_end() {
     // On to the door at the hall's end, and through it into Gruk's counting room.
     assert!(p.walk_until(2400, true, |s| s.stop.as_deref() == Some(start) && s.handover.zip(s.travel).is_some_and(|(at, t)| at - t < 9.0)), "no door ahead: {}", p.status());
     p.shot("d00b_the_door_to_gruks_room");
+    // The hero in the doorway: through its middle, the room's end wall already standing.
+    assert!(p.walk_until(2400, true, |s| s.handover.zip(s.travel).is_some_and(|(at, t)| t >= at - crate::fight::HERO_D)), "never at the door: {}", p.status());
+    p.shot("d00c_in_the_doorway");
     let office = "guild_office@guild_hall";
     // Walked on and on: the walk stops at the room's end, nothing under way.
     p.walk_until(2400, true, |_| false);
@@ -3578,4 +3581,41 @@ fn new_game_begins_where_the_opening_says() {
     assert!(matches!(p.mode(), crate::game::Mode::Play), "never set out: {}", p.status());
     assert_eq!(told, vec!["The Ashen Warrens".to_string()], "named on the way in");
     assert_eq!(p.walk_state().stop.as_deref(), Some(crate::world::START));
+}
+
+/// Every side path off a place's road, as the player meets it: its mouth, the view turned down
+/// it, and the place it leads to just after arriving, to judge whether each reads as the way it
+/// opens from. `cargo test --release side_paths_seen -- --ignored --test-threads=1` writes
+/// target/shots/sp*.png.
+#[test]
+#[ignore]
+fn side_paths_seen() {
+    use crate::game::Mode;
+    let mut p = Play::started();
+    let paths: Vec<(&str, &str)> = crate::atlas::PLACES.iter().filter_map(|pl| pl.explore.map(|to| (pl.id, to))).collect();
+    for (k, (place, to)) in paths.into_iter().enumerate() {
+        let stop = crate::atlas::stop(place, crate::atlas::PLACES.iter().find(|pl| pl.id == place).map_or("", |pl| pl.from));
+        // Left down the last one: a side path under way refuses another.
+        p.game().world.detour = None;
+        p.warp(&stop);
+        p.ticks(10);
+        p.key("w", KeyboardState::Pressed);
+        let mut opened = false;
+        for _ in 0..6000 {
+            p.fell_all();
+            p.ticks(1);
+            if p.walk_state().side_paths.iter().any(|(d, _)| (d - crate::fight::HERO_D).abs() < crate::world::SIDE_REACH * 0.5) { opened = true; break; }
+        }
+        p.key("w", KeyboardState::Released);
+        assert!(opened, "{place}: no side path opened");
+        p.ticks(4);
+        p.shot(&format!("sp{k}a_{place}_mouth"));
+        p.tap("e");
+        assert!(p.until_mode(20, |m| matches!(m, Mode::Peek(..))), "{place}: E did not turn down it");
+        p.ticks(40);
+        p.shot(&format!("sp{k}b_{place}_looking_down"));
+        assert!(p.walk_until(1200, false, |s| s.stop.as_deref() == Some(to)), "{place}: never reached {to}");
+        p.ticks(30);
+        p.shot(&format!("sp{k}c_{to}"));
+    }
 }

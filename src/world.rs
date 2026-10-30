@@ -26,6 +26,8 @@ pub const SHRINE_REACH: f32 = 3.0;
 /// (within `SHRINE_REACH`), metres.
 pub const END_PAST: f32 = 5.0;
 pub const GRUK_PAST: f32 = 2.6;
+/// Metres either side of a door over which the hero is drawn into its middle.
+const DOOR_FUNNEL: f32 = 4.0;
 /// Metres within which a living enemy, ahead or behind, keeps what wants a quiet moment (a cache
 /// taken, a boss stepping out, a side path left) from happening.
 const QUIET: f32 = 8.0;
@@ -75,10 +77,11 @@ pub enum Go {
     WalkOn(String, f32),
 }
 
-/// The road's walk on from the stop as the frame shown has it (`WalkState::travel`, `handover`):
-/// metres into the crossing or fork under way, and where it hands over to the next place.
+/// The road's walk on from the stop as the frame shown has it (`WalkState::travel`, `handover`,
+/// `length`): metres into the crossing or fork under way, where it hands over to the next place,
+/// and where it arrives there.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct Underway { pub travel: Option<f32>, pub handover: Option<f32> }
+pub struct Underway { pub travel: Option<f32>, pub handover: Option<f32>, pub length: Option<f32> }
 
 /// Something worth a line on the screen.
 #[derive(Clone, Debug, PartialEq)]
@@ -170,6 +173,8 @@ pub struct World {
     /// boundary or junction (turned round beyond it, the way back runs up to it).
     underway: Underway,
     pub(crate) handed: Option<f64>,
+    /// Road metres walked in the frame shown, as `follow` last had them.
+    shown: f64,
     /// The shrine last rested at (where death wakes the hero), as the stop rested in.
     pub checkpoint: String,
     /// Every shrine rested at, to travel between from the sanctum.
@@ -265,7 +270,7 @@ pub struct Detour { pub from: String, pub at: f64, pub foes: Vec<Enemy>, pub sid
 impl World {
     pub fn new(walked: f64) -> World {
         World {
-            at: START.into(), base: walked, entered: 0.0, sent: false, warping: None, warp_into: 0.0, turn_short: None, turn_on: false, underway: Underway::default(), handed: None, checkpoint: START.into(), rested: Vec::new(), souls: 0, stain: None,
+            at: START.into(), base: walked, entered: 0.0, sent: false, warping: None, warp_into: 0.0, turn_short: None, turn_on: false, underway: Underway::default(), shown: walked, handed: None, checkpoint: START.into(), rested: Vec::new(), souls: 0, stain: None,
             pilgrimages: 0, signpost: None, lean: None, chose: false, chose_at: None, took: None, shards: [0; 3], met_keeper: false, met_smith: false, talks: [0, 0], heard: [0, 0], claimed: Vec::new(), meetings: Vec::new(), lingering: None, guild: crate::guild::Guild::default(), hunters: crate::hunters::Hunters::default(), answers: Vec::new(), called: None,
             gear: crate::gear::Loadout::starting(), ammo: crate::fight::Quiver::SETTING_OUT, fallen: [0; Archetype::ALL.len()], luck: 0, parried: false, beaten: Vec::new(), faced: Vec::new(), keys: Vec::new(), remnants: Vec::new(), opened: Vec::new(),
             seen: vec![atlas::node(START)], slain: Vec::new(), spawned: Vec::new(), detour: None, explored: Vec::new(), taken: Vec::new(),
@@ -514,7 +519,7 @@ impl World {
     /// The road's walk on from here as the frame shown has it (`shown`: its walked metres): kept
     /// for a turn, and where it passed its boundary or junction.
     pub fn follow(&mut self, shown: f64, underway: Underway) {
-        self.underway = underway;
+        (self.underway, self.shown) = (underway, shown);
         if self.handed.is_some() || self.warping.is_some() { return; }
         if let (Some(travel), Some(handover)) = (underway.travel, underway.handover) {
             if travel >= handover { self.handed = Some(shown - f64::from(travel - handover)); }
@@ -853,9 +858,32 @@ impl World {
         (s - Self::standing(walked)).abs() <= SHRINE_REACH as f64 && !fight.hero.dead && Self::quiet(fight, walked)
     }
 
-    /// Where the road ends ahead, walked into a dead end: road metres of the wall across it.
+    /// Where the road ends ahead, walked into a dead end or on the way into one: road metres of
+    /// the wall across it.
     pub fn end_wall(&self) -> Option<f64> {
-        self.at_dead_end().then(|| self.road_at(self.here().length + END_PAST))
+        if self.at_dead_end() { return Some(self.road_at(self.here().length + END_PAST)); }
+        let Underway { travel: Some(travel), length: Some(length), .. } = self.underway else { return None };
+        let lead = self.heading()?;
+        let next = atlas::place_of(lead.road.1)?;
+        let dead_end = atlas::leads(next.id, lead.road.0).is_empty();
+        // The next place begins where the walk arrives there, entered forward from its road.
+        dead_end.then(|| self.shown + f64::from(length - travel) + f64::from(HERO_D + next.length + END_PAST))
+    }
+
+    /// How far ahead of the hero the door the walk on goes through stands (behind them once
+    /// passed), while a crossing through a door is under way.
+    fn door_ahead(&self) -> Option<f32> {
+        let Underway { travel: Some(travel), handover: Some(handover), .. } = self.underway else { return None };
+        let lead = self.heading()?;
+        matches!(atlas::edge(lead.road.0, lead.road.1)?.via, atlas::Via::Door(..)).then_some(handover - travel - HERO_D)
+    }
+
+    /// Where the hero is drawn across the road, `x` metres out: drawn into the middle of a door
+    /// as they pass through it, so they go through the opening and not the wall beside it.
+    pub fn through_door(&self, x: f32) -> f32 {
+        let Some(gap) = self.door_ahead() else { return x };
+        let k = ((DOOR_FUNNEL - gap.abs()) / (DOOR_FUNNEL - 1.0)).clamp(0.0, 1.0);
+        x * (1.0 - k * k * (3.0 - 2.0 * k))
     }
 
     /// Where Gruk stands behind his counter at the guild hall's end, road metres: within reach
@@ -1490,25 +1518,25 @@ mod tests {
         // Past the road's end, short of its fork's junction: the road walked the other way, the
         // hero that far short of its start.
         assert_eq!(w.tick(&mut f, 64.0, Some(ROAD), None).0, Some(Go::Next));
-        w.follow(70.0, Underway { travel: Some(6.0), handover: Some(40.0) });
+        w.follow(70.0, Underway { travel: Some(6.0), handover: Some(40.0), length: None });
         assert_eq!(w.turn(&f, 70.0), Some(Go::WarpAt("road@^".into(), -6.0)));
         w.tick(&mut f, 70.0, Some("road@^"), None);
         assert!((70.0 - w.base + 6.0).abs() < 1e-9, "6 m short of the road's start: {}", w.base);
         // Turned again at once: the fork's walk is 6 m along again.
         assert_eq!(w.turn(&f, 70.0), Some(Go::WalkOn(ROAD.into(), 6.0)));
-        w.follow(70.0, Underway { travel: Some(6.0), handover: Some(40.0) });
+        w.follow(70.0, Underway { travel: Some(6.0), handover: Some(40.0), length: None });
         w.tick(&mut f, 70.0, Some(ROAD), Some(20.0));
         assert!(w.sent && (70.0 - w.base - 70.0).abs() < 1e-9, "6 m past its end, the fork under way: {}", 70.0 - w.base);
         // Leaning left and taken, then 5 m past the junction: the road's junction walked in from
         // the marsh edge, the junction 5 m ahead.
         f.hero.lane = -1;
         assert_eq!(w.tick(&mut f, 92.0, Some(ROAD), Some(0.5)).0, Some(Go::Choose(Branch::Left)));
-        w.follow(103.0, Underway { travel: Some(45.0), handover: Some(40.0) });
+        w.follow(103.0, Underway { travel: Some(45.0), handover: Some(40.0), length: None });
         assert!(w.can_turn(&f, 103.0), "TURN is offered past the junction");
         let back = atlas::stop("road", "vale_edge");
         assert_eq!(w.turn(&f, 103.0), Some(Go::TurnInto(back.clone(), 5.0)));
         // Landing with that fork under way (its junction 40 m in): 5 m short of it.
-        w.follow(103.0, Underway { travel: Some(35.0), handover: Some(40.0) });
+        w.follow(103.0, Underway { travel: Some(35.0), handover: Some(40.0), length: None });
         w.tick(&mut f, 103.0, Some(&back), Some(20.0));
         let length = atlas::JUNCTION_M;
         assert!(w.sent && w.at == back && (103.0 - w.base - f64::from(length + 35.0)).abs() < 1e-4, "{} m in", 103.0 - w.base);
@@ -1538,6 +1566,23 @@ mod tests {
             assert_eq!(w.turn(&f, 54.0), Some(Go::TurnInto(back.into(), 4.0)), "from {at} toward {way}");
             w.warping = None;
         }
+    }
+
+    #[test]
+    fn walking_through_a_door_into_a_dead_end_its_wall_stands_from_the_door_on_and_the_hero_goes_through_the_middle() {
+        let mut w = World::new(0.0);
+        w.lingering = None;
+        w.arrive(&atlas::stop("guild_hall", "warrens"), 100.0, 0.0, 0);
+        let (handover, length) = (36.0, 41.0);
+        w.follow(120.0, Underway { travel: Some(20.0), handover: Some(handover), length: Some(length) });
+        let seen = w.end_wall().expect("the office's wall stands while the door is ahead");
+        assert!((w.through_door(1.0) - 1.0).abs() < 1e-6, "far from the door the hero walks their lane");
+        w.follow(136.0 - f64::from(HERO_D), Underway { travel: Some(handover - HERO_D), handover: Some(handover), length: Some(length) });
+        assert!(w.through_door(1.0).abs() < 1e-6, "at the door the hero is in its middle");
+        // Arrived, the wall is where it stood all along.
+        w.arrive(&atlas::stop("guild_office", "guild_hall"), 120.0 + f64::from(length - 20.0), 0.0, 0);
+        w.follow(141.0, Underway::default());
+        assert!(w.end_wall().is_some_and(|at| (at - seen).abs() < 1e-3), "{seen} then {:?}", w.end_wall());
     }
 
     #[test]
@@ -1571,11 +1616,12 @@ mod tests {
         // end with Gruk in reach, the hero is told once, and TURN is offered.
         w.warping = None;
         w.arrive("guild_office@guild_hall", 300.0, 0.0, 1);
-        assert!(w.held_at_end(&f, 303.0) && !w.held_at_end(&f, 302.0) && w.can_turn(&f, 303.0));
-        assert!(w.can_meet_gruk(&f, 303.0) && w.end_wall().is_some_and(|at| at > w.gruk_at().unwrap_or(f64::MAX)));
-        assert_eq!(w.tick(&mut f, 303.0, Some("guild_office@guild_hall"), None), (None, vec![Note::DeadEnd]));
-        assert_eq!(w.tick(&mut f, 303.5, Some("guild_office@guild_hall"), None), (None, vec![]));
-        assert_eq!(w.turn(&f, 303.0), Some(Go::WarpAt("guild_office@^".into(), 0.0)));
+        let end = 300.0 + f64::from(w.here().length);
+        assert!(w.held_at_end(&f, end) && !w.held_at_end(&f, end - 0.4) && w.can_turn(&f, end));
+        assert!(w.can_meet_gruk(&f, end) && w.end_wall().is_some_and(|at| at > w.gruk_at().unwrap_or(f64::MAX)));
+        assert_eq!(w.tick(&mut f, end, Some("guild_office@guild_hall"), None), (None, vec![Note::DeadEnd]));
+        assert_eq!(w.tick(&mut f, end + 0.5, Some("guild_office@guild_hall"), None), (None, vec![]));
+        assert_eq!(w.turn(&f, end), Some(Go::WarpAt("guild_office@^".into(), 0.0)));
     }
 
     #[test]

@@ -202,8 +202,8 @@ one is sent after it: the rune does not hum toward it (`Boss::sought`).
    ladder up from the Drowned Mill, kicked down from below (a shortcut opening from the Mill).
    The **Rune-Marked Blade** is at the end until Gruk pays the Hollowmere bounty; then the shaken
    hunter has found it (`World::story_moves`). **Tusk** at his Warrens cart, once the hero
-   carries the rune, tells either way. **Vren** waits down a side path off the Warrens, at **the
-   Broken Spire**: he shows the blade Tusk sold him, or asks to see the hero's and pays for the
+   carries the rune, tells either way. **Vren** waits down a side path off the Warrens, at **Suspicious
+   Alley** (named 2026-10-30; it was "the Broken Spire", too like the Celestial Spire): he shows the blade Tusk sold him, or asks to see the hero's and pays for the
    look with **Vren's Chipped Ring** (+30% echoes, 8% more damage taken: he does not trade
    straight). Once the east gate's bone is in hand he reads it and points west to Stonehollow.]**
 2. **The bandit cave** under Blackridge. **[built 2026-10-29: "The Bandits' Hole", a side path
@@ -336,7 +336,7 @@ Everyone below is from the book.
 |---|---|---|
 | **Gruk** | His counting room off the guild hall, Warrens | Bounty board, pays for proof. Sends the hero to the next lead. Built 2026-10-29 (`src/guild.rs`). |
 | **Tusk** | Warrens market | Trader. Talks about the Drowned Fingers and Vren. Gives bread, which heals a little. Built 2026-10-29 (a goblin; no bread yet, as there are no consumables). |
-| **Vren** | Broken Spire, a new side path off the Warrens | Buys relics and pays in lore and items. Not to be trusted. Built 2026-10-29: reads the rune and the bone, and pays one ring for a look at the hero's blade; the full relic trade (flesh, quill, rubbings) is still to come. Also built 2026-10-29 (`src/relics.rs`): once he has seen the rune he buys the Screamer's voice (900), the cage's bone (800) and the Mother's finger (1400, and his loupe: echoes ×1.18) for coin and what each tells him; a relic sold is gone from the smith. |
+| **Vren** | Suspicious Alley, a new side path off the Warrens | Buys relics and pays in lore and items. Not to be trusted. Built 2026-10-29: reads the rune and the bone, and pays one ring for a look at the hero's blade; the full relic trade (flesh, quill, rubbings) is still to come. Also built 2026-10-29 (`src/relics.rs`): once he has seen the rune he buys the Screamer's voice (900), the cage's bone (800) and the Mother's finger (1400, and his loupe: echoes ×1.18) for coin and what each tells him; a relic sold is gone from the smith. |
 | **Skif** | East gate | A youngling guarding a husk: "No touch, no take." Built 2026-10-29: there once Olekeen has been out to the cage; grown into a hunter after Stonehollow, he gives the hero his rusted knife (side quest 6). |
 | **Krix, Lurz** | Guild, east gate | Haunted hunters, and a questline (§4). Both are goblins: Lurz "a wiry goblin with a patchy beard" and a spear; Krix never named so, but clawed, scarred, one ear a torn stump (the book; redrawn as a goblin 2026-10-29, after a first human sprite). Krix drinks in the guild hall from the Collector's fall until Blackridge, and answers the black water (built 2026-10-29, `src/visitors.rs`). |
 | **Olekeen** | Roadside, shrines; first at the East Gate | The other hunter, a step ahead. Gives lines and hints, and can be summoned for some bosses. Met first over the Keening Cage, his kill or the hero's (built 2026-10-29, `src/visitors.rs`). |
@@ -528,7 +528,7 @@ shortcuts.
 - **The heart door** at the Hollowed Shrine opens for blood, paid in health. It becomes the
   Shrine's way on, and the Wraith Lord's Sigil keeps its current place.
 - **New places:**
-  - **side paths:** the East Gate and the Mire, and the Broken Spire (Vren)
+  - **side paths:** the East Gate and the Mire, and Suspicious Alley (Vren)
   - **optional areas:** the bandit cave, the Drowned Fingers, and the mire east of the vale
   - **a shortcut** back from each of those three
 - **Each new place needs:**
@@ -628,7 +628,7 @@ not stored:
    - also done: the keeper's and the smith's lines move on with each region boss
      (`src/voices.rs`); bosses whisper as they are named and speak last words as they fall
 3. **People who point on**, with milestone lines: Gruk, Tusk, the keeper.
-4. **The Broken Spire and Vren**, and the relic trades.
+4. **Suspicious Alley and Vren**, and the relic trades.
 5. **Krix and Lurz, and the east gate.**
 6. Region by region after that, each with its pointer, its people and one side quest.
 
