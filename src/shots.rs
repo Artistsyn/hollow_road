@@ -1621,9 +1621,9 @@ fn ranged() {
         g.fight.missiles.clear();
     };
     let attacking = |name: &'static str, at: f32| move |f: &crate::fight::Fight| f.enemies[0].attack().is_some_and(|(a, ph, k)| a.art == name && ph == Phase::Windup && k >= at);
-    // The hero's own first, each as worn in the other hand: a bow's arrow (F), a frost bolt cast
+    // The hero's own first, each where it is worn (a bow on the back, drawn to loose): a bow's arrow (F), a frost bolt cast
     // through the focus (C), a blood crossbow's bolt (F), away up the lane at a husk.
-    let holding = |piece: &str| { let mut l = crate::gear::Loadout::starting(); let i = crate::gear::find(piece); l.gain(i); l.wear(1, Some(i)); l.kit() };
+    let holding = |piece: &str| { let mut l = crate::gear::Loadout::starting(); let i = crate::gear::find(piece); l.gain(i); l.wear(crate::gear::Loadout::place_for(i), Some(i)); l.kit() };
     // Levels enough to hold and cast all of them.
     let levelled = |st: &mut crate::fight::Stats| (st.might, st.dexterity, st.focus) = (4, 3, 3);
     for (piece, key, name) in [("Hunter's Shortbow", "f", "h01_arrow_away"), ("Frostweaver's Focus", "c", "h02_frost_away"), ("Blood Crossbow", "f", "h04_crossbow_away")] {

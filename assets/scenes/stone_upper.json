@@ -66,9 +66,9 @@
       "bottom": "Ground",
       "water_level": 10.0,
       "bottom_color": [
-        150,
-        150,
-        150
+        96,
+        100,
+        112
       ],
       "deck": {
         "pattern": "Planks",
@@ -191,6 +191,7 @@
     "enabled": true,
     "gap": 3.0,
     "height": 1.2,
+    "beyond": 14.0,
     "base_shadow": 0.4,
     "thickness": 0.45,
     "material": {

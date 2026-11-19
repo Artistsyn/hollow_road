@@ -79,6 +79,8 @@ pub struct SideInput {
     pub cast: bool,
     /// The weapon's art (`arts`).
     pub art: bool,
+    /// The other set of weapon and offhand into hand; only pressed with one carried.
+    pub swap: bool,
     /// Held.
     pub guard: bool,
 }
@@ -101,7 +103,7 @@ pub struct SideHatchet { pub s: f32, pub dir: f32, pub left: f32, pub back: bool
 
 /// What the hero is doing.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Act { Light, Heavy, Roll(i8), Parry, Flask, Loose, Cast, Art }
+pub enum Act { Light, Heavy, Roll(i8), Parry, Flask, Loose, Cast, Art, Draw, Stow, Swap }
 
 impl Act {
     /// A strike as a weapon of `class` throws it here: the road's (`Move::spec_for`) with the
@@ -131,6 +133,7 @@ impl Act {
             Act::Cast if kit.imbues() => Move::imbue_spec().frames,
             Act::Loose | Act::Cast => Move::loose_spec(self.shot(kit).unwrap_or(crate::gear::Ranged::Bow)).frames,
             Act::Art => Act::art_spec(kit).frames,
+            Act::Draw | Act::Stow | Act::Swap => self.as_move().spec().frames,
         }
     }
     /// The weapon's art as the yard has it: the road's with 0.9 m less reach (as a strike's).
@@ -142,7 +145,8 @@ impl Act {
     fn total(self, kit: &Kit) -> u32 { let f = self.frames(kit); f.0 + f.1 + f.2 }
     /// As the road fight costs and names it.
     fn as_move(self) -> Move {
-        match self { Act::Light => Move::Light, Act::Heavy => Move::Heavy, Act::Roll(d) => Move::Step(d as i32), Act::Parry => Move::Parry, Act::Flask => Move::Flask, Act::Loose => Move::Loose, Act::Cast => Move::Cast, Act::Art => Move::Art }
+        match self { Act::Light => Move::Light, Act::Heavy => Move::Heavy, Act::Roll(d) => Move::Step(d as i32), Act::Parry => Move::Parry, Act::Flask => Move::Flask, Act::Loose => Move::Loose, Act::Cast => Move::Cast, Act::Art => Move::Art,
+            Act::Draw => Move::Draw, Act::Stow => Move::Stow, Act::Swap => Move::Swap }
     }
     /// What a ranged attack or a cast sends, as `kit` holds it.
     pub fn shot(self, kit: &Kit) -> Option<crate::gear::Ranged> { match self { Act::Loose => kit.shot(false), Act::Cast => kit.shot(true), _ => None } }
@@ -187,6 +191,10 @@ pub struct SideHero {
     pub mark: Option<(usize, u32)>,
     pierced: u64,
     pub footing: Footing,
+    /// The bow in both hands rather than on the back, and what waits on it being drawn or put
+    /// away (as `fight::Hero::drawn`).
+    pub drawn: bool,
+    follow: Option<Act>,
 }
 
 /// How the hero is moving along the yard: the pace (m/tick, signed) carried from tick to tick,
@@ -228,6 +236,10 @@ impl SideHero {
 fn answers_in(&self) -> u32 { if self.reeling > 0 { self.reeling + ANSWER } else { 0 } }
     /// Whether the weapon has an art and the meter holds its cost.
     pub fn can_art(&self) -> bool { self.stats.kit.art.is_some_and(|a| self.art >= a.cost()) }
+    /// Whether `a` has what it needs: a shot or a cast to give, the art's cost.
+    fn able(&self, a: Act) -> bool {
+        match a { Act::Loose | Act::Cast => self.can_shoot(a), Act::Art => self.can_art(), _ => true }
+    }
     /// Whether a ranged attack or a cast has a shot to give (as `fight::Hero::can_shoot`).
     fn can_shoot(&self, a: Act) -> bool {
         if a == Act::Cast && self.stats.kit.imbues() { return self.can_imbue(); }
@@ -1075,7 +1087,7 @@ impl SideFight {
                 stats, hp, stamina, rested: 30, flasks, s, y: 0.0, vy: 0.0, facing: 1.0, act: None, guarding: false,
                 reel: Reel::None, reeling: 0, poise: stats.poise(), poise_wait: 0, from: 0.0, landed: false, dead: false, walking: false, buffer: None,
                 quiver: crate::fight::Quiver::default(), charges: stats.max_charges(), bulwark: Bulwark::default(),
-                art: 0.0, stone: 0, mark: None, pierced: 0, footing: Footing::default(),
+                art: 0.0, stone: 0, mark: None, pierced: 0, footing: Footing::default(), drawn: false, follow: None,
             },
             foes,
             bolts: Vec::new(),
@@ -1167,7 +1179,7 @@ impl SideFight {
         h.poise_wait = h.poise_wait.saturating_add(1);
         if h.poise_wait > 90 { h.poise = (h.poise + 0.5).min(h.stats.poise()); }
         let dir = (input.right as i8) - (input.left as i8);
-        h.guarding = input.guard && h.free() && !h.airborne();
+        h.guarding = input.guard && h.free() && !h.airborne() && !h.drawn;
         // A yard is a fight from end to end: the ward never runs down here.
         h.bulwark.tick(h.guarding, false);
         h.walking = false;
@@ -1175,19 +1187,25 @@ impl SideFight {
         let mut pace = 0.0;
         // Presses wait a moment for the hero to be free, as on the road.
         h.stone = h.stone.saturating_sub(1);
-        if input.roll || input.jump || input.light || input.heavy || input.parry || input.flask || input.loose || input.cast || input.art { h.buffer = Some((*input, 0)); }
+        if input.roll || input.jump || input.light || input.heavy || input.parry || input.flask || input.loose || input.cast || input.art || input.swap { (h.buffer, h.follow) = (Some((*input, 0)), None); }
         else if let Some((b, age)) = h.buffer { h.buffer = (age < crate::fight::BUFFER).then_some((b, age + 1)); }
         let p = h.buffer.map(|b| b.0).unwrap_or_default();
         let pdir = (p.right as i8) - (p.left as i8);
         // What was pressed, if the hero is free to do it (in the air: only a strike).
         let want = if p.roll { Some(Act::Roll(if pdir != 0 { pdir } else if dir != 0 { dir } else { h.facing as i8 })) }
             else if p.art { Some(Act::Art) } else if p.flask { Some(Act::Flask) } else if p.parry { Some(Act::Parry) } else if p.loose { Some(Act::Loose) } else if p.cast { Some(Act::Cast) }
-            else if p.heavy { Some(Act::Heavy) } else if p.light { Some(Act::Light) } else { None };
+            else if p.heavy { Some(Act::Heavy) } else if p.light { Some(Act::Light) } else if p.swap { Some(Act::Swap) } else { None };
+        // What waited on the bow comes once it is drawn or away; a guard puts the bow away first.
+        let want = want.or_else(|| if h.free() { h.follow.take() } else { None });
+        let want = want.or_else(|| (input.guard && h.drawn).then_some(Act::Stow));
+        // The bow drawn first for a shot, or put away first for what needs the hand.
+        let ready = want.and_then(|a| a.as_move().readied(&h.stats.kit, h.drawn).filter(|_| h.able(a)).map(|r| (r, a)));
+        let (want, follow) = match ready { Some((r, a)) => (Some(if r == Move::Draw { Act::Draw } else { Act::Stow }), Some(a)), None => (want, None) };
         if h.free() {
             if p.jump && !h.airborne() && !h.guarding {
                 h.buffer = None;
                 if h.stamina <= 0.0 { out.push(Event::Spent); } else { h.spend(h.stats.cost(Move::Backstep, JUMP_COST)); h.vy = JUMP_V; h.y = 1e-4; }
-            } else if let Some(a) = want.filter(|a| !h.airborne() || matches!(a, Act::Light | Act::Heavy)) {
+            } else if let Some(a) = want.filter(|a| !h.airborne() || matches!(a, Act::Light | Act::Heavy | Act::Draw | Act::Stow)) {
                 h.buffer = None;
                 let cost = h.stats.cost(a.as_move(), match a {
                     Act::Light | Act::Heavy => a.struck(&h.stats.kit).stamina,
@@ -1200,10 +1218,11 @@ impl SideFight {
                 if cost > 0.0 && h.stamina <= 0.0 {
                     out.push(Event::Spent);
                 } else if a == Act::Flask && h.flasks == 0 {
-                } else if matches!(a, Act::Loose | Act::Cast) && !h.can_shoot(a) {
-                } else if a == Act::Art && !h.can_art() {
+                } else if !h.able(a) {
                 } else {
                     h.spend(cost);
+                    if follow.is_some() { h.follow = follow; }
+                    if matches!(a, Act::Draw | Act::Stow) { h.drawn = a == Act::Draw; }
                     if let Act::Roll(d) = a { h.facing = d as f32; }
                     // A move plants the feet: its own travel is all it moves.
                     h.footing.pace = 0.0;
@@ -1254,6 +1273,7 @@ impl SideFight {
                     let k = (t + 1) as f32 / ROLL_T as f32;
                     h.s = h.from + d as f32 * ROLL_M * (1.0 - (1.0 - k).powi(2));
                 }
+                Act::Swap if t == f.0 => out.push(Event::Swapped),
                 Act::Flask if t == f.0 => {
                     h.flasks -= 1;
                     h.hp = (h.hp + 40.0 * h.stats.kit.heal).min(h.stats.max_hp());

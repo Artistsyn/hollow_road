@@ -101,7 +101,7 @@
       "water_level": 10.0,
       "bottom_color": [
         150,
-        150,
+        140,
         150
       ],
       "deck": {
@@ -264,6 +264,7 @@
     "enabled": true,
     "gap": 1.8,
     "height": 2.2,
+    "beyond": 60.0,
     "base_shadow": 0.4,
     "thickness": 0.6,
     "material": {

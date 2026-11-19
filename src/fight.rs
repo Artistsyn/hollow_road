@@ -52,11 +52,18 @@ const ARCHER_ARROWS: u32 = 4;
 const ARCHER_BOLTS: u32 = 2;
 /// Blood Imbue (C, a blood bow held and no spell to cast): the share of the hero's health it
 /// costs, the shots it imbues, how much harder an imbued one strikes, and how much of what it
-/// cost an imbued blood bow's arrows give back if every one lands (always less than it took).
+/// cost an imbued blood bow's arrows give back: a quarter more than it took if every one lands,
+/// so a steady aim comes out ahead and a wild one pays for it.
 pub const IMBUE_COST: f32 = 0.12;
 pub const IMBUE_SHOTS: u32 = 5;
 pub const IMBUE_DAMAGE: f32 = 1.5;
-pub const IMBUE_RETURN: f32 = 0.6;
+pub const IMBUE_RETURN: f32 = 1.25;
+/// Ticks to bring the bow or crossbow off the back into both hands before its first shot, and to
+/// put it back before a blow, a parry, a guard or a swap (`Hero::drawn`).
+pub const DRAW_T: u32 = 20;
+pub const STOW_T: u32 = 12;
+/// Ticks to put the set in hand on the belt and take up the other: it changes halfway.
+pub const SWAP_T: u32 = 36;
 /// One Blood Imbue at a time, in the spell charges' place (a blood bow's kit casts no spell): it
 /// comes back over this many seconds once its shots are spent, sooner for each blow landed up
 /// close (this much of it), and whole at a shrine.
@@ -229,6 +236,8 @@ pub struct Input {
     pub cast: bool,
     /// The weapon's art (`arts`), if it has one and the meter holds its cost.
     pub art: bool,
+    /// The other set of weapon and offhand into hand (`Move::Swap`); only pressed with one carried.
+    pub swap: bool,
 }
 
 impl Input {
@@ -240,6 +249,7 @@ impl Input {
         if self.tumble { m = Some(Move::Tumble); }
         if self.backstep { m = Some(Move::Backstep); }
         if self.flask { m = Some(Move::Flask); }
+        if self.swap { m = Some(Move::Swap); }
         if self.loose { m = Some(Move::Loose); }
         if self.cast { m = Some(Move::Cast); }
         if self.parry { m = Some(Move::Parry); }
@@ -275,6 +285,13 @@ pub enum Move {
     Cast,
     /// The weapon's art (`arts::WeaponArt`), paid from the art meter.
     Art,
+    /// The bow or crossbow off the back into both hands (`Hero::drawn`), before the shot asked for.
+    Draw,
+    /// The bow onto the back again, before the blow, parry, guard or swap asked for.
+    Stow,
+    /// The set in hand onto the belt and the other into hand: `Event::Swapped` halfway, unless a
+    /// hit cuts it off first.
+    Swap,
 }
 
 /// A move's timing and price.
@@ -372,7 +389,26 @@ impl Move {
             Move::Cast => Move::loose_spec(crate::gear::Ranged::Frost),
             // Only a forged weapon has one, and its own timing (`arts::WeaponArt::spec`).
             Move::Art => crate::arts::WeaponArt::Toll.spec(),
+            Move::Draw => s((DRAW_T, 0, 0), 0.0, None, 0.0, 0.0, 0.0),
+            Move::Stow => s((STOW_T, 0, 0), 0.0, None, 0.0, 0.0, 0.0),
+            Move::Swap => s((SWAP_T / 2, 1, SWAP_T / 2), 0.0, None, 0.0, 0.0, 0.0),
         }
+    }
+
+    /// Whether it is shot from the bow (an arrow, or the blood drawn across it), which must be
+    /// in hand first (`Move::Draw`).
+    pub fn shoots(self, kit: &crate::gear::Kit) -> bool { self == Move::Loose || (self == Move::Cast && kit.imbues()) }
+
+    /// Whether it needs the hand the bow fills put back first (`Move::Stow`): a blow, a parry, a
+    /// spell through the catalyst, a swap.
+    pub fn stows(self, kit: &crate::gear::Kit) -> bool {
+        matches!(self, Move::Light | Move::Heavy | Move::Riposte | Move::Parry | Move::Art | Move::Swap) || (self == Move::Cast && !kit.imbues())
+    }
+
+    /// The move to make first, if `self` cannot be made as the hands are (`drawn`: the bow in
+    /// them): the bow drawn for a shot, or put away for anything else that needs the hand.
+    pub fn readied(self, kit: &crate::gear::Kit, drawn: bool) -> Option<Move> {
+        if self.shoots(kit) && !drawn && kit.ranged.is_some() { Some(Move::Draw) } else if self.stows(kit) && drawn { Some(Move::Stow) } else { None }
     }
 
     /// Blood Imbue's timing: the blood drawn across the bow, a moment to commit to (any hit cuts it
@@ -381,7 +417,7 @@ impl Move {
 
     /// An arrow's or a bolt's timing and price, kept well short of melee's: a long draw with no
     /// armour (any hit cuts it off, the shot not spent), stamina that stays unspent while it
-    /// draws, and about 40% of a sword's light in damage a second with almost none of its stance
+    /// draws, and a little over half a sword's light in damage a second with almost none of its stance
     /// damage. A frost bolt is the spell a charge pays for: twice a light's damage, three times
     /// its stance damage, and a chill (`CHILL`); a cast and the two blows that pay for it come to
     /// a little more than melee alone, so the Frostweaver plays both.
@@ -391,12 +427,12 @@ impl Move {
         use crate::gear::Ranged;
         let s = |frames, stamina, damage, stance| Spec { frames, stamina, iframes: None, reach: BOLT_RANGE, damage, stance, wide: 0, armour: 0 };
         match r {
-            Ranged::Bow => s((36, 2, 20), 14.0, 7.0, 3.0),
-            Ranged::BloodBow => s((34, 2, 20), 10.0, 8.0, 3.0),
+            Ranged::Bow => s((36, 2, 20), 14.0, 10.0, 3.0),
+            Ranged::BloodBow => s((34, 2, 20), 10.0, 11.0, 3.0),
             // Quick to aim, long to wind again: a heavy bolt, a few of a light's damage a second.
-            Ranged::BloodCrossbow => s((28, 2, 52), 8.0, 12.0, 6.0),
+            Ranged::BloodCrossbow => s((28, 2, 52), 8.0, 16.0, 6.0),
             // A long draw for a heavy arrow: half again a shortbow's, for a little more stamina.
-            Ranged::Longbow => s((44, 2, 22), 16.0, 11.0, 5.0),
+            Ranged::Longbow => s((44, 2, 22), 16.0, 15.0, 5.0),
             Ranged::Frost => s((34, 3, 20), 8.0, 20.0, 24.0),
         }
     }
@@ -1052,6 +1088,8 @@ pub enum Event {
     /// A gravecaller called enemy `enemy` up out of the ground.
     Raised { enemy: usize },
     Healed,
+    /// Halfway through a swap: the set on the belt comes into hand (`gear::Loadout::swap_sets`).
+    Swapped,
     /// Wanted to move with no stamina.
     Spent,
     Died,
@@ -1146,7 +1184,8 @@ impl Stats {
             _ => self.kit.shooting,
         };
         let spell = if r == crate::gear::Ranged::Frost { self.kit.capped.spell_more } else { 1.0 };
-        self.graded(sc.base, sc.needs, sc.scales) * (1.0 + crate::gear::OFF_STEP * self.kit.off_level as f32) * spell * self.kit.damage
+        let level = if r == crate::gear::Ranged::Frost { self.kit.off_level } else { self.kit.bow_level };
+        self.graded(sc.base, sc.needs, sc.scales) * (1.0 + crate::gear::OFF_STEP * level as f32) * spell * self.kit.damage
     }
     /// A strike: the weapon's, raised by the smith's levels on it and by the rest of the kit.
     pub fn damage(&self) -> f32 { self.arms_damage() * (1.0 + crate::gear::MAIN_STEP * self.kit.main as f32) * self.kit.damage }
@@ -1204,6 +1243,10 @@ pub struct Hero {
     pub mark: Option<(usize, u32)>,
     /// Foes the art under way struck already, by index (Light Lance pierces each once).
     pub pierced: u64,
+    /// The bow or crossbow in both hands rather than on the back; and the move asked for that is
+    /// waiting on it being drawn or put away (`Move::readied`).
+    pub drawn: bool,
+    pub follow: Option<Move>,
 }
 
 impl Hero {
@@ -1212,7 +1255,7 @@ impl Hero {
     pub fn mend(&mut self) { self.hp = (self.hp + self.stats.kit.capped.mend * self.stats.max_hp()).min(self.stats.max_hp()); }
     /// Whole, with these levels: as they rise from a shrine.
     pub fn with(stats: Stats) -> Hero {
-        Hero { stats, hp: stats.max_hp(), stamina: stats.max_stamina(), rested: REGEN_DELAY, flasks: FLASKS + stats.kit.flasks, lane: 0, x: 0.0, act: None, guarding: false, reeling: 0, reel: Reel::None, poise: stats.poise(), poise_wait: 0, buffer: None, dead: false, quiver: Quiver::default(), charges: stats.max_charges(), bulwark: Bulwark::default(), art: 0.0, stone: 0, mark: None, pierced: 0 }
+        Hero { stats, hp: stats.max_hp(), stamina: stats.max_stamina(), rested: REGEN_DELAY, flasks: FLASKS + stats.kit.flasks, lane: 0, x: 0.0, act: None, guarding: false, reeling: 0, reel: Reel::None, poise: stats.poise(), poise_wait: 0, buffer: None, dead: false, quiver: Quiver::default(), charges: stats.max_charges(), bulwark: Bulwark::default(), art: 0.0, stone: 0, mark: None, pierced: 0, drawn: false, follow: None }
     }
     /// Whole again with the same levels (as at a shrine), keeping what is carried to shoot.
     pub fn renewed(&self) -> Hero { Hero { quiver: Quiver { imbued: 0, ..self.quiver }, ..Hero::with(self.stats) } }
@@ -1228,6 +1271,10 @@ impl Hero {
     /// Whether Blood Imbue can be called (C): a blood bow held, its charge back, the blood to pay
     /// for it, and no imbued shots still to loose.
     pub fn can_imbue(&self) -> bool { self.stats.kit.imbues() && self.charges >= 1.0 && self.quiver.imbued == 0 && self.hp > self.stats.max_hp() * IMBUE_COST + 1.0 }
+    /// Whether `m` has what it needs: a shot to loose, a spell or an imbue to cast, the art's cost.
+    fn able(&self, m: Move) -> bool {
+        match m { Move::Loose => self.can_loose(), Move::Cast => self.can_cast(), Move::Art => self.can_art(), _ => true }
+    }
     /// Whether the hand's bow or crossbow has a shot to give (F).
     pub fn can_loose(&self) -> bool { self.can_shoot(self.stats.kit.shot(false)) }
     /// Whether a spell can be cast: a catalyst held, a spell to cast, a charge for it (C).
@@ -1400,20 +1447,26 @@ impl Fight {
         h.poise_wait = h.poise_wait.saturating_add(1);
         if h.poise_wait > POISE_DELAY { h.poise = (h.poise + POISE_REGEN).min(h.stats.poise()); }
         // Presses wait in the buffer for the hero to be free.
-        if let Some(m) = input.press() { h.buffer = Some((m, 0)); }
+        if let Some(m) = input.press() { (h.buffer, h.follow) = (Some((m, 0)), None); }
+        // What waited on the bow comes once it is drawn or away; a guard puts the bow away first.
+        if h.free() && h.buffer.is_none() { h.buffer = h.follow.take().map(|m| (m, 0)); }
+        if input.guard && h.drawn && h.free() && h.buffer.is_none() { h.buffer = Some((Move::Stow, 0)); }
         // A doorway's walls close the side lanes: whoever stands in one steps into the middle.
         let edge = if self.doorway { 0 } else { 1 };
         if edge == 0 && h.lane != 0 && h.free() && h.buffer.is_none() { h.buffer = Some((Move::Lane(-h.lane.signum()), 0)); }
         if let Some((m, age)) = h.buffer { h.buffer = (age < BUFFER).then_some((m, age + 1)); }
-        h.guarding = input.guard && h.free();
+        h.guarding = input.guard && h.free() && !h.drawn;
         h.bulwark.tick(h.guarding, calm);
         if h.free() {
             if let Some((m, _)) = h.buffer {
                 // A roll toward the road's edge, with no lane beyond, is a roll forward: the
                 // dodge still comes when it is asked for (dropped, it read as rolls not working).
                 let m = match m { Move::Step(dir) if !(-edge..=edge).contains(&(h.lane + dir)) => Move::Tumble, m => m };
-                let m = self.riposte_for(m, walked).unwrap_or(m);
                 let kit = self.hero.stats.kit;
+                // The bow drawn first for a shot, or put away first for what needs the hand.
+                let ready = m.readied(&kit, self.hero.drawn).filter(|_| self.hero.able(m));
+                let (m, follow) = match ready { Some(r) => (r, Some(m)), None => (m, None) };
+                let m = self.riposte_for(m, walked).unwrap_or(m);
                 let spec = match (m, kit.shot(m == Move::Cast), kit.art) {
                     (Move::Loose | Move::Cast, Some(r), _) => Move::loose_spec(r),
                     (Move::Art, _, Some(art)) => art.spec(),
@@ -1427,7 +1480,7 @@ impl Fight {
                     h.buffer = None;
                 } else if m == Move::Flask && h.flasks == 0 {
                     h.buffer = None;
-                } else if (m == Move::Loose && !h.can_loose()) || (m == Move::Cast && !h.can_cast()) || (m == Move::Art && !h.can_art()) {
+                } else if !h.able(m) {
                     h.buffer = None;
                 } else if matches!(m, Move::Lane(dir) if (h.lane + dir).abs() > edge.max(h.lane.abs())) {
                     // No stepping off the road's edge, nor further out where a doorway narrows it.
@@ -1435,6 +1488,8 @@ impl Fight {
                 } else {
                     h.buffer = None;
                     h.spend(cost);
+                    if follow.is_some() { h.follow = follow; }
+                    if matches!(m, Move::Draw | Move::Stow) { h.drawn = m == Move::Draw; }
                     let from = h.lane;
                     if let Move::Step(dir) | Move::Lane(dir) = m { h.lane += dir; }
                     h.act = Some(Act { mv: m, spec, t: 0, landed: false, from_lane: from, from_x: h.x });
@@ -1485,6 +1540,7 @@ impl Fight {
             if let Some(art) = h.stats.kit.art { self.art_fires(art, &mut a, walked, out); }
         }
         let h = &mut self.hero;
+        if a.mv == Move::Swap && a.t == spec.frames.0 { out.push(Event::Swapped); }
         if a.mv == Move::Flask && a.t == spec.frames.0 {
             h.flasks -= 1;
             h.hp = (h.hp + FLASK_HEAL * h.stats.kit.heal).min(h.stats.max_hp());
@@ -3200,8 +3256,45 @@ mod tests {
             crate::gear::Ranged::Frost => { f.hero.stats.kit.catalyst = crate::gear::ITEMS[crate::gear::find("Frostweaver's Focus")].catalyst; f.hero.stats.focus = 3; }
             r => f.hero.stats.kit.ranged = Some(r),
         }
-        f.hero = Hero { quiver: Quiver::SETTING_OUT, ..Hero::with(f.hero.stats) };
+        // A bow already drawn (`Move::Draw`; see `the_bow_is_drawn_for_a_shot_and_put_away_for_a_blow`).
+        f.hero = Hero { quiver: Quiver::SETTING_OUT, drawn: r != crate::gear::Ranged::Frost, ..Hero::with(f.hero.stats) };
         f
+    }
+
+    #[test]
+    fn the_bow_is_drawn_for_a_shot_and_put_away_for_a_blow() {
+        use crate::gear::Ranged;
+        let mut f = holding(Ranged::Bow, Vec::new());
+        f.hero.drawn = false;
+        // F with the bow on the back: drawn first, then loosed, with no second press.
+        let ev = run(&mut f, 160, |_, t| if t == 0 { press_loose() } else { idle() }, |_, ev| ev.iter().any(|e| matches!(e, Event::Shot(_))));
+        let drawn_at = ev.iter().position(|e| *e == Event::Began(Move::Draw));
+        let shot_at = ev.iter().position(|e| *e == Event::Began(Move::Loose));
+        assert!(drawn_at.is_some() && shot_at > drawn_at && f.hero.drawn, "{ev:?}");
+        // The next shot is quicker: no draw.
+        run(&mut f, 120, |_, _| idle(), |f, _| f.hero.act.is_none());
+        let ev = run(&mut f, 120, |_, t| if t == 0 { press_loose() } else { idle() }, |_, ev| ev.iter().any(|e| matches!(e, Event::Shot(_))));
+        assert!(!ev.contains(&Event::Began(Move::Draw)), "{ev:?}");
+        // A strike puts it away first; a guard held does too, and raises once it is away.
+        run(&mut f, 120, |_, _| idle(), |f, _| f.hero.act.is_none());
+        let ev = run(&mut f, 120, |_, t| if t == 0 { Input { light: true, ..idle() } } else { idle() }, |_, ev| ev.contains(&Event::Began(Move::Light)));
+        assert!(ev.contains(&Event::Began(Move::Stow)) && !f.hero.drawn, "{ev:?}");
+        f.hero.drawn = true;
+        run(&mut f, 120, |_, _| Input { guard: true, ..idle() }, |f, _| f.hero.guarding);
+        assert!(!f.hero.drawn && f.hero.guarding);
+    }
+
+    #[test]
+    fn a_swap_changes_sets_halfway_and_a_hit_before_then_stops_it() {
+        let mut f = Fight::new(Vec::new());
+        let ev = run(&mut f, 80, |_, t| if t == 0 { Input { swap: true, ..idle() } } else { idle() }, |f, _| f.hero.act.is_none());
+        assert_eq!(ev.iter().filter(|e| **e == Event::Swapped).count(), 1, "{ev:?}");
+        let mut g = Fight::new(Vec::new());
+        let ev = run(&mut g, 10, |_, t| if t == 0 { Input { swap: true, ..idle() } } else { idle() }, |_, _| false);
+        assert!(ev.contains(&Event::Began(Move::Swap)) && !ev.contains(&Event::Swapped));
+        g.hero.act = None;
+        let ev = run(&mut g, 60, |_, _| idle(), |_, _| false);
+        assert!(!ev.contains(&Event::Swapped), "cut off, it never happens");
     }
     fn press_loose() -> Input { Input { loose: true, ..idle() } }
     fn press_cast() -> Input { Input { cast: true, ..idle() } }
@@ -3236,7 +3329,7 @@ mod tests {
         let light = Move::Light.spec_for(Class::Sword, None);
         for r in [Ranged::Bow, Ranged::BloodBow, Ranged::BloodCrossbow, Ranged::Frost] {
             let l = Move::loose_spec(r);
-            if r != Ranged::Frost { assert!(rate(l) < 0.5 * rate(light), "{r:?}: {} against {}", rate(l), rate(light)); }
+            if r != Ranged::Frost { assert!(rate(l) < 0.7 * rate(light), "{r:?}: {} against {}", rate(l), rate(light)); }
             assert!(l.frames.0 >= 2 * light.frames.0, "{r:?} draws long");
             assert_eq!(l.armour, 0);
         }
@@ -3256,8 +3349,10 @@ mod tests {
         st.kit.main = 8;
         assert_eq!(st.ranged_damage(Ranged::Bow), before);
         st.kit.off_level = 8;
+        assert_eq!(st.ranged_damage(Ranged::Bow), before, "the offhand's levels are not the bow's");
+        st.kit.bow_level = 8;
         assert!((st.ranged_damage(Ranged::Bow) / before - 1.64).abs() < 1e-4);
-        st.kit.off_level = 0;
+        st.kit.bow_level = 0;
         st.dexterity = 10;
         assert!(st.ranged_damage(Ranged::Bow) > before);
     }
@@ -3335,7 +3430,7 @@ mod tests {
             let mut l = Loadout::starting();
             let i = find(piece);
             l.gain(i);
-            l.wear(1, Some(i));
+            l.wear(Loadout::place_for(i), Some(i));
             Stats { might: m, dexterity: d, focus: f, kit: l.kit(), ..Stats::default() }
         };
         // The shortbow: dexterity B, might E; short of its 2 dexterity, weakly drawn.
@@ -3451,7 +3546,7 @@ mod tests {
         assert!((imbued - plain * IMBUE_DAMAGE).abs() < 1e-3 && (drank - g.hero.stats.imbue_drink()).abs() < 1e-3, "{plain} {imbued} {drank}");
         assert_eq!(g.hero.quiver.imbued, IMBUE_SHOTS - 1);
         // All five landing give back less than the imbue took.
-        assert!(drank * IMBUE_SHOTS as f32 <= top * IMBUE_COST * IMBUE_RETURN + 1e-3 && IMBUE_RETURN < 1.0);
+        assert!(drank * IMBUE_SHOTS as f32 <= top * IMBUE_COST * IMBUE_RETURN + 1e-3 && IMBUE_RETURN > 1.0);
         // The crossbow's bolt: stopped by the first foe, unless imbued.
         let lane_of_two = |imbued: u32| {
             let mut c = holding(Ranged::BloodCrossbow, vec![of(Archetype::Husk, 6.0, 0), of(Archetype::Husk, 10.0, 0)]);

@@ -1,5 +1,6 @@
-//! What the hero wears and carries: a weapon, an offhand, four pieces of armour, two rings, a
-//! talisman and a spell attuned. Each piece changes the fight through a [`Kit`] (the sum of what is worn), and its
+//! What the hero wears and carries: two sets of a weapon and an offhand (one in hand, one on the
+//! belt), a bow or crossbow on the back, four pieces of armour, two rings, a talisman and a spell
+//! attuned. Each piece changes the fight through a [`Kit`] (the sum of what is worn), and its
 //! weight counts against what the hero can carry: past 70% of it, rolls cost more and stamina
 //! comes back slower. Pieces come off the dead (`World::felled`); the smith's +levels apply to
 //! whatever weapon and armour are worn.
@@ -9,7 +10,7 @@ use crate::fight::Archetype;
 
 /// Where a piece goes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Slot { Weapon, Offhand, Head, Body, Hands, Legs, Ring, Talisman, Spell }
+pub enum Slot { Weapon, Offhand, Head, Body, Hands, Legs, Ring, Talisman, Spell, Ranged }
 
 /// The smith's shards, by grade: the common one off the first regions' dead, and rarer ones that
 /// only deeper regions give (`world::World::felled`).
@@ -23,16 +24,16 @@ pub const ARMOUR_STEP: f32 = 0.015;
 const SHIELD_STEP: (f32, f32) = (0.06, 0.08);
 
 impl Slot {
-    /// How far the smith reinforces a piece worn here: a weapon or an offhand to +8, armour to
-    /// +4, a ring, a talisman or a spell not at all.
+    /// How far the smith reinforces a piece worn here: a weapon, an offhand or a bow to +8, armour
+    /// to +4, a ring, a talisman or a spell not at all.
     pub fn most(self) -> u32 {
-        match self { Slot::Weapon | Slot::Offhand => 8, Slot::Head | Slot::Body | Slot::Hands | Slot::Legs => 4, _ => 0 }
+        match self { Slot::Weapon | Slot::Offhand | Slot::Ranged => 8, Slot::Head | Slot::Body | Slot::Hands | Slot::Legs => 4, _ => 0 }
     }
     /// The shards (grade, how many) and echoes the smith asks to take a piece here to +`n`: the
     /// common shard for the first levels, the rarer ones for the last.
     pub fn reinforcing(self, n: u32) -> (usize, u32, u32) {
         match self {
-            Slot::Weapon | Slot::Offhand => {
+            Slot::Weapon | Slot::Offhand | Slot::Ranged => {
                 let (grade, count) = match n { 0..=3 => (0, n), 4..=6 => (1, n - 3), _ => (2, n - 6) };
                 (grade, count, 80 * n)
             }
@@ -44,13 +45,20 @@ impl Slot {
     }
 }
 
-/// The places to wear things, in the order the shrine lists them (two for rings).
-/// The spell's is last, so a pilgrimage kept before there were spells reads as it was.
-pub const SLOTS: [(Slot, &str); 10] = [
+/// The places to wear things (two for rings), in the order a save keeps them: each new one at the
+/// end, so an older pilgrimage reads as it was. The first weapon and offhand are the set in hand;
+/// the shrine lists the places in `SHOWN` order.
+pub const SLOTS: [(Slot, &str); 13] = [
     (Slot::Weapon, "Weapon"), (Slot::Offhand, "Offhand"), (Slot::Head, "Head"), (Slot::Body, "Body"),
     (Slot::Hands, "Hands"), (Slot::Legs, "Legs"), (Slot::Ring, "Ring"), (Slot::Ring, "Ring"), (Slot::Talisman, "Talisman"),
-    (Slot::Spell, "Spell"),
+    (Slot::Spell, "Spell"), (Slot::Ranged, "Bow"), (Slot::Weapon, "Weapon II"), (Slot::Offhand, "Offhand II"),
 ];
+/// The bow's or crossbow's place, drawn when F is pressed (`fight::Hero::drawn`).
+pub const BOW: usize = 10;
+/// The places of the set on the belt, its weapon and offhand: carried, doing nothing until swapped in.
+pub const SPARE: [usize; 2] = [11, 12];
+/// The order the shrine lists the places in: both sets, the bow, then the rest.
+pub const SHOWN: [usize; 13] = [0, 1, 11, 12, 10, 2, 3, 4, 5, 6, 7, 8, 9];
 
 /// What everything worn does, together. Multipliers start at 1, additions at 0.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -106,9 +114,10 @@ pub struct Kit {
     /// (`fight::Move::spec_with`), drawn as a one-handed weapon is (`Kit::swung_as`).
     pub one_hand: bool,
     /// The smith's levels on what is worn (`Loadout::levels`): the main hand's, the offhand's,
-    /// and of a blow, the share the armour's together turn.
+    /// the bow's, and of a blow, the share the armour's together turn.
     pub main: u32,
     pub off_level: u32,
+    pub bow_level: u32,
     pub forged_armour: f32,
     /// Spell charges more than the catalyst's own.
     pub charges: f32,
@@ -328,7 +337,7 @@ pub const BUCKLER: Off = Off { guard: Guard::Buckler, art: "pilgrim_buckler" };
 
 impl Default for Kit {
     fn default() -> Kit {
-        Kit { damage: 1.0, taken: 1.0, poise: 0.0, guard: 1.0, chip: 1.0, parry: 0, roll: 1.0, strike: 1.0, regen: 1.0, heal: 1.0, hp: 0.0, stamina: 0.0, souls: 1.0, tally: 0.0, load: 0.0, arms: SWORD, off: Some(BUCKLER), leech: 0.0, opener: 1.0, ranged: None, shooting: UNSCALED, catalyst: None, spell: None, ward: None, art: None, one_hand: false, main: 0, off_level: 0, forged_armour: 0.0, charges: 0.0, capped: crate::capstone::Capped::NONE, gas: 1.0, flasks: 0 }
+        Kit { damage: 1.0, taken: 1.0, poise: 0.0, guard: 1.0, chip: 1.0, parry: 0, roll: 1.0, strike: 1.0, regen: 1.0, heal: 1.0, hp: 0.0, stamina: 0.0, souls: 1.0, tally: 0.0, load: 0.0, arms: SWORD, off: Some(BUCKLER), leech: 0.0, opener: 1.0, ranged: None, shooting: UNSCALED, catalyst: None, spell: None, ward: None, art: None, one_hand: false, main: 0, off_level: 0, bow_level: 0, forged_armour: 0.0, charges: 0.0, capped: crate::capstone::Capped::NONE, gas: 1.0, flasks: 0 }
     }
 }
 
@@ -357,9 +366,9 @@ const fn weapon(name: &'static str, weight: f32, arms: Arms, text: &'static str,
     Item { arms: Some(arms), ..item(name, Slot::Weapon, weight, text, apply) }
 }
 
-/// A bow or a crossbow: in the other hand, where a shield would be.
+/// A bow or a crossbow: on the back in its own place, drawn into both hands to shoot.
 const fn ranged(name: &'static str, weight: f32, r: Ranged, sc: Scaling, text: &'static str) -> Item {
-    Item { ranged: Some(r), shooting: Some(sc), ..item(name, Slot::Offhand, weight, text, |_| {}) }
+    Item { ranged: Some(r), shooting: Some(sc), ..item(name, Slot::Ranged, weight, text, |_| {}) }
 }
 
 /// A catalyst: in the other hand, where a shield would be.
@@ -444,10 +453,10 @@ item("Vren's Loupe", Slot::Talisman, 0.2, "+18% echoes", |k| k.souls *= 1.18),
     weapon("Ripper's Tendril", 3.0, Arms { base: 1.1, needs: [0, 7, 4], scales: [No, B, D], class: Class::Thrust, art: "rippers_tendril" }, "a razor that was never still: strikes cost 20% less stamina, +8% damage", |k| { k.strike *= 0.8; k.damage *= 1.08; }),
     // Left where it was laid down (`atlas::Place::loot`).
     weapon("Gravewarden's Slab", 18.0, Arms { base: 1.0, needs: [16, 0, 0], scales: [A, No, No], class: Class::Ultra, art: "gravewarden_slab" }, "both hands; every swing sweeps the lanes beside and rides out a flinch", |_| {}),
-    // In the other hand instead of a shield (F: a ranged attack; a catalyst, C: a spell): no
-    // parry flick, blocks on the blade.
+    // A bow or crossbow on the back, drawn by F; a catalyst in the other hand instead of a
+    // shield (C: a spell): no parry flick, blocks on the blade.
     ranged("Hunter's Shortbow", 1.5, Ranged::Bow, Scaling { base: 1.0, needs: [0, 2, 0], scales: [E, B, No] }, "F: an arrow down the lane, from the arrows you carry (two pulled back out of each foe felled); a long draw any blow cuts off; dexterity"),
-    ranged("Bloodrunner's Bow", 1.5, Ranged::BloodBow, Scaling { base: 1.0, needs: [0, 3, 0], scales: [No, B, D] }, "F: an arrow down the lane, from the arrows you carry. C, Blood Imbue: an eighth of your health for five arrows that strike half again as hard and, if all five land, drink back over half of it; one at a time, back in half a minute once spent (sooner for blows landed); a long draw any blow cuts off; dexterity, a little focus"),
+    ranged("Bloodrunner's Bow", 1.5, Ranged::BloodBow, Scaling { base: 1.0, needs: [0, 3, 0], scales: [No, B, D] }, "F: an arrow down the lane, from the arrows you carry. C, Blood Imbue: an eighth of your health for five arrows that strike half again as hard and, if all five land, drink back a quarter more than it cost; one at a time, back in half a minute once spent (sooner for blows landed); a long draw any blow cuts off; dexterity, a little focus"),
     catalyst("Frostweaver's Focus", 1.0, Catalyst { scaling: Scaling { base: 1.0, needs: [0, 0, 2], scales: [No, No, B] }, charges: 0.0, own: Some(Spell::FrostBolt), art: "frost_focus" }, "a catalyst, C: the spell attuned, else its own frost bolt; a charge each, filled by blows landed up close and at the shrine; focus"),
     // Left by Bounty's echo in Eryndor, at the end of his trail (`bounty`).
     ranged("Bounty's Longbow", 2.0, Ranged::Longbow, Scaling { base: 1.0, needs: [2, 4, 0], scales: [D, A, No] }, "F: a heavy arrow down the lane, flat and far, from the arrows you carry; a longer draw than a shortbow's, any blow cuts it off; dexterity above all"),
@@ -511,9 +520,10 @@ pub fn drops(k: Archetype) -> &'static [&'static str] {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Loadout {
     pub owned: Vec<usize>,
-    pub worn: [Option<usize>; 10],
-    /// The weapon worn, made for both hands, held in one (`set_grip`).
+    pub worn: [Option<usize>; 13],
+    /// The weapon in hand, made for both hands, held in one (`set_grip`); and the one on the belt.
     pub one_hand: bool,
+    pub spare_one_hand: bool,
     /// Worn by a Warden: any shield in hand keeps a ward (`Kit::ward`).
     pub warden: bool,
     /// The smith's level on each piece reinforced, by piece: it stays with the piece when it is
@@ -526,7 +536,7 @@ pub struct Loadout {
 impl Loadout {
     /// What the hero sets out with, all worn.
     pub fn starting() -> Loadout {
-        let mut l = Loadout { owned: (0..6).collect(), worn: [None; 10], one_hand: false, warden: false, levels: Default::default(), capstones: Default::default() };
+        let mut l = Loadout { owned: (0..6).collect(), worn: [None; 13], one_hand: false, spare_one_hand: false, warden: false, levels: Default::default(), capstones: Default::default() };
         for i in 0..6 { l.worn[i] = Some(i); }
         l
     }
@@ -535,9 +545,11 @@ impl Loadout {
     pub fn kit(&self) -> Kit {
         // The other hand holds only what is worn in it.
         let mut k = Kit { off: None, ..Kit::default() };
-        for &i in self.worn.iter().flatten() {
-            (ITEMS[i].apply)(&mut k);
+        for (p, &i) in self.worn.iter().enumerate().filter_map(|(p, w)| Some((p, w.as_ref()?))) {
             k.load += ITEMS[i].weight;
+            // The set on the belt is carried, its weight and nothing else.
+            if SPARE.contains(&p) { continue; }
+            (ITEMS[i].apply)(&mut k);
             if let Some(a) = ITEMS[i].arms { k.arms = a; }
             if let Some(o) = ITEMS[i].off { k.off = Some(o); }
             if let Some(r) = ITEMS[i].ranged { k.ranged = Some(r); }
@@ -552,7 +564,7 @@ impl Loadout {
         // The smith's levels on what is worn: a reinforced shield blocks cheaper and lets less
         // through; the armour's levels together turn a share of every blow.
         let lv = |p: usize| self.worn[p].map_or(0, |i| self.level(i));
-        (k.main, k.off_level) = (lv(0), lv(1));
+        (k.main, k.off_level, k.bow_level) = (lv(0), lv(1), lv(BOW));
         k.forged_armour = (0..SLOTS.len()).filter(|&p| matches!(SLOTS[p].0, Slot::Head | Slot::Body | Slot::Hands | Slot::Legs)).map(lv).sum::<u32>() as f32 * ARMOUR_STEP;
         if k.off.is_some() {
             k.guard *= 1.0 - SHIELD_STEP.0 * k.off_level as f32;
@@ -561,6 +573,12 @@ impl Loadout {
         // A piece at its top gives its capstone.
         for p in 0..6 {
             if let Some(cap) = self.worn[p].and_then(|i| self.capstone(i)) { cap.apply(&mut k, p); }
+        }
+        // The bow's, drawn on the offhand's place only while that hand is empty.
+        if let Some(cap) = self.worn[BOW].and_then(|i| self.capstone(i)) {
+            let look = k.capped.worn[1];
+            cap.apply(&mut k, 1);
+            if self.worn[1].is_some() { k.capped.worn[1] = look; }
         }
         k
     }
@@ -602,11 +620,24 @@ impl Loadout {
         self.levels.retain(|_, n| *n > 0);
     }
 
-    /// Whether the weapon worn takes both hands (not when one made for both is held in one).
-    pub fn two_handed(&self) -> bool { !self.one_hand && self.worn[0].and_then(|i| ITEMS[i].arms).is_some_and(|a| a.class.two_handed()) }
+    /// Whether the weapon in hand takes both hands (not when one made for both is held in one).
+    pub fn two_handed(&self) -> bool { self.set_two_handed(0) }
 
-    /// The might it takes to hold the weapon worn in one hand, if it is made for both.
-    pub fn grip_might(&self) -> Option<u32> { self.worn[0].and_then(|i| ITEMS[i].arms).and_then(|a| a.class.one_hand_might(a.needs)) }
+    /// The weapon's and the offhand's places of the set place `p` belongs to, if it is a set's.
+    fn set_of(p: usize) -> Option<(usize, usize)> {
+        match p { 0 | 1 => Some((0, 1)), 11 | 12 => Some((SPARE[0], SPARE[1])), _ => None }
+    }
+
+    /// Whether the weapon of the set whose weapon is at place `weapon` takes both hands.
+    fn set_two_handed(&self, weapon: usize) -> bool {
+        let one = if weapon == 0 { self.one_hand } else { self.spare_one_hand };
+        !one && self.worn[weapon].and_then(|i| ITEMS[i].arms).is_some_and(|a| a.class.two_handed())
+    }
+
+    /// The might it takes to hold the weapon in hand in one hand, if it is made for both.
+    pub fn grip_might(&self) -> Option<u32> { self.grip_might_at(0) }
+
+    fn grip_might_at(&self, weapon: usize) -> Option<u32> { self.worn[weapon].and_then(|i| ITEMS[i].arms).and_then(|a| a.class.one_hand_might(a.needs)) }
 
     /// Hold the weapon worn in one hand (`one`), with `might`, or in both again (the offhand put
     /// away). False if it is not made for both, or one hand wants more might than that.
@@ -624,19 +655,68 @@ impl Loadout {
     pub fn fits(&self, p: usize) -> Vec<usize> {
         let slot = SLOTS[p].0;
         // Nothing goes beside a weapon held in both hands.
-        if slot == Slot::Offhand && self.two_handed() { return Vec::new(); }
+        if slot == Slot::Offhand && Self::set_of(p).is_some_and(|(w, _)| self.set_two_handed(w)) { return Vec::new(); }
         self.owned.iter().copied().filter(|&i| ITEMS[i].slot == slot && !self.worn.iter().enumerate().any(|(q, w)| q != p && *w == Some(i))).collect()
+    }
+
+    /// As `fits`, for a hero with `might`: an offhand also goes beside a weapon made for both
+    /// hands that they are strong enough to hold in one (`wear_with` takes it in one hand then).
+    pub fn fits_with(&self, p: usize, might: u32) -> Vec<usize> {
+        let beside = Self::set_of(p).map(|s| s.0).filter(|&weapon| SLOTS[p].0 == Slot::Offhand && self.set_two_handed(weapon));
+        let Some(weapon) = beside else { return self.fits(p) };
+        if self.grip_might_at(weapon).is_none_or(|need| might < need) { return Vec::new(); }
+        self.owned.iter().copied().filter(|&i| ITEMS[i].slot == Slot::Offhand && !self.worn.contains(&Some(i))).collect()
+    }
+
+    /// Wear `item` in place `p` as `wear` does, for a hero with `might`: an offhand put beside a
+    /// weapon made for both hands takes that weapon into one hand. False if it does not go there.
+    pub fn wear_with(&mut self, p: usize, item: Option<usize>, might: u32) -> bool {
+        let Some(i) = item.filter(|i| !self.fits(p).contains(i)) else { return self.wear(p, item) };
+        if !self.fits_with(p, might).contains(&i) { return false; }
+        if Self::set_of(p).is_some_and(|s| s.0 == 0) { self.one_hand = true; } else { self.spare_one_hand = true; }
+        self.wear(p, item)
     }
 
     /// Wear `item` in place `p` (None: take off what is there). False if it does not go there.
     pub fn wear(&mut self, p: usize, item: Option<usize>) -> bool {
         if let Some(i) = item { if !self.fits(p).contains(&i) { return false; } }
         self.worn[p] = item;
-        // A weapon taken up is held as it was made to be: in both hands, if made for them.
-        if p == 0 { self.one_hand = false; }
-        // Taking up a weapon in both hands puts the offhand away.
-        if p == 0 && self.two_handed() { self.worn[1] = None; }
+        if let Some((weapon, off)) = Self::set_of(p).filter(|&(weapon, _)| p == weapon) {
+            // A weapon taken up is held as it was made to be: in both hands, if made for them,
+            // which puts its set's offhand away.
+            if weapon == 0 { self.one_hand = false; } else { self.spare_one_hand = false; }
+            if self.set_two_handed(weapon) { self.worn[off] = None; }
+        } else if let Some((weapon, _)) = Self::set_of(p).filter(|&(_, off)| p == off && item.is_none()) {
+            // The offhand put away, a weapon made for both goes back into both hands.
+            if weapon == 0 { self.one_hand = false; } else { self.spare_one_hand = false; }
+        }
         true
+    }
+
+    /// The place a piece found goes in, in the set in hand: its slot's first.
+    pub fn place_for(i: usize) -> usize { SLOTS.iter().position(|s| s.0 == ITEMS[i].slot).unwrap_or(0) }
+
+    /// Whether a set waits on the belt to be swapped into hand.
+    pub fn swappable(&self) -> bool { self.worn[SPARE[0]].is_some() }
+
+    /// The set on the belt into hand and the one in hand onto the belt. False if the belt holds
+    /// no weapon to swap to.
+    pub fn swap_sets(&mut self) -> bool {
+        if !self.swappable() { return false; }
+        self.worn.swap(0, SPARE[0]);
+        self.worn.swap(1, SPARE[1]);
+        std::mem::swap(&mut self.one_hand, &mut self.spare_one_hand);
+        true
+    }
+
+    /// A save from before the bow had its own place: one worn in the offhand goes there.
+    pub fn bow_off_the_offhand(&mut self) {
+        for off in [1, SPARE[1]] {
+            if self.worn[off].is_some_and(|i| ITEMS[i].slot == Slot::Ranged) {
+                if self.worn[BOW].is_none() { self.worn[BOW] = self.worn[off]; }
+                self.worn[off] = None;
+            }
+        }
     }
 
     /// Take a piece found. False if it was owned already.
@@ -704,16 +784,66 @@ mod tests {
         assert_eq!(k.off, None);
         assert!((k.guard - 1.25).abs() < 1e-6 && (k.chip - 1.5).abs() < 1e-6, "{k:?}");
         for i in ITEMS {
-            assert_eq!(i.off.is_some() || i.ranged.is_some() || i.catalyst.is_some(), i.slot == Slot::Offhand, "{}", i.name);
+            assert_eq!(i.off.is_some() || i.catalyst.is_some(), i.slot == Slot::Offhand, "{}", i.name);
+            assert_eq!(i.ranged.is_some(), i.slot == Slot::Ranged, "{}", i.name);
             assert_eq!(i.spell.is_some(), i.slot == Slot::Spell, "{}", i.name);
         }
-        // A bow in the other hand is no shield: it blocks on the blade.
+        // A bow goes on the back, not in the other hand: the shield stays where it is.
         let bow = find("Hunter's Shortbow");
         l.gain(bow);
-        assert!(l.wear(1, Some(bow)));
+        assert!(l.wear(1, Some(find("Pilgrim's Buckler"))) && !l.wear(1, Some(bow)) && l.wear(BOW, Some(bow)));
+        assert_eq!(Loadout::place_for(bow), BOW);
         let k = l.kit();
-        assert_eq!((k.off, k.ranged), (None, Some(Ranged::Bow)));
-        assert!((k.guard - 1.25).abs() < 1e-6, "{k:?}");
+        assert_eq!((k.off.map(|o| o.guard), k.ranged), (Some(Guard::Buckler), Some(Ranged::Bow)));
+    }
+
+    #[test]
+    fn a_second_set_waits_on_the_belt_weighing_only_and_swaps_into_hand() {
+        let mut l = Loadout::starting();
+        let (axe, kite, great) = (find("Husk Cleaver"), find("Kite Shield"), find("Executioner's Greatsword"));
+        for i in [axe, kite, great] { l.gain(i); }
+        assert!(!l.swappable() && !l.swap_sets(), "nothing on the belt");
+        let before = l.kit();
+        assert!(l.wear(SPARE[0], Some(axe)) && l.wear(SPARE[1], Some(kite)));
+        let k = l.kit();
+        assert_eq!((k.arms.class, k.off.map(|o| o.guard)), (Class::Sword, Some(Guard::Buckler)), "the set in hand is as it was");
+        assert!((k.load - before.load - ITEMS[axe].weight - ITEMS[kite].weight).abs() < 1e-4, "the belt's weight is carried");
+        // One piece is worn in one place only.
+        assert!(!l.fits(0).contains(&axe) && !l.fits(1).contains(&kite));
+        assert!(l.swappable() && l.swap_sets());
+        let k = l.kit();
+        assert_eq!((k.arms.class, k.off.map(|o| o.guard)), (Class::Axe, Some(Guard::Kite)));
+        assert_eq!((l.worn[SPARE[0]], l.worn[SPARE[1]]), (Some(0), Some(1)), "the sword and buckler on the belt");
+        // A greatsword on the belt puts its set's offhand away, and nothing goes beside it ...
+        assert!(l.wear(SPARE[0], Some(great)) && l.worn[SPARE[1]].is_none() && l.fits(SPARE[1]).is_empty());
+        // ... unless the hero is strong enough to hold it in one hand: then the shield goes on
+        // beside it, and it is held so when swapped in.
+        let buckler = find("Pilgrim's Buckler");
+        assert!(l.fits_with(SPARE[1], 15).is_empty() && !l.wear_with(SPARE[1], Some(buckler), 15));
+        assert!(l.fits_with(SPARE[1], 16).contains(&buckler) && l.wear_with(SPARE[1], Some(buckler), 16));
+        assert!(l.swap_sets() && l.one_hand && l.kit().one_hand && l.kit().off.is_some());
+    }
+
+    #[test]
+    fn an_offhand_goes_beside_a_greatsword_in_hand_once_strong_enough_to_hold_it_in_one() {
+        let mut l = Loadout::starting();
+        let great = find("Executioner's Greatsword");
+        l.gain(great);
+        assert!(l.wear(0, Some(great)) && l.worn[1].is_none());
+        let buckler = find("Pilgrim's Buckler");
+        assert!(!l.wear_with(1, Some(buckler), 10), "too weak to hold it in one hand");
+        assert!(l.wear_with(1, Some(buckler), 16) && l.one_hand && l.kit().off.is_some());
+        assert!(l.wear(1, None) && !l.one_hand && !l.kit().one_hand, "the offhand put away, both hands again");
+    }
+
+    #[test]
+    fn an_old_save_with_a_bow_in_the_offhand_moves_it_to_the_back() {
+        let mut l = Loadout::starting();
+        let bow = find("Bloodrunner's Bow");
+        l.gain(bow);
+        l.worn[1] = Some(bow);
+        l.bow_off_the_offhand();
+        assert_eq!((l.worn[1], l.worn[BOW]), (None, Some(bow)));
     }
 
     #[test]

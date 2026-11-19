@@ -78,7 +78,7 @@ impl Capstone {
             Slot::Weapon => &[Ember, Rime, Thirst],
             Slot::Offhand if item.off.is_some() => &[Bastion, Thorns, Sanctuary],
             Slot::Offhand if item.catalyst.is_some() => &[Wellspring, Winter, Siphon],
-            Slot::Offhand if item.ranged.is_some() => &[Searing, Hoarfrost, Keen],
+            Slot::Ranged => &[Searing, Hoarfrost, Keen],
             Slot::Head | Slot::Body | Slot::Hands | Slot::Legs => &[Stalwart, Vigil, Fleet],
             _ => &[],
         }

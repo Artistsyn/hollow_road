@@ -348,11 +348,14 @@ impl Visit {
 impl World {
     /// The meeting waiting in the place the hero is in: one whose story has come and is untold, or
     /// the one just had, who stays until the hero leaves.
-    pub fn visit(&self) -> Option<&'static Visit> {
+    pub fn visit(&self) -> Option<&'static Visit> { self.visit_in(self.here().id) }
+
+    /// The meeting waiting in place `id`, as `visit` has it.
+    pub(crate) fn visit_in(&self, id: &str) -> Option<&'static Visit> {
         // Asked something not yet answered, they wait to hear it.
         let asked = |v: &&Visit| self.meetings.contains(&v.id) && (v.when)(self) && self.asking(v.id).is_some();
         let open = |v: &&Visit| self.lingering == Some(v.id) || (!self.meetings.contains(&v.id) && (v.when)(self)) || asked(v);
-        Visit::every().filter(|v| v.place == self.here().id).find(open)
+        Visit::every().filter(|v| v.place == id).find(open)
     }
 
     /// Where the one waiting here stands, road metres, and who.

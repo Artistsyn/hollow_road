@@ -230,6 +230,7 @@
     "enabled": true,
     "gap": 1.8,
     "height": 2.2,
+    "beyond": 0.4,
     "base_shadow": 0.4,
     "thickness": 0.6,
     "material": {

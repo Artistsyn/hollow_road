@@ -108,6 +108,9 @@ const DREAD_AURA: ([u8; 3], f32) = ([255, 64, 30], 0.85);
 /// Ticks after the rune is thrown as bait before it hums back into the hand.
 const RUNE_BACK: u32 = 900;
 const RUNE_PULSE: ([u8; 3], f32, u64, f32) = ([120, 230, 120], 0.7, 240, 48.0);
+/// The station the hero stands before at the shrine (keeper, shrine or smith), outlined in
+/// firelight so it reads as the one a press speaks to: its colour, strength, and beat in ticks.
+const CHOSEN_GLOW: ([u8; 3], f32, f32) = ([255, 206, 128], 0.6, 90.0);
 const HUD: &str = "hud";
 /// A line across the middle of the screen: where the hero has come to, what to do.
 const BANNER: &str = "banner";
@@ -1044,7 +1047,10 @@ pub struct Pilgrimage {
     /// The banner's line and the real ticks it has left.
     pub(crate) banner: (String, u32),
     /// Lines waiting to show after the banner.
-    banners: std::collections::VecDeque<String>,
+    banners: std::collections::VecDeque<(String, bool)>,
+    /// Whether the banner showing tells where the hero is (`Note::tells_here`), and so gives way
+    /// at once to a newer such line.
+    banner_here: bool,
     /// The callout's word, its colour and the real ticks it has left.
     callout: (String, [u8; 3], u32),
     /// Fight ticks left of a clean parry's follow-through (the buckler's flick held out), drawn
@@ -1228,9 +1234,11 @@ pub fn armed_sheet(name: &str) -> Option<Sheet> {
 /// The art name of an empty weapon hand (`armed_sheet`).
 const EMPTY_HAND: &str = "empty_hand";
 
-/// `kit` as drawn: with the weapon hand empty while its Hatchet is thrown.
-fn in_hand(kit: &crate::gear::Kit, thrown: bool) -> crate::gear::Kit {
-    if thrown { crate::gear::Kit { arms: crate::gear::Arms { art: EMPTY_HAND, ..kit.arms }, ..*kit } } else { *kit }
+/// `kit` as drawn: with the weapon hand empty while its Hatchet is thrown; the bow in the other
+/// hand while it is `drawn` (the shield or focus put by), else on the back, not drawn at all.
+fn in_hand(kit: &crate::gear::Kit, thrown: bool, drawn: bool) -> crate::gear::Kit {
+    let k = if thrown { crate::gear::Kit { arms: crate::gear::Arms { art: EMPTY_HAND, ..kit.arms }, ..*kit } } else { *kit };
+    if drawn && k.ranged.is_some() { crate::gear::Kit { off: None, catalyst: None, ..k } } else { crate::gear::Kit { ranged: None, ..k } }
 }
 
 /// What `kit` has in the other hand to be drawn: the shield, else the bow or focus.
@@ -1308,7 +1316,7 @@ impl Pilgrimage {
             fight, presses, fingers, pad: crate::touch::Pad::default(), touch_held: crate::touch::Held::default(), menu_rows: RefCell::new(Vec::new()), menu_top: std::cell::Cell::new(0),
             touch_ui: cfg!(target_os = "android") || std::env::var_os("HR_TOUCH").is_some(), turnable: false, touch_laid: std::cell::Cell::new(None), pending: Input::default(), owed: 0.0, slow: (0, 1.0), dead_for: 0,
             art: Art::new(), hero_sheet: sheets.hero, enemy_sheets: sheets.enemies, font, ticks: 0, hum_until: 0, frames: (0, 0), last_frame: None, frame_at: [0; 4], cut_wait: 0, last_speed: 0.0, stride: 0.0, last_marks: Vec::new(), last_sigils: Vec::new(), last_marks_view: [None; 3], telegraphed: false, relit: RefCell::new(Relighter::new()), frosted: RefCell::new(std::collections::HashMap::new()), sheen: RefCell::default(), last_shadows: RefCell::new((Vec::new(), Vec::new(), [None; 3])), tracer: RefCell::new(TerrainCollisionPlugin::new()), boss_sheet: sheets.bell_warden, boss_art: BossArt::default(), map_img: None, side_pending: SideInput::default(), tap: None, running: None, fx: Fx::load(),
-            world, mode: Mode::Front(Front::Title), calling: None, fade: (1.0, 0.0), keeper_sheet: sheets.keeper, smith_sheet: sheets.smith, gruk_sheet: sheets.gruk, visitor_sheet: ("", None), ally_sheet: Vec::new(), cameos: Vec::new(), counter: pixellab_picture("guild/counter.png"), end_sent: None, art_due, loading, started: cfg!(test), banner: (String::new(), 0), banners: std::collections::VecDeque::new(), callout: (String::new(), [0; 3], 0), flourish: 0, props: kit_picture("shrine").zip(kit_picture("signpost")), bar_sent: None, chest: pixellab_picture("chest/shut.png").zip(pixellab_picture("chest/open.png")),
+            world, mode: Mode::Front(Front::Title), calling: None, fade: (1.0, 0.0), keeper_sheet: sheets.keeper, smith_sheet: sheets.smith, gruk_sheet: sheets.gruk, visitor_sheet: ("", None), ally_sheet: Vec::new(), cameos: Vec::new(), counter: pixellab_picture("guild/counter.png"), end_sent: None, art_due, loading, started: cfg!(test), banner: (String::new(), 0), banners: std::collections::VecDeque::new(), banner_here: false, callout: (String::new(), [0; 3], 0), flourish: 0, props: kit_picture("shrine").zip(kit_picture("signpost")), bar_sent: None, chest: pixellab_picture("chest/shut.png").zip(pixellab_picture("chest/open.png")),
             slot: None, saves: save_dir(), slots: Vec::new(), played: 0.0, kept: None, keep_failed: false, prologue: None,
             title_font: Font::from_bytes(include_bytes!("../assets/fonts/Cinzel-Bold.ttf")).ok().map(Arc::new), prompt: ("", 0.0), show_help: false, show_dev: false, audio: Audio::new(), scene: None,
         }
@@ -1326,7 +1334,7 @@ impl Pilgrimage {
             if let Some(name) = c.offhand() {
                 let i = crate::gear::find(name);
                 self.world.gear.gain(i);
-                self.world.gear.wear(1, Some(i));
+                self.world.gear.wear(crate::gear::Loadout::place_for(i), Some(i));
             }
             let (st, [m, d, f]) = (&mut self.fight.hero.stats, c.leaning());
             (st.might, st.dexterity, st.focus) = (st.might + m, st.dexterity + d, st.focus + f);
@@ -1489,6 +1497,7 @@ impl Pilgrimage {
         self.taps(c, presses);
         let th = self.touch_held;
         let run = self.running == Some('w') || (th.run && th.up);
+        let swap = self.world.gear.swappable();
         let p = &mut self.pending;
         for press in presses {
             match press {
@@ -1507,6 +1516,7 @@ impl Pilgrimage {
                     if is(k, &["f"], None) { p.loose = true; }
                     if is(k, &["c"], None) { p.cast = true; }
                     if is(k, &["q"], None) { p.art = true; }
+                    if is(k, &["x"], None) { p.swap = swap; }
                 }
                 Press::Mouse(MouseButton::Left, false) => p.light = true,
                 Press::Mouse(MouseButton::Left, true) => p.heavy = true,
@@ -1522,6 +1532,7 @@ impl Pilgrimage {
                         Tap::Roll if th.right => p.step = 1,
                         Tap::Roll if th.up => p.tumble = true,
                         Tap::Roll => p.backstep = true,
+                        Tap::Swap => p.swap = swap,
                         Tap::Jump => {}
                     }
                 }
@@ -1804,7 +1815,7 @@ impl Pilgrimage {
     /// as the camera sees them); standing still where a clip is missing.
     fn hero_frame(&self, s: &Sheet, walked: f64) -> Option<Arc<RgbaImage>> {
         // Standing is the first frame of the walk, with what is worn in hand.
-        let kit = &in_hand(&self.fight.hero.stats.kit, !self.fight.hatchets.is_empty());
+        let kit = &in_hand(&self.fight.hero.stats.kit, !self.fight.hatchets.is_empty(), self.fight.hero.drawn);
         let stand = || ["walk", "light", "guard"].iter().find_map(|n| worn(s, kit, n)).map(|c| c.frames[0].clone());
         self.hero_clip_frame(s, walked).or_else(stand)
     }
@@ -1813,7 +1824,9 @@ impl Pilgrimage {
     /// what the loadout holds, and what the hero fighting holds (drawn from), should they differ.
     fn dress_hero(&mut self) {
         let Some(s) = self.hero_sheet.as_mut() else { return };
-        for kit in [self.world.kit(), self.fight.hero.stats.kit] {
+        // Each with the bow on the back and drawn (`in_hand`).
+        let kits = [self.world.kit(), self.fight.hero.stats.kit].into_iter().flat_map(|k| [in_hand(&k, false, false), in_hand(&k, false, true)]);
+        for kit in kits {
             // Held in one hand, a weapon made for both is drawn into the one-handed clips.
             if kit.one_hand {
                 s.arm_as(kit.arms.art, kit.swung_as().slug());
@@ -1843,7 +1856,7 @@ impl Pilgrimage {
 
     fn hero_clip_frame(&self, s: &Sheet, walked: f64) -> Option<Arc<RgbaImage>> {
         let h = &self.fight.hero;
-        let kit = in_hand(&h.stats.kit, !self.fight.hatchets.is_empty());
+        let kit = in_hand(&h.stats.kit, !self.fight.hatchets.is_empty(), h.drawn);
         let clip = |n: &str| worn(s, &kit, n);
         let k = |t: u32, total: u32| t as f32 / total.max(1) as f32;
         let kneel = |k: f32| clip("rest").map(|c| c.at(k, false).clone());
@@ -1912,6 +1925,9 @@ impl Pilgrimage {
                 // heavy), stretched over the art's timing so the blow lands as it goes off.
                 Move::Art if kit.art.is_some_and(|a| a.light()) => held(s, &kit, "", "light").map(|c| phased(c, spec.frames, a.t, (5, 7), false)),
                 Move::Art => held(s, &kit, "", "heavy").map(|c| phased(c, spec.frames, a.t, (7, 9), false)),
+                // The bow brought round or put back, and a set swapped: the hand comes in to the
+                // body and out again, as into a guard and back.
+                Move::Draw | Move::Stow | Move::Swap => clip("guard").map(|c| c.at((1.0 - (2.0 * k(a.t, w + b + r) - 1.0).abs()).min(0.999), false).clone()),
             };
         }
         if h.reeling > 0 {
@@ -2282,11 +2298,12 @@ impl Pilgrimage {
                 prop(img, Some(s - 0.15), inside(-1.4, s, half), 0.9, &mut stands)
             })));
             // Whoever waits on the road here, a little left of the middle, facing the hero.
-            let visitor = self.world.visitor_at().filter(|_| !tutoring);
+            // One waiting in the place ahead stands there as soon as it is in view.
+            let visitor = self.world.visitor_at().filter(|&(s, _)| s > walked - 2.0).or_else(|| self.world.visitor_ahead()).filter(|_| !tutoring);
             placed.push((VISITOR.to_owned(), visitor.and_then(|(s, who)| figure(&self.visitor_sheet.1, inside(-1.3, s, 0.4), (s - walked) as f32, (70.0, who.height()), &mut stands))));
         }
         // On the island where the branches part.
-        placed.push((SIGNPOST.to_owned(), signpost.filter(|_| !resting && !tutoring).and_then(|img| prop(img, self.world.signpost, self.world.signpost_x(walked), 2.4, &mut stands))));
+        placed.push((SIGNPOST.to_owned(), signpost.filter(|_| !resting && !tutoring).and_then(|img| prop(img, self.world.signpost, 0.0, 2.4, &mut stands))));
         let stain = self.world.stain_at().filter(|_| !resting && !tutoring).and_then(|s| {
             let d = (s - walked) as f32;
             let (fx, fy) = pf.project_on(c, 0.0, 0.0, d)?;
@@ -2348,7 +2365,29 @@ impl Pilgrimage {
         TMP_LAP.with(|l| l.borrow_mut().mark("p.put"));
         Self::wreathe(c, &auras);
         self.pulse_rune(c, pulse_source.filter(|_| !h.dead));
+        self.light_station(c);
         TMP_LAP.with(|l| l.borrow_mut().mark("p.wreathe"));
+    }
+
+    /// At the shrine, the station the hero stands before outlined in firelight, beating softly,
+    /// traced from its unlit frame; the other two (and all three on the road) cleared.
+    fn light_station(&self, c: &mut Canvas) {
+        let chosen = match &self.mode { Mode::Sanctum(s) => Some(s.station()), _ => None };
+        let idle = |sheet: &Option<Sheet>, period: f32| sheet.as_ref().and_then(|s| s.clip("idle")).map(|cl| cl.looped(self.ticks as f32, period).clone());
+        let (rgb, peak, beat) = CHOSEN_GLOW;
+        let wave = 0.5 - 0.5 * (self.ticks as f32 * std::f32::consts::TAU / beat).cos();
+        for (id, station) in [(KEEPER, shrine::Station::Keeper), (SHRINE, shrine::Station::Shrine), (SMITH, shrine::Station::Smith)] {
+            let frame = (chosen == Some(station)).then(|| match station {
+                shrine::Station::Keeper => idle(&self.keeper_sheet, 80.0),
+                shrine::Station::Shrine => self.props.as_ref().map(|p| p.0.clone()),
+                shrine::Station::Smith => idle(&self.smith_sheet, 70.0),
+            }).flatten();
+            let Some(o) = c.get_game_object_mut(id) else { continue };
+            match frame.filter(|_| o.visible) {
+                Some(f) => { o.set_outline_state_traced(&f, MarkerMode::Aura, peak * (0.6 + 0.4 * wave), EffectColor::srgb8(rgb[0], rgb[1], rgb[2]), StateTiming::SETTLED); }
+                None => o.clear_mega_fx(),
+            }
+        }
     }
 
     /// Show each object where it was placed (hidden where it was not), recoloured as `looks`
@@ -2591,7 +2630,7 @@ impl Pilgrimage {
     /// The hero's side-on frame (the clips face right; mirrored when they face left on screen).
     fn side_hero_frame(&self, s: &Sheet, h: &side::SideHero, dir: f32) -> Option<Arc<RgbaImage>> {
         let mirror = h.facing * dir < 0.0;
-        let kit = in_hand(&h.stats.kit, matches!(&self.mode, Mode::Side(a) if !a.side.hatchets.is_empty()));
+        let kit = in_hand(&h.stats.kit, matches!(&self.mode, Mode::Side(a) if !a.side.hatchets.is_empty()), h.drawn);
         let at = |n: &str, k: f32| worn(s, &kit, n).map(|c| c.at(k.clamp(0.0, 0.999), mirror).clone());
         let total = |f: (u32, u32, u32)| (f.0 + f.1 + f.2).max(1) as f32;
         use side::Act;
@@ -2614,6 +2653,8 @@ impl Pilgrimage {
                 if kit.off.is_some() { at("e_parry", k) } else { at("e_parry_weapon", k).or_else(|| at("e_parry", k)) }
             }
             Some((Act::Flask, _)) => at("e_guard", 0.4),
+            // The bow brought round or put back, a set swapped: into a guard and out again.
+            Some((a @ (Act::Draw | Act::Stow | Act::Swap), t)) => at("e_guard", 1.0 - (2.0 * t as f32 / total(a.frames(&kit)) - 1.0).abs()),
             // Its own draw or cast where there is one; else the other hand raised as for a parry.
             Some((a @ (Act::Loose | Act::Cast), t)) => loosing(s, &kit, "e_", a == Act::Cast).map(|(c, keys)| phased(c, a.frames(&kit), t, keys, mirror))
                 .or_else(|| at("e_parry", (t as f32 / total(a.frames(&kit))).min(0.45))),
@@ -2725,6 +2766,7 @@ impl Pilgrimage {
         let held = |ch: &str, n: NamedKey| c.is_key_held(&Key::Character(ch.into())) || c.is_key_held(&Key::Named(n));
         let (l, r) = (held("a", NamedKey::ArrowLeft) || th.left, held("d", NamedKey::ArrowRight) || th.right);
         let (left, right) = if dir > 0.0 { (l, r) } else { (r, l) };
+        let swap = self.world.gear.swappable();
         let p = &mut self.side_pending;
         for press in presses {
             match press {
@@ -2737,6 +2779,7 @@ impl Pilgrimage {
                     if is(k, &["f"], None) { p.loose = true; }
                     if is(k, &["c"], None) { p.cast = true; }
                     if is(k, &["q"], None) { p.art = true; }
+                    if is(k, &["x"], None) { p.swap = swap; }
                 }
                 Press::Mouse(MouseButton::Left, false) => p.light = true,
                 Press::Mouse(MouseButton::Left, true) => p.heavy = true,
@@ -2747,7 +2790,7 @@ impl Pilgrimage {
                     match t {
                         Tap::Light => p.light = true, Tap::Heavy => p.heavy = true, Tap::Parry => p.parry = true,
                         Tap::Flask => p.flask = true, Tap::Loose => p.loose = true, Tap::Cast => p.cast = true, Tap::Art => p.art = true,
-                        Tap::Roll => p.roll = true, Tap::Jump => p.jump = true,
+                        Tap::Roll => p.roll = true, Tap::Jump => p.jump = true, Tap::Swap => p.swap = swap,
                     }
                 }
             }
@@ -3046,13 +3089,21 @@ impl Pilgrimage {
             // In the log too, so a hitch there can be put beside what the hero was told.
             #[cfg(target_os = "android")]
             log::info!("[note] {line}");
-            // One at a time: a line said while another shows waits its turn (a boss's fall tells
-            // its souls, its key and its remnant together), the oldest dropped past a few.
-            if self.banner.1 > 0 {
+            // What tells where the hero is (a fork, the way leaned, a barred way) goes stale as they
+            // move: a newer one shows at once, in place of any such line showing or waiting, and a
+            // line it cuts off waits at the front to finish.
+            // Anything else waits its turn (a boss's fall tells its souls, its key and its remnant
+            // together), the oldest dropped past a few.
+            let here = n.tells_here();
+            if here {
+                self.banners.retain(|(_, h)| !h);
+                if self.banner.1 > 0 && !self.banner_here { self.banners.push_front((std::mem::take(&mut self.banner.0), false)); }
+                (self.banner, self.banner_here) = ((line, BANNER_T), true);
+            } else if self.banner.1 > 0 {
                 if self.banners.len() >= BANNERS_HELD { self.banners.pop_front(); }
-                self.banners.push_back(line);
+                self.banners.push_back((line, false));
             } else {
-                self.banner = (line, BANNER_T);
+                (self.banner, self.banner_here) = ((line, BANNER_T), false);
             }
         }
     }
@@ -3287,8 +3338,8 @@ impl Pilgrimage {
             // The prologue's question of leaving is answered with a tap or BACK; its cards with a tap.
             Mode::Play | Mode::Side(_) if self.prologue.as_ref().is_some_and(|p| p.leaving) => Ui::Menu,
             Mode::Play if self.prologue.as_ref().is_some_and(|p| p.still()) => Ui::Tap,
-            Mode::Play => { let (ranged, cast, art) = shots(&self.fight.hero.stats.kit); Ui::Road { prompt: self.prompt.1 > 0.5, ranged, cast, art, turn: self.turnable } }
-            Mode::Side(a) => { let (ranged, cast, art) = shots(&a.side.hero.stats.kit); Ui::Side { prompt: self.can_bait(), ranged, cast, art } }
+            Mode::Play => { let (ranged, cast, art) = shots(&self.fight.hero.stats.kit); Ui::Road { prompt: self.prompt.1 > 0.5, ranged, cast, art, turn: self.turnable, swap: self.world.gear.swappable() } }
+            Mode::Side(a) => { let (ranged, cast, art) = shots(&a.side.hero.stats.kit); Ui::Side { prompt: self.can_bait(), ranged, cast, art, swap: self.world.gear.swappable() } }
             // The map has nothing to choose but closes with BACK.
             Mode::Map => Ui::Menu,
             // Words with no choices (the title) go on with a tap.
@@ -3613,7 +3664,7 @@ impl QuartzPlugin for Pilgrimage {
         }
         self.boss_art.settle(fighting.is_some());
         // Whoever waits on the road here, read when first wanted (a few small frames).
-        if let Some((_, who)) = self.world.visitor_at() {
+        if let Some((_, who)) = self.world.visitor_at().or_else(|| self.world.visitor_ahead()) {
             if self.visitor_sheet.0 != who.folder() { self.visitor_sheet = (who.folder(), load_sheet(who.folder())); }
         }
         TMP_LAP.with(|l| l.borrow_mut().mark("boss"));
@@ -3928,6 +3979,7 @@ impl QuartzPlugin for Pilgrimage {
                 match after { After::Wake => Mode::Wake(0), After::Walk => Mode::Play, _ => Mode::Rise(0) }
             }
             Mode::Sanctum(mut s) => {
+                s.tick();
                 let mut rise = false;
                 for k in &keys {
                     match s.press(*k, &mut self.world, &mut self.fight) {
@@ -4039,7 +4091,7 @@ impl QuartzPlugin for Pilgrimage {
                     a.done += 1;
                     // Its last words, while it falls, before what it leaves is told.
                     if a.done == 1 && a.why == Why::Boss {
-                        if let Some(words) = self.world.boss_here().and_then(|(_, b)| b.breed.last_words()) { self.banner = (words.to_string(), ARENA_OUT); }
+                        if let Some(words) = self.world.boss_here().and_then(|(_, b)| b.breed.last_words()) { (self.banner, self.banner_here) = ((words.to_string(), ARENA_OUT), false); }
                     }
                     // The Archangel falls into white, and the trap; Exodus falls, and the Eye is there.
                     if a.done == 1 && a.why == Why::Boss && self.scene.is_none() {
@@ -4134,6 +4186,13 @@ impl QuartzPlugin for Pilgrimage {
         let road = !matches!(self.mode, Mode::Side(_));
         let fallen: Vec<Archetype> = events.iter().filter(|_| road).filter_map(|e| match *e { Event::Felled { enemy } => self.fight.enemies.get(enemy).filter(|e| !e.grave.raised).map(|e| e.kind), _ => None }).collect();
         if road && events.iter().any(|e| matches!(e, Event::Parried { .. })) { self.world.parried = true; }
+        // Halfway through a swap the set on the belt comes into hand, on the road or in the yard.
+        if events.contains(&Event::Swapped) && self.world.gear.swap_sets() {
+            let kit = self.world.kit();
+            self.fight.hero.stats.kit = kit;
+            if let Mode::Side(a) = &mut self.mode { a.side.hero.stats.kit = kit; }
+            self.dress_hero();
+        }
         let found = self.world.felled(fallen);
         self.dead_for = if let Mode::Dying(t) = self.mode { t } else { 0 };
         // The world follows the road everywhere but the sanctum (it is not a place).
@@ -4187,7 +4246,7 @@ impl QuartzPlugin for Pilgrimage {
         if !notes.is_empty() { self.say(&notes); }
         TMP_LAP.with(|l| l.borrow_mut().mark("say"));
         self.banner.1 = self.banner.1.saturating_sub(1);
-        if self.banner.1 == 0 { if let Some(line) = self.banners.pop_front() { self.banner = (line, BANNER_T); } }
+        if self.banner.1 == 0 { if let Some((line, here)) = self.banners.pop_front() { (self.banner, self.banner_here) = ((line, BANNER_T), here); } }
         self.draw_callout(c);
         self.paint_marks(c, walked);
         TMP_LAP.with(|l| l.borrow_mut().mark("marks"));

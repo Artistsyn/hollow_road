@@ -59,8 +59,6 @@ pub const STEER_M: f32 = 6.0;
 /// Where the signpost stands past the junction: on the island where the branches part
 /// (the paths' width over the angle between them, for the road's 2.4 m half width at 35 degrees).
 pub const SIGNPOST_PAST: f32 = 4.4;
-/// Sideways metres per metre of each branch (the plan PathForge makes for this canvas: 35 degrees).
-pub const FORK_SLOPE: f32 = 0.689;
 /// How near a side path's mouth the hero must stand to turn down it, metres.
 pub const SIDE_REACH: f32 = 1.6;
 /// Levels under a region's (its tier times this) at which arriving there warns the hero.
@@ -154,6 +152,15 @@ pub enum Note {
     Bled,
     /// A line of the story, said as it is.
     Told(&'static str),
+}
+
+impl Note {
+    /// Whether it tells where the hero is or which way they face (arriving, a fork and the way
+    /// leaned, the rune's hum, a way barred or held, turning back, a dead end): such a line goes
+    /// stale as they move, and a newer one takes its place at once (`game::Pilgrimage::say`).
+    pub fn tells_here(&self) -> bool {
+        matches!(self, Note::Arrived(_) | Note::Region(..) | Note::Fork(..) | Note::Lean(..) | Note::Hums(_) | Note::Barred(..) | Note::Turned | Note::Held(..) | Note::DeadEnd)
+    }
 }
 
 /// Souls left where the hero fell: the place, metres into it as it is laid out, how many.
@@ -306,6 +313,22 @@ impl World {
     fn along(&self, m: f32) -> f32 { if self.forward() { m } else { (self.here().length - m).max(0.0) } }
     /// The road metres of something `m` metres into the place as laid out.
     pub(crate) fn road_at(&self, m: f32) -> f64 { self.base + (HERO_D + self.along(m)) as f64 }
+
+    /// Whoever waits in the place the walk is crossing into, while the crossing is under way:
+    /// road metres, and who. The place is in view across the whole approach, so they stand there
+    /// from its start, not only once the hero has arrived (`World::arrive`, where the place's
+    /// metres begin: the crossing's end). None at a fork, whose walk arrives on a branch's lane.
+    pub fn visitor_ahead(&self) -> Option<(f64, crate::visitors::Visitor)> {
+        let (Some(travel), Some(length)) = (self.underway.travel, self.underway.length) else { return None };
+        if self.lane.is_none() && self.ahead().len() > 1 { return None; }
+        let lead = self.heading().filter(|l| !atlas::is_lane(&l.stop))?;
+        let id = atlas::node(&lead.stop);
+        let v = self.visit_in(id).filter(|_| id != self.here().id)?;
+        let place = atlas::place_of(id)?;
+        let forward = atlas::came_from(&lead.stop).is_none_or(|from| atlas::forward(id, from));
+        let along = if forward { v.at } else { (place.length - v.at).max(0.0) };
+        Some((self.shown + f64::from(length - travel + HERO_D + along), v.who))
+    }
 
     /// How strong the place's enemies are against the road's first: (health, blows). Deeper
     /// regions and each pilgrimage again make them stronger.
@@ -755,6 +778,7 @@ impl World {
                 "owned": self.gear.owned.iter().map(|&i| item(i)).collect::<Vec<_>>(),
                 "worn": self.gear.worn.iter().map(|w| w.map(item)).collect::<Vec<_>>(),
                 "one_hand": self.gear.one_hand,
+                "spare_one_hand": self.gear.spare_one_hand,
                 "levels": self.gear.levels.iter().map(|(&i, n)| (item(i).to_owned(), json!(n))).collect::<serde_json::Map<_, _>>(),
                 "capstones": self.gear.capstones.iter().map(|(&i, c)| (item(i).to_owned(), json!(c.name()))).collect::<serde_json::Map<_, _>>(),
             },
@@ -806,6 +830,8 @@ impl World {
             let owned = w.gear.owned.clone();
             for slot in w.gear.worn.iter_mut() { if slot.is_some_and(|i| !owned.contains(&i)) { *slot = None; } }
             w.gear.one_hand = v["gear"]["one_hand"].as_bool().unwrap_or(false);
+        w.gear.spare_one_hand = v["gear"]["spare_one_hand"].as_bool().unwrap_or(false);
+        w.gear.bow_off_the_offhand();
             if let Some(levels) = v["gear"]["levels"].as_object() {
                 w.gear.levels = levels.iter().filter_map(|(n, l)| Some((piece(n)?, l.as_u64()? as u32))).filter(|&(i, l)| l > 0 && w.gear.owned.contains(&i)).collect();
             }
@@ -1060,21 +1086,6 @@ impl World {
             self.explored.retain(|&e| e != side);
         }
         self.wake()
-    }
-
-    /// Where the signpost stands across the road, metres: in the middle until a branch is taken;
-    /// as the camera turns onto it, everything past the junction swings the other way, the island
-    /// and its signpost with it.
-    pub fn signpost_x(&self, walked: f64) -> f32 { self.past_junction_x(walked, SIGNPOST_PAST) }
-
-    /// How far across the road a thing `past` metres beyond the junction has swung, metres: the
-    /// way the branch TAKEN turns (the only open one is taken whichever side the hero leans to).
-    pub fn past_junction_x(&self, walked: f64, past: f32) -> f32 {
-        let (Some(at), Some(b)) = (self.chose_at, self.took) else { return 0.0 };
-        let t = ((walked - at) as f32 / STEER_M).clamp(0.0, 1.0);
-        let steer = t * t * (3.0 - 2.0 * t);
-        let side = match b { Branch::Left => -1.0, Branch::Right => 1.0 };
-        -side * steer * FORK_SLOPE * past
     }
 
     /// The fork ahead's barred ways, once it is in view: which branch, and whether a key opens it
@@ -1921,11 +1932,9 @@ mod tests {
         let gate = if mill == Branch::Left { Branch::Right } else { Branch::Left };
         assert_eq!(w.tick(&mut f, 164.8, Some("vale@vale_edge"), Some(1.2)).0, Some(Go::Choose(gate)));
         assert!(!w.holds_at_fork(Some(1.2), f.hero.lane), "taken: walk on");
-        // Leaning the shut way, the open one is taken; the island swings the way the walk turns,
-        // not the way the hero leaned (it stood in the middle of the road taken).
+        // Leaning the shut way, the open one is taken (PathForge's camera swings the island the
+        // way the walk turns).
         assert_eq!(w.took, Some(gate));
-        let x = w.signpost_x(164.8 + STEER_M as f64);
-        assert!(if gate == Branch::Right { x < -1.0 } else { x > 1.0 }, "{x}");
     }
 
     #[test]

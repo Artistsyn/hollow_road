@@ -63,7 +63,7 @@
       "length": 8.0,
       "offset": 6.0,
       "depth": 10.0,
-      "bottom": "Ground",
+      "bottom": "Water",
       "water_level": 10.0,
       "bottom_color": [
         150,
@@ -227,6 +227,7 @@
     "enabled": true,
     "gap": 1.8,
     "height": 2.2,
+    "beyond": 2.5,
     "base_shadow": 0.4,
     "material": {
       "pattern": "StoneBlock",

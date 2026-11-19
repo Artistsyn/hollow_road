@@ -63,7 +63,7 @@
       "length": 8.0,
       "offset": 6.0,
       "depth": 10.0,
-      "bottom": "Ground",
+      "bottom": "Water",
       "water_level": 10.0,
       "bottom_color": [
         150,
@@ -191,6 +191,7 @@
     "enabled": true,
     "gap": 3.0,
     "height": 1.2,
+    "beyond": 4.0,
     "base_shadow": 0.4,
     "thickness": 0.45,
     "material": {

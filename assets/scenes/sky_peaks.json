@@ -102,7 +102,7 @@
       "bottom_color": [
         150,
         150,
-        150
+        170
       ],
       "deck": {
         "pattern": "Planks",
@@ -245,6 +245,7 @@
     "enabled": true,
     "gap": 5.0,
     "height": 3.4,
+    "beyond": 80.0,
     "base_shadow": 0.5,
     "thickness": 1.0,
     "material": {
