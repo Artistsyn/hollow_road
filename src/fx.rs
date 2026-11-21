@@ -33,6 +33,8 @@ pub const BURSTS: usize = 6;
 pub fn burst_id(i: usize) -> String { format!("fx_hit_{i}") }
 /// Fight ticks the slash shows each of its frames for.
 const SLASH_STEP: u32 = 3;
+/// Fight ticks a burst drawn from a clip lives.
+const CLIP_TICKS: u32 = 48;
 
 /// Where a burst stands along the road: beside the hero (metres from the camera, so it stays
 /// with them), or where an enemy was hit (metres walked, so it stays on the enemy).
@@ -40,9 +42,12 @@ const SLASH_STEP: u32 = 3;
 enum At { Near(f32), Road(f64) }
 
 /// A hit burst playing: across the road, along it, its height and size in metres, colour, shape,
-/// and fight ticks left of its whole life.
+/// and fight ticks left of its whole life; drawn from `clip` (`quartz_path_forge::Vfx`, what was
+/// struck: steel, flesh, a heavy landing) when that is loaded, else as the GPU impact. `from`:
+/// where the blow came from (across, metres ahead of the camera); a clip thrown one way is turned
+/// to fly on away from it.
 #[derive(Clone, Copy, Debug, PartialEq)]
-struct Burst { x: f32, at: At, y: f32, metres: f32, rgb: [u8; 3], side: ImpactSide, left: u32, total: u32 }
+struct Burst { x: f32, at: At, y: f32, metres: f32, rgb: [u8; 3], side: ImpactSide, left: u32, total: u32, clip: Option<&'static str>, from: Option<(f32, f32)> }
 
 /// Where to draw one effect this tick: top-left and size in canvas units.
 type Spot = ((f32, f32), (f32, f32));
@@ -67,6 +72,67 @@ const BASE: f32 = 0.95;
 
 /// One kind of weapon's light or heavy strike: its frames and how they lie.
 struct Strike { clip: Clip, lie: Lie }
+
+/// Strike art drawn bulging toward the camera, turned upside down as it loads. A flat cut round
+/// the hero passes farthest from the camera straight ahead of them, so seen from behind its arc
+/// bows away, toward the foe: its middle high, its ends low.
+const UPTURNED: [&str; 1] = ["light_slash"];
+
+impl Strike {
+    /// The effect `name` laid as `lie`; `flip` turns it upside down, so a falling swing's art draws
+    /// a rising one (art in `UPTURNED` is turned once more).
+    fn load(dir: &Path, name: &str, lie: Lie, flip: bool) -> Option<Strike> {
+        let mut clip = effect(dir, name)?;
+        if flip != UPTURNED.contains(&name) {
+            let upturned = |frames: &[Arc<image::RgbaImage>]| frames.iter().map(|f| Arc::new(image::imageops::flip_vertical(f.as_ref()))).collect::<Vec<_>>();
+            (clip.frames, clip.mirrored) = (upturned(&clip.frames), upturned(&clip.mirrored));
+        }
+        if let Lie::Along { .. } = lie {
+            clip.frames = clip.frames.iter().map(|f| Arc::new(squared(f))).collect();
+        }
+        for f in clip.frames.iter().chain(&clip.mirrored) { quartz::set_pixel_art(f, true); }
+        Some(Strike { clip, lie })
+    }
+
+    /// The trail (file, lie, upside down) of a swing that ends a string (`combo::Route::clip_for`:
+    /// `ENDERS`), drawn along its own path rather than its light's or heavy's: flat cuts lie
+    /// across the lanes (mirrored for one going left to right), thrusts streak up the lane,
+    /// `greatsword_light` falls from high left (mirrored: from high right), and `greatsword_rising`
+    /// (bowing toward the camera as it falls) turned upside down climbs from low right to high
+    /// left, mirrored from low left; every arc bows toward the foe. The axe's cleave and the
+    /// ultra's slam come down as their heavies do.
+    fn ender(class: Class, name: &str) -> Option<(&'static str, Lie, bool)> {
+        let across = |width, ahead, high, mirror| Lie::Across { width, ahead, high, land: None, ground: false, mirror };
+        let along = |past, from, high| Lie::Along { past, from, high };
+        let chop = |width, mirror| Lie::Across { width, ahead: 2.0, high: 0.9, land: Some((0.55, 0.89)), ground: true, mirror };
+        let (file, lie, flip) = match (class, name) {
+            (Class::Sword, "third") => ("greatsword_rising", across(2.6, 1.8, 1.2, false), true),
+            (Class::Sword, "breaker") => ("thrust_heavy", along(1.2, 0.3, (1.2, 1.25)), false),
+            (Class::Sword, "follow") => ("light_slash", across(2.8, 1.9, 1.25, true), false),
+            (Class::Sword, "finisher") => ("light_slash", across(3.6, 1.8, 1.15, false), false),
+            (Class::Thrust, "third") => ("greatsword_light", across(2.0, 1.8, 1.1, true), false),
+            (Class::Thrust, "breaker") => ("thrust_heavy", along(1.6, 0.3, (0.8, 1.25)), false),
+            (Class::Thrust, "follow") => ("greatsword_rising", across(2.2, 1.8, 1.2, true), true),
+            (Class::Thrust, "finisher") => ("thrust_heavy", along(2.4, 0.3, (1.6, 1.0)), false),
+            (Class::Spear, "third") => ("spear_light", along(1.0, 0.2, (0.7, 1.3)), false),
+            (Class::Spear, "breaker") => ("spear_light", along(0.5, 0.2, (1.2, 1.2)), false),
+            (Class::Spear, "follow") => ("greatsword_light", across(2.2, 1.8, 1.2, true), false),
+            (Class::Spear, "finisher") => ("light_slash", across(3.8, 1.8, 0.9, false), false),
+            (Class::Axe, "third") => ("axe_light", across(1.8, 1.6, 1.0, true), false),
+            (Class::Axe, "breaker") => ("greatsword_rising", across(1.6, 1.6, 1.1, false), true),
+            (Class::Axe, "follow") => ("axe_heavy", chop(1.6, true), false),
+            (Class::Greatsword, "third") => ("light_slash", across(3.4, 1.8, 0.8, false), false),
+            (Class::Greatsword, "breaker") => ("thrust_heavy", along(1.6, 0.4, (1.2, 1.2)), false),
+            (Class::Greatsword, "follow") => ("greatsword_light", across(2.6, 1.6, 1.5, false), false),
+            (Class::Greatsword, "finisher") => ("greatsword_rising", across(3.8, 1.6, 1.3, false), true),
+            (Class::Ultra, "third") => ("greatsword_rising", across(3.8, 1.8, 1.2, true), true),
+            (Class::Ultra, "breaker") => ("thrust_heavy", along(2.0, 0.4, (1.0, 1.0)), false),
+            (Class::Ultra, "follow") => ("light_slash", across(4.2, 2.1, 0.6, true), false),
+            _ => return None,
+        };
+        Some((file, lie, flip))
+    }
+}
 
 /// Every strike's picture and lie: (kind of weapon, heavy) -> (file, lie).
 fn strike_lie(class: Class, heavy: bool) -> (&'static str, Lie) {
@@ -99,10 +165,15 @@ fn strike_lie(class: Class, heavy: bool) -> (&'static str, Lie) {
     }
 }
 const CLASSES: [Class; 6] = [Class::Sword, Class::Thrust, Class::Spear, Class::Axe, Class::Greatsword, Class::Ultra];
+/// The swings that end a string with a trail of their own (`Strike::ender`), as `Route::clip_for` names them.
+const ENDERS: [&str; 4] = ["third", "breaker", "follow", "finisher"];
 
 pub struct Fx {
     /// Per kind of weapon (`CLASSES` order), its light and its heavy.
     strikes: Vec<[Option<Strike>; 2]>,
+    /// Per kind of weapon, the trail of each swing that ends a string (`ENDERS` order) where it has
+    /// its own.
+    enders: Vec<[Option<Strike>; 4]>,
     /// Streak frames turned to the angle they were last drawn at, kept so a picture is not made
     /// again every tick: (kind, heavy, frame, whole degrees).
     turned: RefCell<HashMap<(usize, bool, usize, i32), Arc<image::RgbaImage>>>,
@@ -135,36 +206,36 @@ impl Fx {
         let dir = crate::assets::path("pixellab/fx");
         let strikes = CLASSES.iter().map(|&class| [false, true].map(|heavy| {
             let (name, lie) = strike_lie(class, heavy);
-            let mut clip = effect(&dir, name)?;
-            if let Lie::Along { .. } = lie {
-                clip.frames = clip.frames.iter().map(|f| Arc::new(squared(f))).collect();
-                for f in &clip.frames { quartz::set_pixel_art(f, true); }
-            }
-            Some(Strike { clip, lie })
+            Strike::load(&dir, name, lie, false)
         })).collect();
-        Fx { strikes, turned: RefCell::new(HashMap::new()), bursts: Vec::new() }
+        let enders = CLASSES.iter().map(|&class| ENDERS.map(|ender| {
+            let (name, lie, flip) = Strike::ender(class, ender)?;
+            Strike::load(&dir, name, lie, flip)
+        })).collect();
+        Fx { strikes, enders, turned: RefCell::new(HashMap::new()), bursts: Vec::new() }
     }
 
     #[cfg(test)]
-    fn bare() -> Fx { Fx { strikes: Vec::new(), turned: RefCell::new(HashMap::new()), bursts: Vec::new() } }
+    fn bare() -> Fx { Fx { strikes: Vec::new(), enders: Vec::new(), turned: RefCell::new(HashMap::new()), bursts: Vec::new() } }
 
     /// Start the bursts for what the fight just did.
     pub fn on_events(&mut self, events: &[Event], fight: &Fight, walked: f64) {
         // Nothing on one got past: it is behind the camera's view of the hero, not drawn.
-        let on_enemy = |i: usize| fight.enemies.get(i).filter(|e| e.gap(walked) > -0.6).map(|e| (e.lane as f32 * LANE_W, e.s - 0.25));
+        let on_enemy = |i: usize| fight.enemies.get(i).filter(|e| e.gap(walked) > -0.6).map(|e| (e.lane as f32 * LANE_W, e.s - 0.25, "hit_flesh"));
         self.on_events_at(events, (fight.hero.x + SHOULDER, HERO_D), 1.0, on_enemy);
     }
 
     /// The same for a hero standing `hero` (across, metres ahead of the camera) facing `fw` along
-    /// the road (1 away from the camera, -1 toward it), and enemies where `on_enemy` says (across,
-    /// road metres): the side-on fight, whose hero faces along the road either way.
-    pub fn on_events_at(&mut self, events: &[Event], hero: (f32, f32), fw: f32, on_enemy: impl Fn(usize) -> Option<(f32, f64)>) {
+    /// the road (1 away from the camera, -1 toward it), and enemies where `foes` says (across, road
+    /// metres, the clip of a blow landing on its body): the side-on fight, whose hero faces along
+    /// the road either way.
+    pub fn on_events_at(&mut self, events: &[Event], hero: (f32, f32), fw: f32, foes: impl Fn(usize) -> Option<(f32, f64, &'static str)>) {
         // The hero as drawn, and a little in front of them (where a buckler meets a blade).
         let (hero_x, hd) = hero;
-        let on_enemy = |i: usize| on_enemy(i).map(|(x, s)| (x, At::Road(s)));
+        let on_enemy = |i: usize| foes(i).map(|(x, s, _)| (x, At::Road(s)));
         for e in events {
             let burst = |x: f32, at: At, y: f32, metres: f32, rgb: [u8; 3], side: ImpactSide, ticks: u32| {
-                Burst { x, at, y, metres, rgb, side, left: ticks, total: ticks }
+                Burst { x, at, y, metres, rgb, side, left: ticks, total: ticks, clip: None, from: None }
             };
             let b = match *e {
                 Event::Hit { enemy, mv } => on_enemy(enemy).map(|(x, at)| match mv {
@@ -179,14 +250,19 @@ impl Fx {
                 Event::Fled { enemy, at } => on_enemy(enemy).map(|(x, _)| burst(x, At::Road(at), 1.0, 2.4, [150, 90, 220], ImpactSide::Dealt, 40)),
                 Event::AllyHit { enemy } => on_enemy(enemy).map(|(x, at)| burst(x, at, 1.2, 1.0, [255, 214, 160], ImpactSide::Dealt, 16)),
                 Event::StanceBroken { enemy } => on_enemy(enemy).map(|(x, at)| burst(x, at, 1.3, 2.2, [255, 246, 222], ImpactSide::Dealt, 30)),
+                // A finisher's slam: the ground cratered ahead, or a sweep's dust thrown low.
+                Event::Finished(crate::combo::Finish::Quake) => Some(burst(hero_x, At::Near(hd + fw * 2.2), 0.0, 3.0, [214, 196, 168], ImpactSide::Dealt, 40)),
+                Event::Finished(crate::combo::Finish::Sweep) => Some(burst(hero_x, At::Near(hd + fw * 1.6), 0.0, 2.6, [214, 196, 168], ImpactSide::Dealt, 34)),
+                // A gathered heavy: the strength held in the blade bursts on the body (a hot crack
+                // for one part gathered).
+                Event::ChargedBlow { enemy, full } => on_enemy(enemy).map(|(x, at)| burst(x, at, 1.15, if full { 1.8 } else { 2.1 }, [255, 214, 150], ImpactSide::Dealt, 28)),
                 // A perfect roll: a cold flash at its feet as it stumbles through empty air.
                 Event::JustDodge { enemy } => on_enemy(enemy).map(|(x, at)| burst(x, at, 0.55, 1.8, [150, 225, 255], ImpactSide::Dealt, 28)),
                 // The glint on the attacker the moment its attack commits, in its warning colour.
                 Event::Commits { enemy, kind, parry } => on_enemy(enemy).map(|(x, at)| burst(x + 0.15, at, 1.55, 0.7, crate::game::warning_rgb(kind, parry), ImpactSide::Dealt, 12)),
-                // The string's snap or the hex leaving the hand, small and bright; and the rune
-                // going off, a wide violet blast low on its patch.
+                // The string's snap or the hex leaving the hand, small and bright. A rune going off
+                // is its own drawn eruption (`Pilgrimage::rune_clip`), so it adds nothing here.
                 Event::Loosed { enemy } => on_enemy(enemy).map(|(x, at)| burst(x + 0.1, at, 1.4, 0.55, [255, 236, 200], ImpactSide::Dealt, 10)),
-                Event::Burst { enemy, at } => on_enemy(enemy).map(|(x, _)| burst(x, At::Road(at), 0.5, 2.6, [190, 110, 255], ImpactSide::Dealt, 34)),
                 // The hero's own: a flick off the string or the hand, and a shot caught on a shield.
                 Event::Shot(r) => Some(burst(hero_x + 0.25, At::Near(hd + fw * 0.6), 1.35, 0.6, if r == crate::gear::Ranged::Frost { [150, 210, 255] } else { [240, 230, 200] }, ImpactSide::Dealt, 10)),
                 Event::Glanced { enemy } => on_enemy(enemy).map(|(x, at)| burst(x - 0.2, at, 1.1, 0.8, [200, 222, 255], ImpactSide::Dealt, 12)),
@@ -238,11 +314,62 @@ impl Fx {
                 Event::KnockedDown { .. } => Some(burst(hero_x, At::Near(hd - fw * 0.1), 0.45, 2.3, [200, 30, 24], ImpactSide::Taken, 34)),
                 _ => None,
             };
-            let Some(b) = b else { continue };
-            if self.bursts.len() >= BURSTS {
-                if let Some(oldest) = (0..self.bursts.len()).min_by_key(|&i| self.bursts[i].left) { self.bursts.remove(oldest); }
+            let Some(mut b) = b else { continue };
+            if matches!(e, Event::ChargedBlow { .. }) { b.from = Some(hero); }
+            b.clip = match *e {
+                Event::Hit { enemy, .. } | Event::AllyHit { enemy } | Event::StanceBroken { enemy } => foes(enemy).map(|f| f.2),
+                _ => Self::material(e),
+            };
+            // A landing's dust and cracks stand on the ground, not at the blast's height.
+            if b.clip.is_some_and(|k| k.starts_with("leap_land")) { b.y = 0.0; }
+            // A clip plays out at its own pace (most under 0.8 s; a one-shot then holds its faded
+            // last frame), however short the impact it stands in for.
+            if b.clip.is_some() { (b.left, b.total) = (b.total.max(CLIP_TICKS), b.total.max(CLIP_TICKS)); }
+            self.push(b);
+            // Knocked back by a full one: heavy dust thrown up where its feet skid.
+            if let Event::ChargedBlow { enemy, full: true } = *e {
+                if let Some((x, at)) = on_enemy(enemy) {
+                    self.push(Burst { x, at, y: 0.0, metres: 1.6, rgb: [214, 196, 168], side: ImpactSide::Dealt, left: CLIP_TICKS, total: CLIP_TICKS, clip: Some("leap_land_heavy"), from: None });
+                }
             }
-            self.bursts.push(b);
+        }
+    }
+
+    /// Start burst `b`, the one nearest its end making way when all are in use.
+    fn push(&mut self, b: Burst) {
+        if self.bursts.len() >= BURSTS {
+            if let Some(oldest) = (0..self.bursts.len()).min_by_key(|&i| self.bursts[i].left) { self.bursts.remove(oldest); }
+        }
+        self.bursts.push(b);
+    }
+
+    /// The clip of a blow landing on a boss whose art is in `folder`: bone, bronze, stone, a
+    /// ghost's wisps, or flesh.
+    pub fn body_of(folder: Option<&str>) -> &'static str {
+        match folder {
+            Some("keening_cage") => "hit_bone",
+            Some("bell_warden") => "hit_steel",
+            Some("statue_archangel" | "radiant_construct" | "rune_sentinel") => "hit_stone",
+            Some("wraith_lord" | "fog_horror" | "void_stalker" | "lurz_echo" | "krix_echo" | "bounty_echo") => "hit_spectral",
+            _ => "hit_flesh",
+        }
+    }
+
+    /// The drawn clip for what the fight just did, by what met what: steel on steel for a block or
+    /// a parry, flesh for a blow that lands on the hero or a foe, a landing for a slam (and the
+    /// ground a ring sets out from).
+    fn material(e: &Event) -> Option<&'static str> {
+        match e {
+            Event::Blocked { .. } | Event::Parried { .. } | Event::PerfectBlock | Event::Deflected { .. } | Event::Glanced { .. } => Some("hit_steel"),
+            Event::Hit { .. } | Event::AllyHit { .. } | Event::Struck { .. } | Event::Staggered { .. } => Some("hit_flesh"),
+            Event::Slam { heavy: true, .. } | Event::KnockedDown { .. } | Event::Rung { .. } => Some("leap_land_heavy"),
+            // The blow committing: a glint of steel on the attacker, never a coloured flare.
+            Event::Commits { .. } => Some("tell_steel_glint"),
+            Event::ChargedBlow { full: true, .. } => Some("hit_crush"),
+            Event::Finished(crate::combo::Finish::Quake) => Some("brute_slam_crater"),
+            Event::Finished(crate::combo::Finish::Sweep) => Some("leap_land_heavy"),
+            Event::Slam { .. } => Some("leap_land_light"),
+            _ => None,
         }
     }
 
@@ -259,8 +386,19 @@ impl Fx {
         // A riposte is the heavy, a little larger.
         let (heavy, grow) = match a.mv { Move::Light => (false, 1.0), Move::Heavy => (true, 1.0), Move::Riposte => (true, 1.2), _ => return None };
         let class = fight.hero.stats.kit.swung_as();
-        let kind = CLASSES.iter().position(|&c| c == class).filter(|&k| self.strikes.get(k).is_some_and(|s| s[heavy as usize].is_some())).unwrap_or(0);
-        let strike = self.strikes.get(kind)?[heavy as usize].as_ref()?;
+        // A string's ender has its own trail, kept apart (its kind past the plain ones') in the
+        // turned cache.
+        let ender = matches!(a.mv, Move::Light | Move::Heavy).then(|| a.route.clip_for(a.mv, a.link)).flatten()
+            .and_then(|name| ENDERS.iter().position(|e| *e == name))
+            .zip(CLASSES.iter().position(|&c| c == class))
+            .and_then(|(e, k)| Some((self.enders.get(k)?[e].as_ref()?, k + CLASSES.len() * (1 + e))));
+        let (strike, kind) = match ender {
+            Some(found) => found,
+            None => {
+                let kind = CLASSES.iter().position(|&c| c == class).filter(|&k| self.strikes.get(k).is_some_and(|s| s[heavy as usize].is_some())).unwrap_or(0);
+                (self.strikes.get(kind)?[heavy as usize].as_ref()?, kind)
+            }
+        };
         let since = a.t.checked_sub(a.spec.frames.0)?;
         let frame = (since / SLASH_STEP) as usize;
         strike.clip.frames.get(frame)?;
@@ -272,7 +410,13 @@ impl Fx {
     fn strike_spot(&self, c: &Canvas, pf: &PathForgePlugin, fight: &Fight) -> Option<(Spot, Arc<image::RgbaImage>)> {
         let (strike, kind, i, heavy, grow) = self.strike_now(fight)?;
         let frame = &strike.clip.frames[i];
-        let spec = fight.hero.act?.spec;
+        let act = fight.hero.act?;
+        // Gathered to the full, a finisher's trail reaches as far and as wide as its finishing blow.
+        let spec = if act.route == crate::combo::Route::Finisher && act.charge.is_full() {
+            crate::combo::Finish::of(fight.hero.stats.kit.swung_as()).widen(act.spec)
+        } else {
+            act.spec
+        };
         let x = fight.hero.x;
         match strike.lie {
             Lie::Across { width, ahead, high, land, ground, mirror } => {
@@ -315,7 +459,7 @@ impl Fx {
     /// Put the slash and the bursts where the road drawn now says they are.
     /// `yard`: the camera turned side-on, where the whole arena is in view, either side of its
     /// middle (on the road, nothing behind the camera is drawn).
-    pub fn place(&self, c: &mut Canvas, walked: f64, fight: &Fight, yard: bool) {
+    pub fn place(&self, c: &mut Canvas, walked: f64, fight: &Fight, yard: bool, vfx: &quartz_path_forge::Vfx) {
         let Some(pf) = c.get_plugin::<PathForgePlugin>() else { return };
         // Centred on a point `y` metres up: its top-left and size, in canvas units.
         let around = |x: f32, y: f32, d: f32, (w, h): (f32, f32)| -> Option<Spot> {
@@ -325,10 +469,25 @@ impl Fx {
             Some(((cx - 0.5 * w * ppm, cy - 0.5 * h * ppm), (w * ppm, h * ppm)))
         };
         let slash = self.strike_spot(c, pf, fight);
-        let bursts: Vec<Option<(Spot, Burst)>> = (0..BURSTS).map(|i| {
+        // A burst with its clip loaded is that clip's frame, at its own size; the rest the impact.
+        let bursts: Vec<Option<(Spot, Burst, Option<Arc<image::RgbaImage>>)>> = (0..BURSTS).map(|i| {
             let b = *self.bursts.get(i)?;
             let d = match b.at { At::Near(d) => d, At::Road(s) => (s - walked) as f32 };
-            Some((around(b.x, b.y, d, (b.metres, b.metres))?, b))
+            if d < 0.5 && !yard { return None; }
+            let clip = b.clip.filter(|k| vfx.has(k));
+            // From the clip's own moment (its hit frame): what the event stands for. Played out,
+            // it is gone (not held on its last frame, nor drawn the old way).
+            let t = clip.map_or(0.0, |k| (b.total - b.left) as f32 / 60.0 + vfx.cued(k, 1.0, None));
+            if clip.is_some_and(|k| t >= vfx.length(k)) { return None; }
+            let drawn = clip.and_then(|clip| {
+                let left = b.from.and_then(|(x, from)| Some(pf.project_on(c, b.x, b.y, d)?.0 < pf.project_on(c, x, b.y, from)?.0)).unwrap_or(false);
+                let play = quartz_path_forge::VfxPlay { clip, x: b.x, y: b.y, along: d, t, left, layer: 65 };
+                vfx.place(c, pf, &[play]).into_iter().next().flatten()
+            });
+            match drawn {
+                Some((spot, img, _)) => Some((spot, b, Some(img))),
+                None => Some((around(b.x, b.y, d, (b.metres, b.metres))?, b, None)),
+            }
         }).collect();
 
         if let Some(o) = c.get_game_object_mut(SLASH) {
@@ -347,7 +506,14 @@ impl Fx {
         for (i, spot) in bursts.into_iter().enumerate() {
             let id = burst_id(i);
             match spot {
-                Some(((pos, size), b)) => {
+                Some(((pos, size), _, Some(img))) => {
+                    c.clear_effect(&id);
+                    if let Some(o) = c.get_game_object_mut(&id) {
+                        (o.visible, o.position, o.size) = (true, pos, size);
+                        o.set_image(Image { shape: ShapeType::Rectangle(0.0, size, 0.0), image: img, color: None, recolor: None });
+                    }
+                }
+                Some(((pos, size), b, None)) => {
                     if let Some(o) = c.get_game_object_mut(&id) {
                         o.visible = true;
                         o.position = pos;
@@ -400,5 +566,65 @@ mod tests {
         for _ in 0..BURSTS { fx.on_events(&[Event::Blocked { chip: 1.0 }], &fight, 0.0); }
         assert_eq!(fx.playing(), BURSTS);
         assert!(fx.bursts.iter().all(|b| b.side == ImpactSide::Dealt), "the aged strike was replaced");
+    }
+
+    /// A finisher swings its own trail where its kind has one, upside down for the rising sweep,
+    /// and the weapon's heavy trail otherwise.
+    #[test]
+    fn a_finisher_draws_its_own_trail_and_the_rising_sweep_climbs() {
+        let fx = Fx::load();
+        for (k, &class) in CLASSES.iter().enumerate() {
+            for (e, ender) in ENDERS.iter().enumerate() {
+                assert_eq!(fx.enders[k][e].is_some(), Strike::ender(class, ender).is_some(), "{class:?}'s {ender} trail did not load");
+            }
+        }
+        let sweep = fx.enders[CLASSES.iter().position(|&c| c == Class::Greatsword).unwrap()][3].as_ref().unwrap();
+        let plain = effect(&crate::assets::path("pixellab/fx"), "greatsword_rising").unwrap();
+        let (a, b) = (&sweep.clip.frames[1], &plain.frames[1]);
+        assert!(a.as_raw() == image::imageops::flip_vertical(b.as_ref()).as_raw(), "turned upside down");
+        // The wheeling cut's arc bows toward the foe: its middle higher on screen than its ends.
+        let cut = &fx.enders[0][3].as_ref().unwrap().clip.frames[2];
+        let height = |x: u32| { let ys: Vec<u32> = (0..cut.height()).filter(|&y| cut.get_pixel(x, y)[3] > 100).collect(); ys.iter().sum::<u32>() as f32 / ys.len().max(1) as f32 };
+        let lit: Vec<u32> = (0..cut.width()).filter(|&x| (0..cut.height()).any(|y| cut.get_pixel(x, y)[3] > 100)).collect();
+        let (first, last) = (lit[0], lit[lit.len() - 1]);
+        assert!(height((first + last) / 2) < height(first).min(height(last)), "the flat slash sags toward the camera");
+        let mut fight = Fight::new(vec![Enemy::new(Archetype::Husk, 10.0, 1)]);
+        let spec = Move::Heavy.spec_for(Class::Sword, None);
+        fight.hero.act = Some(crate::fight::Act { mv: Move::Heavy, spec, t: spec.frames.0, landed: false, from_lane: 0, from_x: 0.0, link: 0, charge: Default::default(), route: crate::combo::Route::Finisher });
+        let (_, kind, ..) = fx.strike_now(&fight).expect("a finisher's trail plays");
+        assert_eq!(kind, CLASSES.len() * 4, "the sword's finisher trail, not its heavy's");
+    }
+
+    /// Every flat or diagonal trail bows toward the foe: seen from behind, a cut round the hero is
+    /// farthest from the camera straight ahead, so the middle of its arc stands above the line
+    /// between its ends. (The overhead chops, drawn up and down the screen, are not arcs across.)
+    #[test]
+    fn every_arc_across_the_road_bows_toward_the_foe() {
+        let fx = Fx::load();
+        // How far the middle of the arc stands above the line between its two farthest points
+        // (positive: bowed up the screen, toward the foe).
+        let bow = |f: &image::RgbaImage| -> f32 {
+            let lit: Vec<(f32, f32)> = f.enumerate_pixels().filter(|p| p.2[3] > 100).map(|p| (p.0 as f32, p.1 as f32)).collect();
+            let gap = |p: (f32, f32), q: (f32, f32)| (p.0 - q.0).hypot(p.1 - q.1);
+            let (a, b) = lit.iter().flat_map(|&p| lit.iter().map(move |&q| (p, q))).fold(((0.0, 0.0), (0.0, 0.0)), |m, pq| if gap(pq.0, pq.1) > gap(m.0, m.1) { pq } else { m });
+            let length = gap(a, b);
+            let along = ((b.0 - a.0) / length, (b.1 - a.1) / length);
+            let up = if along.0 > 0.0 { (along.1, -along.0) } else { (-along.1, along.0) };
+            let middle: Vec<f32> = lit.iter().filter(|p| ((p.0 - a.0) * along.0 + (p.1 - a.1) * along.1 - 0.5 * length).abs() < 0.1 * length)
+                .map(|p| (p.0 - a.0) * up.0 + (p.1 - a.1) * up.1).collect();
+            middle.iter().sum::<f32>() / middle.len().max(1) as f32
+        };
+        let at = |class: Class| CLASSES.iter().position(|&c| c == class).unwrap();
+        let arcs = [("sword light", &fx.strikes[at(Class::Sword)][0]), ("axe light", &fx.strikes[at(Class::Axe)][0]), ("greatsword light", &fx.strikes[at(Class::Greatsword)][0]),
+            ("sword finisher", &fx.enders[at(Class::Sword)][3]), ("greatsword finisher", &fx.enders[at(Class::Greatsword)][3])];
+        // And every ender's flat or diagonal trail (a chop's lands on the ground: not an arc).
+        let enders = CLASSES.iter().enumerate().flat_map(|(k, &class)| ENDERS.iter().enumerate().map(move |(e, ender)| (k, e, class, *ender)))
+            .filter(|&(_, _, class, ender)| matches!(Strike::ender(class, ender), Some((_, Lie::Across { land: None, .. }, _))))
+            .map(|(k, e, ..)| ("an ender", &fx.enders[k][e]));
+        for (name, strike) in arcs.into_iter().chain(enders) {
+            let clip = &strike.as_ref().unwrap().clip;
+            let fullest = clip.frames.iter().max_by_key(|f| f.pixels().filter(|p| p[3] > 100).count()).unwrap();
+            assert!(bow(fullest) > 1.0, "{name}: its arc bows {} px toward the foe (negative: toward the camera)", bow(fullest));
+        }
     }
 }

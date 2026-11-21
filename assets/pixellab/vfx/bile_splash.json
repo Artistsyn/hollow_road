@@ -1,0 +1,287 @@
+{
+ "frames": [
+  {
+   "filename": "hr-shots-bile-splash 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 39
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 39
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 39
+   },
+   "pivot": {
+    "x": 0.46296296296296297,
+    "y": 0.717948717948718
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-bile-splash 1.png",
+   "frame": {
+    "x": 54,
+    "y": 0,
+    "w": 54,
+    "h": 39
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 39
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 39
+   },
+   "pivot": {
+    "x": 0.46296296296296297,
+    "y": 0.717948717948718
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-bile-splash 2.png",
+   "frame": {
+    "x": 108,
+    "y": 0,
+    "w": 54,
+    "h": 39
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 39
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 39
+   },
+   "pivot": {
+    "x": 0.46296296296296297,
+    "y": 0.717948717948718
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-bile-splash 3.png",
+   "frame": {
+    "x": 162,
+    "y": 0,
+    "w": 54,
+    "h": 39
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 39
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 39
+   },
+   "pivot": {
+    "x": 0.46296296296296297,
+    "y": 0.717948717948718
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-bile-splash 4.png",
+   "frame": {
+    "x": 0,
+    "y": 39,
+    "w": 54,
+    "h": 39
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 39
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 39
+   },
+   "pivot": {
+    "x": 0.46296296296296297,
+    "y": 0.717948717948718
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-bile-splash 5.png",
+   "frame": {
+    "x": 54,
+    "y": 39,
+    "w": 54,
+    "h": 39
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 39
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 39
+   },
+   "pivot": {
+    "x": 0.46296296296296297,
+    "y": 0.717948717948718
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-bile-splash 6.png",
+   "frame": {
+    "x": 108,
+    "y": 39,
+    "w": 54,
+    "h": 39
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 39
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 39
+   },
+   "pivot": {
+    "x": 0.46296296296296297,
+    "y": 0.717948717948718
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-bile-splash 7.png",
+   "frame": {
+    "x": 162,
+    "y": 39,
+    "w": 54,
+    "h": 39
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 39
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 39
+   },
+   "pivot": {
+    "x": 0.46296296296296297,
+    "y": 0.717948717948718
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-bile-splash 8.png",
+   "frame": {
+    "x": 0,
+    "y": 78,
+    "w": 54,
+    "h": 39
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 39
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 39
+   },
+   "pivot": {
+    "x": 0.46296296296296297,
+    "y": 0.717948717948718
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-bile-splash 9.png",
+   "frame": {
+    "x": 54,
+    "y": 78,
+    "w": 54,
+    "h": 39
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 39
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 39
+   },
+   "pivot": {
+    "x": 0.46296296296296297,
+    "y": 0.717948717948718
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hr-shots-bile-splash.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 216,
+   "h": 117
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 25,
+   "y": 28
+  },
+  "frameTags": [
+   {
+    "name": "hr-shots-bile-splash",
+    "from": 0,
+    "to": 9,
+    "direction": "forward"
+   }
+  ]
+ }
+}

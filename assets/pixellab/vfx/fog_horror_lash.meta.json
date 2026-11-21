@@ -1,0 +1,30 @@
+{
+ "name": "fog_horror_lash",
+ "for": "The Horror in the Hollow - razor tendril / second / third tendril (side.rs HORROR_BLOWS reach 0.2-3.4 m, height 0-2.6 m)",
+ "px_per_m": 38.1,
+ "anchor": "feet",
+ "anchor_px": [
+  151,
+  126
+ ],
+ "faces": "left (as the fog_horror toll clip; mirror with the sprite)",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": [
+  0.0,
+  2.6
+ ],
+ "reach_m": [
+  0.2,
+  3.4
+ ],
+ "fps": 12,
+ "start_on": "first live tick (toll frame 4)",
+ "pixellab_effect_id": "1ce94297-26c8-4452-aa53-2dc79d867b59",
+ "notes": "A whip line, not a blade arc: a wavy tendril trace unfurling from its head (~2.6 m apex) out to the full 3.4 m reach and curling down to the ground, its leading edge in the eye-crack violet; a pressure crack and snap of light where the tip breaks the air (effect frame 3-4), ash motes shed. anchor_px lies past the right edge. px_per_m from idle figure 137 px / sprite 3.6 m.",
+ "frames": 9,
+ "frame_px": [
+  130,
+  119
+ ]
+}

@@ -1,0 +1,25 @@
+{
+ "name": "rune_hexer",
+ "for": "hexer 'rune' (fight.rs HEXER, area attack, AREA_HALF 1.1 m)",
+ "px_per_m": 64,
+ "anchor": "feet",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": [
+  0.0,
+  1.8
+ ],
+ "pixellab_effect_id": "ac00da7f-2a02-4aa5-9771-1d9b501fdc5f",
+ "notes": "Violet glyph circle on the ground plane (flattened ellipse ~136 px = 2.1 m across, which is the hit patch): frame 1 is empty, then frames 2-12 fade in faintly (ring, turning glyph band, pentagram) and brighten, frame 13 cracks race across it and the glyphs flare, frame 15 is the eruption (the hit): jagged violet shards burst up through the cracks to ~1.8 m with sparks and rubble, then crumble away by frame 22. Anchor = the patch centre on the ground. 24 frames @ 12 fps (2 s): to match the 78-tick windup, hold or stretch frames 2-12, never the eruption.",
+ "frame_size": [
+  154,
+  137
+ ],
+ "frames": 24,
+ "fps": 12,
+ "anchor_px": [
+  75,
+  116
+ ],
+ "hit_frame": 14
+}

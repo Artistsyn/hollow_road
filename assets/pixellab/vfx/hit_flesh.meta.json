@@ -1,0 +1,21 @@
+{
+ "name": "hit_flesh",
+ "for": "a cut or blow landing on a living body (hero hurt, husk, lancer, wretch, hound, bandits, flesh bosses)",
+ "px_per_m": 63,
+ "anchor": "centre",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": null,
+ "pixellab_effect_id": "9ab1b21c-dbe2-4018-ba2c-e0c80bce20ea",
+ "notes": "Dark near-black red blood: a short ragged burst at the wound, droplets and a few heavy gobbets spraying toward +x (away from the blow), falling and spattering on the floor 74 px (1.17 m) below the anchor, plus a fine red mist that hangs and fades. No cartoon splat or star. Mirror x for blows from the right. 12 frames @ 12 fps.",
+ "frame_size": [
+  89,
+  98
+ ],
+ "frames": 12,
+ "fps": 12,
+ "anchor_px": [
+  15,
+  19
+ ]
+}

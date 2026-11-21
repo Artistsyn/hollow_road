@@ -320,7 +320,7 @@
       "kind": "Stratus",
       "cover": 0.4,
       "count": 10,
-      "drift": 1.0,
+      "drift": 0.08,
       "scale": 1.0,
       "opacity": 0.3,
       "tint": [
@@ -643,7 +643,146 @@
       "seed": 0
     }
   ],
-  "props": [],
+  "props": [
+    {
+      "enabled": true,
+      "kind": "Rock",
+      "side": "Both",
+      "lateral": 11.0,
+      "spacing": 24.0,
+      "offset": 0.0,
+      "rows": 2,
+      "row_spacing": 14.0,
+      "jitter": 3.0,
+      "jitter_along": 0.8,
+      "stagger": 0.0,
+      "density": 0.75,
+      "scale": 1.0,
+      "scale_var": 0.12,
+      "lean_var": 0.02,
+      "tint_var": 0.06,
+      "tint": [
+        255,
+        255,
+        255
+      ],
+      "sink": 0.0,
+      "float": 0.0,
+      "float_var": 0.0,
+      "orbit": {
+        "enabled": false,
+        "radius": 4.0,
+        "radius_var": 0.8,
+        "height": 0.0,
+        "twist": 1,
+        "spin": 1,
+        "stray": 0.08,
+        "with_tunnel": true
+      },
+      "shadow": true,
+      "shadow_opacity": 0.35,
+      "sprite": {
+        "path": "",
+        "pool": [],
+        "flip_x": false,
+        "pixelated": false
+      },
+      "seed": 71,
+      "def": "../kits/hollowmere#stilt_hut"
+    },
+    {
+      "enabled": true,
+      "kind": "Rock",
+      "side": "Both",
+      "lateral": 5.0,
+      "spacing": 7.0,
+      "offset": 0.0,
+      "rows": 2,
+      "row_spacing": 5.0,
+      "jitter": 1.6,
+      "jitter_along": 0.8,
+      "stagger": 0.0,
+      "density": 0.55,
+      "scale": 1.0,
+      "scale_var": 0.3,
+      "lean_var": 0.02,
+      "tint_var": 0.06,
+      "tint": [
+        255,
+        255,
+        255
+      ],
+      "sink": 0.0,
+      "float": 0.0,
+      "float_var": 0.0,
+      "orbit": {
+        "enabled": false,
+        "radius": 4.0,
+        "radius_var": 0.8,
+        "height": 0.0,
+        "twist": 1,
+        "spin": 1,
+        "stray": 0.08,
+        "with_tunnel": true
+      },
+      "shadow": true,
+      "shadow_opacity": 0.35,
+      "sprite": {
+        "path": "",
+        "pool": [],
+        "flip_x": false,
+        "pixelated": false
+      },
+      "seed": 73,
+      "def": "../kits/hollowmere#pilings"
+    },
+    {
+      "enabled": true,
+      "kind": "Bush",
+      "side": "Both",
+      "lateral": 4.2,
+      "spacing": 3.5,
+      "offset": 0.0,
+      "rows": 3,
+      "row_spacing": 2.6,
+      "jitter": 1.2,
+      "jitter_along": 0.8,
+      "stagger": 0.0,
+      "density": 0.5,
+      "scale": 1.0,
+      "scale_var": 0.25,
+      "lean_var": 0.02,
+      "tint_var": 0.06,
+      "tint": [
+        255,
+        255,
+        255
+      ],
+      "sink": 0.0,
+      "float": 0.0,
+      "float_var": 0.0,
+      "orbit": {
+        "enabled": false,
+        "radius": 4.0,
+        "radius_var": 0.8,
+        "height": 0.0,
+        "twist": 1,
+        "spin": 1,
+        "stray": 0.08,
+        "with_tunnel": true
+      },
+      "shadow": true,
+      "shadow_opacity": 0.35,
+      "sprite": {
+        "path": "",
+        "pool": [],
+        "flip_x": false,
+        "pixelated": false
+      },
+      "seed": 79,
+      "def": "../kits/hollowmere#reeds"
+    }
+  ],
   "set_pieces": [],
   "companions": [],
   "particles": [

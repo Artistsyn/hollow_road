@@ -19,6 +19,12 @@ const OUTER: f32 = 0.2;
 const ARMOUR_RIM: f32 = 0.24;
 /// How much a piece's own edge is tinted toward its colour.
 const EDGE_TINT: f32 = 0.2;
+/// Ticks between redrawn looks: the breath takes 130 or more ticks and a mote a third of a
+/// pixel a tick, so a new picture every 4 ticks (15 a second, the animation's own pace) looks
+/// the same and costs a quarter of the drawing and uploads.
+const BEAT: u64 = 4;
+/// Ticks between redrawn burns: its flicker is quick, so every 3 (20 a second).
+const BURN_BEAT: u64 = 3;
 
 /// A mote off a piece, in the frame's pixels: where it is, how old, how long it lives, and how
 /// it moves and looks.
@@ -50,12 +56,15 @@ impl Sheen {
             return img;
         }
         let key = Arc::as_ptr(&img) as usize;
-        if let Some((k, t, made)) = &self.made { if *k == key && *t == tick { return made.clone(); } }
+        let beat = tick / BEAT;
+        if let Some((k, t, made)) = &self.made { if *k == key && *t == beat { return made.clone(); } }
         let empty = Glint::default();
         let glint = glint.unwrap_or(&empty);
         let pieces = Pieces::find(&img, glint);
+        // Motes due on the ticks since the last picture are spawned too, so none is lost.
+        let since = (self.last + 1).max(tick.saturating_sub(12)).min(tick);
         self.age(tick);
-        self.spawn(glint, worn, tick, &img, &pieces);
+        for at in since..=tick { self.spawn(glint, worn, at, &img, &pieces); }
         let mut out = (*img).clone();
         for (place, cap) in worn.iter().enumerate() {
             let Some(cap) = cap else { continue };
@@ -69,7 +78,7 @@ impl Sheen {
         for mote in &self.motes { Self::mote(&mut out, mote); }
         let made = Arc::new(out);
         quartz::set_pixel_art(&made, true);
-        self.made = Some((key, tick, made.clone()));
+        self.made = Some((key, beat, made.clone()));
         made
     }
 
@@ -153,9 +162,22 @@ impl Sheen {
     }
 
     /// A foe burning under an ember capstone (`fight::Burn`), at `tick`: an ember glow licking up
-    /// off the tops of its outline, flickering, and a spark or two rising. Made fresh each tick
-    /// while it burns (three seconds), so it is not kept.
-    pub fn smouldering(img: &RgbaImage, tick: u64) -> Arc<RgbaImage> {
+    /// off the tops of its outline, flickering, and a spark or two rising. Drawn anew each
+    /// `BURN_BEAT` ticks, the same picture kept between (for each frame burning).
+    pub fn smouldering(img: &Arc<RgbaImage>, tick: u64) -> Arc<RgbaImage> {
+        type Kept = std::collections::HashMap<(usize, u64), Arc<RgbaImage>>;
+        thread_local! { static KEPT: std::cell::RefCell<Kept> = std::cell::RefCell::new(Kept::new()); }
+        let (key, beat) = (Arc::as_ptr(img) as usize, tick / BURN_BEAT);
+        KEPT.with(|kept| {
+            let mut kept = kept.borrow_mut();
+            // Only this beat's pictures are kept (a frame's earlier ones are not drawn again).
+            kept.retain(|k, _| k.1 == beat);
+            kept.entry((key, beat)).or_insert_with(|| Self::burnt(img, beat * BURN_BEAT)).clone()
+        })
+    }
+
+    /// The burning picture of `img` at `tick`.
+    fn burnt(img: &RgbaImage, tick: u64) -> Arc<RgbaImage> {
         const EMBER: [u8; 3] = [255, 120, 40];
         let mut out = img.clone();
         let (w, h) = img.dimensions();
@@ -265,7 +287,7 @@ mod tests {
         for y in 8..28 { for x in 10..18 { img.put_pixel(x, y, image::Rgba([90, 80, 70, 255])); } }
         let weapon: Vec<(u16, u16)> = (2..8).map(|y| (20, y)).collect();
         for &(x, y) in &weapon { img.put_pixel(x as u32, y as u32, image::Rgba([200, 200, 210, 255])); }
-        (Arc::new(img), Glint { weapon, off: Vec::new() })
+        (Arc::new(img), Glint { weapon, off: Vec::new(), grown: (0, 0) })
     }
 
     #[test]

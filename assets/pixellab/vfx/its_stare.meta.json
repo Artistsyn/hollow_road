@@ -1,0 +1,20 @@
+{
+ "name": "its_stare",
+ "for": "Fog Horror (The Horror in the Hollow): its stare",
+ "px_per_m": 38.1,
+ "anchor": "feet",
+ "loop": true,
+ "travels": true,
+ "hit_band_m": [
+  0.0,
+  2.4
+ ],
+ "pixellab_effect_id": "4a5440f3-22b9-4f33-95f7-2219e1b01147",
+ "ground_y_px": 96,
+ "front_x_px": 73,
+ "notes": "A rolling crescent bank of its violet-ash fog 91 px tall (lit, ragged smoke texture flowing back) on a ground-fog tongue, black tendrils whipping back off it, and lilac eye-slits with dark slit pupils opening and closing across its face. Chest-high: roll through it. Facing +x, exported in place (12 frames @ 12 fps, seamless loop). Feet anchor: ground is canvas row 96; the front's leading edge is at canvas x 73; place that point on the ring's position.",
+ "anchor_px": [
+  73,
+  96
+ ]
+}

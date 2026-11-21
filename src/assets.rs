@@ -67,4 +67,14 @@ mod tests {
         assert!(super::dir().join(super::JOURNEY).is_file(), "{}", super::dir().display());
         assert!(super::path("pixellab/wayfarer_ne").is_dir());
     }
+
+    #[test]
+    fn every_effect_clip_loads_at_the_size_of_what_it_shows() {
+        let (vfx, problems) = quartz_path_forge::Vfx::load(&super::path("pixellab/vfx"));
+        assert!(problems.is_empty(), "{problems:?}");
+        assert!(vfx.has("keen_front"));
+        // The keen is drawn as tall as it hits (0 to 2.4 m), give or take its crest.
+        let tall = vfx.height("keen_front");
+        assert!((2.2..3.0).contains(&tall), "{tall} m tall");
+    }
 }

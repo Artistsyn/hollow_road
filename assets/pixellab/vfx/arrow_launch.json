@@ -1,0 +1,157 @@
+{
+ "frames": [
+  {
+   "filename": "hr-shots-arrow-launch 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 25,
+    "h": 18
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 25,
+    "h": 18
+   },
+   "sourceSize": {
+    "w": 25,
+    "h": 18
+   },
+   "pivot": {
+    "x": 0.12,
+    "y": 0.5
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-arrow-launch 1.png",
+   "frame": {
+    "x": 25,
+    "y": 0,
+    "w": 25,
+    "h": 18
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 25,
+    "h": 18
+   },
+   "sourceSize": {
+    "w": 25,
+    "h": 18
+   },
+   "pivot": {
+    "x": 0.12,
+    "y": 0.5
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-arrow-launch 2.png",
+   "frame": {
+    "x": 50,
+    "y": 0,
+    "w": 25,
+    "h": 18
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 25,
+    "h": 18
+   },
+   "sourceSize": {
+    "w": 25,
+    "h": 18
+   },
+   "pivot": {
+    "x": 0.12,
+    "y": 0.5
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-arrow-launch 3.png",
+   "frame": {
+    "x": 0,
+    "y": 18,
+    "w": 25,
+    "h": 18
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 25,
+    "h": 18
+   },
+   "sourceSize": {
+    "w": 25,
+    "h": 18
+   },
+   "pivot": {
+    "x": 0.12,
+    "y": 0.5
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-arrow-launch 4.png",
+   "frame": {
+    "x": 25,
+    "y": 18,
+    "w": 25,
+    "h": 18
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 25,
+    "h": 18
+   },
+   "sourceSize": {
+    "w": 25,
+    "h": 18
+   },
+   "pivot": {
+    "x": 0.12,
+    "y": 0.5
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hr-shots-arrow-launch.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 75,
+   "h": 36
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 3,
+   "y": 9
+  },
+  "frameTags": [
+   {
+    "name": "hr-shots-arrow-launch",
+    "from": 0,
+    "to": 4,
+    "direction": "forward"
+   }
+  ]
+ }
+}

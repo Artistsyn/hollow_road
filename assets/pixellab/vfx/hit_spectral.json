@@ -1,0 +1,287 @@
+{
+ "frames": [
+  {
+   "filename": "hollow-road-hit-spectral 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 66,
+    "h": 70
+   },
+   "pivot": {
+    "x": 0.5757575757575758,
+    "y": 0.44285714285714284
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-hit-spectral 1.png",
+   "frame": {
+    "x": 66,
+    "y": 0,
+    "w": 66,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 66,
+    "h": 70
+   },
+   "pivot": {
+    "x": 0.5757575757575758,
+    "y": 0.44285714285714284
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-hit-spectral 2.png",
+   "frame": {
+    "x": 132,
+    "y": 0,
+    "w": 66,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 66,
+    "h": 70
+   },
+   "pivot": {
+    "x": 0.5757575757575758,
+    "y": 0.44285714285714284
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-hit-spectral 3.png",
+   "frame": {
+    "x": 198,
+    "y": 0,
+    "w": 66,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 66,
+    "h": 70
+   },
+   "pivot": {
+    "x": 0.5757575757575758,
+    "y": 0.44285714285714284
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-hit-spectral 4.png",
+   "frame": {
+    "x": 0,
+    "y": 70,
+    "w": 66,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 66,
+    "h": 70
+   },
+   "pivot": {
+    "x": 0.5757575757575758,
+    "y": 0.44285714285714284
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-hit-spectral 5.png",
+   "frame": {
+    "x": 66,
+    "y": 70,
+    "w": 66,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 66,
+    "h": 70
+   },
+   "pivot": {
+    "x": 0.5757575757575758,
+    "y": 0.44285714285714284
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-hit-spectral 6.png",
+   "frame": {
+    "x": 132,
+    "y": 70,
+    "w": 66,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 66,
+    "h": 70
+   },
+   "pivot": {
+    "x": 0.5757575757575758,
+    "y": 0.44285714285714284
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-hit-spectral 7.png",
+   "frame": {
+    "x": 198,
+    "y": 70,
+    "w": 66,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 66,
+    "h": 70
+   },
+   "pivot": {
+    "x": 0.5757575757575758,
+    "y": 0.44285714285714284
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-hit-spectral 8.png",
+   "frame": {
+    "x": 0,
+    "y": 140,
+    "w": 66,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 66,
+    "h": 70
+   },
+   "pivot": {
+    "x": 0.5757575757575758,
+    "y": 0.44285714285714284
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-hit-spectral 9.png",
+   "frame": {
+    "x": 66,
+    "y": 140,
+    "w": 66,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 66,
+    "h": 70
+   },
+   "pivot": {
+    "x": 0.5757575757575758,
+    "y": 0.44285714285714284
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hollow-road-hit-spectral.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 264,
+   "h": 210
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 38,
+   "y": 31
+  },
+  "frameTags": [
+   {
+    "name": "hollow-road-hit-spectral",
+    "from": 0,
+    "to": 9,
+    "direction": "forward"
+   }
+  ]
+ }
+}

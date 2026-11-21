@@ -1,0 +1,33 @@
+{
+ "name": "charge_full",
+ "for": "hero (wayfarer) charged heavy attack: plays once the moment the charge is full (1 s held), over the looping charge_gather or replacing it for these frames",
+ "px_per_m": 64,
+ "anchor": "centre",
+ "anchor_px": [
+  45,
+  43
+ ],
+ "anchor_note": "anchor_px = the star's core; same place as charge_gather's core (the hands/hilt). The canvas runs further below the core than above because the thrown sparks fall",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": null,
+ "pixellab_effect_id": "c10884f0-a518-4e66-9a4a-7ff66dde31c5",
+ "fps": 12,
+ "frames": 8,
+ "frame_px": [
+  80,
+  117
+ ],
+ "peak_frame": 1,
+ "light": {
+  "rgb": [
+   255,
+   214,
+   150
+  ],
+  "intensity": 1.4,
+  "radius": 4.0,
+  "y": 0.0
+ },
+ "notes": "Frame 0 the core swells into a small star; frames 1-2 a hand-pixeled 8-point star at full size (63 px = about 1.0 m tip to tip at 64 px/m: white core, 1-px main rays tapering from 3 px at the root, diagonal rays shorter, every ray fading from white to warm gold at the tip) while 14 short spark streaks and 5 embers burst out and arc down; frames 3-7 the star shrinks back to a small cross matching charge_gather's core. 0.67 s, 7 colours, no outline, no dither. The star is a drawn image strip (uploaded as the effect's projectile picture), so it is in these files but not stored with the My effects copy."
+}

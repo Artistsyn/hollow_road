@@ -1,0 +1,21 @@
+{
+ "name": "hit_stone",
+ "for": "a blow on stone (Statue Archangel, Radiant Construct, rune sentinel, walls)",
+ "px_per_m": 63,
+ "anchor": "centre",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": null,
+ "pixellab_effect_id": "634c4dcc-6296-46a9-9a6b-0da0cf986d76",
+ "notes": "Grey crack-flash, chunkier stone chips plus a spray of fine grit that rain down and settle on the floor 74 px below, a grey grit cloud. Same staging as hit_bone in a cold grey stone palette with more, smaller grit. 12 frames @ 12 fps.",
+ "frame_size": [
+  89,
+  104
+ ],
+ "frames": 12,
+ "fps": 12,
+ "anchor_px": [
+  34,
+  24
+ ]
+}

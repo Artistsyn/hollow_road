@@ -1,0 +1,14 @@
+{
+ "name": "arrow_flight",
+ "for": "archer loose / low arrow, bounty_echo arrow / long draw / low arrow (Motion::Shot)",
+ "px_per_m": 64.9,
+ "anchor": "centre",
+ "loop": true,
+ "travels": true,
+ "hit_band_m": [
+  1.0,
+  1.7
+ ],
+ "pixellab_effect_id": "a33db742-081b-464c-a7a2-4278a10d87b9",
+ "notes": "A real arrow (iron head, wood shaft, rust fletching that quivers 1 px) with a short pale air streak off the fletching. Drawn facing +x at the archer sprite's own arrow length (32 px). Anchor = arrow centre (pivot in JSON). Same clip serves the low arrow (0.0-0.6 m): the game sets its height. bounty_echo sprite is smaller (128 px canvas): scale ~0.75 there or reuse as is."
+}

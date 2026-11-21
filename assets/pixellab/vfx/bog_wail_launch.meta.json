@@ -1,0 +1,11 @@
+{
+ "name": "bog_wail_launch",
+ "for": "hollowmere_screamer bog wail: release at the mouth",
+ "px_per_m": 30.0,
+ "anchor": "centre",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": null,
+ "pixellab_effect_id": "696195db-fd38-48a6-989e-24355b015c5d",
+ "notes": "One-shot at the open jaw: a gout of black bog water bursts forward and breaks up, spattering drops and weed bits that fall, while two sickly-green wail crescents punch out and fade. Faces +x; anchor = the mouth (pivot). Mouth sits ~2.5 m up on the throw frame."
+}

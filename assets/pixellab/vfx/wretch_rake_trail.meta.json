@@ -1,0 +1,30 @@
+{
+ "name": "wretch_rake_trail",
+ "for": "wretch (and Pack Alpha, Void Stalker, Hooded Thing) - rake / frenzy (side.rs WRETCH rake reach 0.1-1.3 m, height 0-1.6 m; road fight.rs rake reach 2.4 m)",
+ "px_per_m": 78.1,
+ "anchor": "feet",
+ "anchor_px": [
+  137,
+  133
+ ],
+ "faces": "left (as the wretch w_rake clip; mirror with the sprite)",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": [
+  0.0,
+  1.6
+ ],
+ "reach_m": [
+  0.1,
+  1.3
+ ],
+ "fps": 12,
+ "start_on": "first live tick (w_rake frame 6)",
+ "pixellab_effect_id": "0172adbf-a11e-4a2f-8906-7ac683f30115",
+ "notes": "Three bone-coloured claw strokes raking from head height down to the ground in front, each a beat behind the last, reeled in and crumbling; specks and grit flicked off. Play once per rake of a frenzy (mirror alternate rakes for variety if wanted). anchor_px lies 2 px past the right edge (the trail is all in front).",
+ "frames": 8,
+ "frame_px": [
+  135,
+  138
+ ]
+}

@@ -1,0 +1,209 @@
+{
+ "frames": [
+  {
+   "filename": "hr-shots-arrow-impact-flesh 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 47,
+    "h": 44
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 47,
+    "h": 44
+   },
+   "sourceSize": {
+    "w": 47,
+    "h": 44
+   },
+   "pivot": {
+    "x": 0.3617021276595745,
+    "y": 0.1590909090909091
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-arrow-impact-flesh 1.png",
+   "frame": {
+    "x": 47,
+    "y": 0,
+    "w": 47,
+    "h": 44
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 47,
+    "h": 44
+   },
+   "sourceSize": {
+    "w": 47,
+    "h": 44
+   },
+   "pivot": {
+    "x": 0.3617021276595745,
+    "y": 0.1590909090909091
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-arrow-impact-flesh 2.png",
+   "frame": {
+    "x": 94,
+    "y": 0,
+    "w": 47,
+    "h": 44
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 47,
+    "h": 44
+   },
+   "sourceSize": {
+    "w": 47,
+    "h": 44
+   },
+   "pivot": {
+    "x": 0.3617021276595745,
+    "y": 0.1590909090909091
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-arrow-impact-flesh 3.png",
+   "frame": {
+    "x": 0,
+    "y": 44,
+    "w": 47,
+    "h": 44
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 47,
+    "h": 44
+   },
+   "sourceSize": {
+    "w": 47,
+    "h": 44
+   },
+   "pivot": {
+    "x": 0.3617021276595745,
+    "y": 0.1590909090909091
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-arrow-impact-flesh 4.png",
+   "frame": {
+    "x": 47,
+    "y": 44,
+    "w": 47,
+    "h": 44
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 47,
+    "h": 44
+   },
+   "sourceSize": {
+    "w": 47,
+    "h": 44
+   },
+   "pivot": {
+    "x": 0.3617021276595745,
+    "y": 0.1590909090909091
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-arrow-impact-flesh 5.png",
+   "frame": {
+    "x": 94,
+    "y": 44,
+    "w": 47,
+    "h": 44
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 47,
+    "h": 44
+   },
+   "sourceSize": {
+    "w": 47,
+    "h": 44
+   },
+   "pivot": {
+    "x": 0.3617021276595745,
+    "y": 0.1590909090909091
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-arrow-impact-flesh 6.png",
+   "frame": {
+    "x": 0,
+    "y": 88,
+    "w": 47,
+    "h": 44
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 47,
+    "h": 44
+   },
+   "sourceSize": {
+    "w": 47,
+    "h": 44
+   },
+   "pivot": {
+    "x": 0.3617021276595745,
+    "y": 0.1590909090909091
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hr-shots-arrow-impact-flesh.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 141,
+   "h": 132
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 17,
+   "y": 7
+  },
+  "frameTags": [
+   {
+    "name": "hr-shots-arrow-impact-flesh",
+    "from": 0,
+    "to": 6,
+    "direction": "forward"
+   }
+  ]
+ }
+}

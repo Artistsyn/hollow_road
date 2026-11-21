@@ -1,0 +1,30 @@
+{
+ "name": "lancer_thrust_streak",
+ "for": "lancer (and Order Agent) - thrust / thrust again / piercing thrust (side.rs LANCER reach 0.3-2.6 m, height 0.6-1.8 m; road fight.rs thrust reach 4.2 m)",
+ "px_per_m": 64.2,
+ "anchor": "feet",
+ "anchor_px": [
+  189,
+  82
+ ],
+ "faces": "left (as the lancer w_thrust clip; mirror with the sprite)",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": [
+  0.6,
+  1.8
+ ],
+ "reach_m": [
+  0.3,
+  2.6
+ ],
+ "fps": 12,
+ "start_on": "first live tick (w_thrust frame 9)",
+ "pixellab_effect_id": "d6daefaf-ac43-49af-afef-90711f722bd8",
+ "notes": "A straight steel streak from the spearhead out to the full 2.6 m reach at ~1.0 m (the spear height on the clip), needle point leading and brightest, two hair-thin echoes above and below, a small pressure crescent and glint at the point, speed lines streaming back. anchor_px is outside the canvas (right and below): the streak is all in front at chest height. For the piercing thrust (3.0 m) stretch x1.15 along x from the anchor.",
+ "frames": 8,
+ "frame_px": [
+  160,
+  30
+ ]
+}

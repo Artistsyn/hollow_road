@@ -1,0 +1,14 @@
+{
+ "name": "bog_wail_flight",
+ "for": "hollowmere_screamer bog wail (Motion::Shot 6/TPS)",
+ "px_per_m": 30.0,
+ "anchor": "centre",
+ "loop": true,
+ "travels": true,
+ "hit_band_m": [
+  0.4,
+  2.0
+ ],
+ "pixellab_effect_id": "e5a49f2b-50ed-43fb-ae14-13d5a684d4c2",
+ "notes": "A hurled knot of black bog water (lit olive highlights, foam flecks circling) dragging weed strands and water tails, shedding drips and spray, led by a quivering sickly-green tapered wail crescent with an echo ripple. Faces +x; anchor = glob centre. Crescent spans the 0.4-2.0 m band (48 px at 30 px/m)."
+}

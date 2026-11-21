@@ -1,0 +1,651 @@
+{
+ "frames": [
+  {
+   "filename": "hollow-road-rune-mother-drowned-hands 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 91,
+    "h": 71
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 91,
+    "h": 71
+   },
+   "sourceSize": {
+    "w": 91,
+    "h": 71
+   },
+   "pivot": {
+    "x": 0.5494505494505495,
+    "y": 0.8450704225352113
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-mother-drowned-hands 1.png",
+   "frame": {
+    "x": 91,
+    "y": 0,
+    "w": 91,
+    "h": 71
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 91,
+    "h": 71
+   },
+   "sourceSize": {
+    "w": 91,
+    "h": 71
+   },
+   "pivot": {
+    "x": 0.5494505494505495,
+    "y": 0.8450704225352113
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-mother-drowned-hands 2.png",
+   "frame": {
+    "x": 182,
+    "y": 0,
+    "w": 91,
+    "h": 71
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 91,
+    "h": 71
+   },
+   "sourceSize": {
+    "w": 91,
+    "h": 71
+   },
+   "pivot": {
+    "x": 0.5494505494505495,
+    "y": 0.8450704225352113
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-mother-drowned-hands 3.png",
+   "frame": {
+    "x": 273,
+    "y": 0,
+    "w": 91,
+    "h": 71
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 91,
+    "h": 71
+   },
+   "sourceSize": {
+    "w": 91,
+    "h": 71
+   },
+   "pivot": {
+    "x": 0.5494505494505495,
+    "y": 0.8450704225352113
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-mother-drowned-hands 4.png",
+   "frame": {
+    "x": 364,
+    "y": 0,
+    "w": 91,
+    "h": 71
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 91,
+    "h": 71
+   },
+   "sourceSize": {
+    "w": 91,
+    "h": 71
+   },
+   "pivot": {
+    "x": 0.5494505494505495,
+    "y": 0.8450704225352113
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-mother-drowned-hands 5.png",
+   "frame": {
+    "x": 0,
+    "y": 71,
+    "w": 91,
+    "h": 71
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 91,
+    "h": 71
+   },
+   "sourceSize": {
+    "w": 91,
+    "h": 71
+   },
+   "pivot": {
+    "x": 0.5494505494505495,
+    "y": 0.8450704225352113
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-mother-drowned-hands 6.png",
+   "frame": {
+    "x": 91,
+    "y": 71,
+    "w": 91,
+    "h": 71
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 91,
+    "h": 71
+   },
+   "sourceSize": {
+    "w": 91,
+    "h": 71
+   },
+   "pivot": {
+    "x": 0.5494505494505495,
+    "y": 0.8450704225352113
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-mother-drowned-hands 7.png",
+   "frame": {
+    "x": 182,
+    "y": 71,
+    "w": 91,
+    "h": 71
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 91,
+    "h": 71
+   },
+   "sourceSize": {
+    "w": 91,
+    "h": 71
+   },
+   "pivot": {
+    "x": 0.5494505494505495,
+    "y": 0.8450704225352113
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-mother-drowned-hands 8.png",
+   "frame": {
+    "x": 273,
+    "y": 71,
+    "w": 91,
+    "h": 71
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 91,
+    "h": 71
+   },
+   "sourceSize": {
+    "w": 91,
+    "h": 71
+   },
+   "pivot": {
+    "x": 0.5494505494505495,
+    "y": 0.8450704225352113
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-mother-drowned-hands 9.png",
+   "frame": {
+    "x": 364,
+    "y": 71,
+    "w": 91,
+    "h": 71
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 91,
+    "h": 71
+   },
+   "sourceSize": {
+    "w": 91,
+    "h": 71
+   },
+   "pivot": {
+    "x": 0.5494505494505495,
+    "y": 0.8450704225352113
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-mother-drowned-hands 10.png",
+   "frame": {
+    "x": 0,
+    "y": 142,
+    "w": 91,
+    "h": 71
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 91,
+    "h": 71
+   },
+   "sourceSize": {
+    "w": 91,
+    "h": 71
+   },
+   "pivot": {
+    "x": 0.5494505494505495,
+    "y": 0.8450704225352113
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-mother-drowned-hands 11.png",
+   "frame": {
+    "x": 91,
+    "y": 142,
+    "w": 91,
+    "h": 71
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 91,
+    "h": 71
+   },
+   "sourceSize": {
+    "w": 91,
+    "h": 71
+   },
+   "pivot": {
+    "x": 0.5494505494505495,
+    "y": 0.8450704225352113
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-mother-drowned-hands 12.png",
+   "frame": {
+    "x": 182,
+    "y": 142,
+    "w": 91,
+    "h": 71
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 91,
+    "h": 71
+   },
+   "sourceSize": {
+    "w": 91,
+    "h": 71
+   },
+   "pivot": {
+    "x": 0.5494505494505495,
+    "y": 0.8450704225352113
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-mother-drowned-hands 13.png",
+   "frame": {
+    "x": 273,
+    "y": 142,
+    "w": 91,
+    "h": 71
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 91,
+    "h": 71
+   },
+   "sourceSize": {
+    "w": 91,
+    "h": 71
+   },
+   "pivot": {
+    "x": 0.5494505494505495,
+    "y": 0.8450704225352113
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-mother-drowned-hands 14.png",
+   "frame": {
+    "x": 364,
+    "y": 142,
+    "w": 91,
+    "h": 71
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 91,
+    "h": 71
+   },
+   "sourceSize": {
+    "w": 91,
+    "h": 71
+   },
+   "pivot": {
+    "x": 0.5494505494505495,
+    "y": 0.8450704225352113
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-mother-drowned-hands 15.png",
+   "frame": {
+    "x": 0,
+    "y": 213,
+    "w": 91,
+    "h": 71
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 91,
+    "h": 71
+   },
+   "sourceSize": {
+    "w": 91,
+    "h": 71
+   },
+   "pivot": {
+    "x": 0.5494505494505495,
+    "y": 0.8450704225352113
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-mother-drowned-hands 16.png",
+   "frame": {
+    "x": 91,
+    "y": 213,
+    "w": 91,
+    "h": 71
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 91,
+    "h": 71
+   },
+   "sourceSize": {
+    "w": 91,
+    "h": 71
+   },
+   "pivot": {
+    "x": 0.5494505494505495,
+    "y": 0.8450704225352113
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-mother-drowned-hands 17.png",
+   "frame": {
+    "x": 182,
+    "y": 213,
+    "w": 91,
+    "h": 71
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 91,
+    "h": 71
+   },
+   "sourceSize": {
+    "w": 91,
+    "h": 71
+   },
+   "pivot": {
+    "x": 0.5494505494505495,
+    "y": 0.8450704225352113
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-mother-drowned-hands 18.png",
+   "frame": {
+    "x": 273,
+    "y": 213,
+    "w": 91,
+    "h": 71
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 91,
+    "h": 71
+   },
+   "sourceSize": {
+    "w": 91,
+    "h": 71
+   },
+   "pivot": {
+    "x": 0.5494505494505495,
+    "y": 0.8450704225352113
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-mother-drowned-hands 19.png",
+   "frame": {
+    "x": 364,
+    "y": 213,
+    "w": 91,
+    "h": 71
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 91,
+    "h": 71
+   },
+   "sourceSize": {
+    "w": 91,
+    "h": 71
+   },
+   "pivot": {
+    "x": 0.5494505494505495,
+    "y": 0.8450704225352113
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-mother-drowned-hands 20.png",
+   "frame": {
+    "x": 0,
+    "y": 284,
+    "w": 91,
+    "h": 71
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 91,
+    "h": 71
+   },
+   "sourceSize": {
+    "w": 91,
+    "h": 71
+   },
+   "pivot": {
+    "x": 0.5494505494505495,
+    "y": 0.8450704225352113
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-mother-drowned-hands 21.png",
+   "frame": {
+    "x": 91,
+    "y": 284,
+    "w": 91,
+    "h": 71
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 91,
+    "h": 71
+   },
+   "sourceSize": {
+    "w": 91,
+    "h": 71
+   },
+   "pivot": {
+    "x": 0.5494505494505495,
+    "y": 0.8450704225352113
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-mother-drowned-hands 22.png",
+   "frame": {
+    "x": 182,
+    "y": 284,
+    "w": 91,
+    "h": 71
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 91,
+    "h": 71
+   },
+   "sourceSize": {
+    "w": 91,
+    "h": 71
+   },
+   "pivot": {
+    "x": 0.5494505494505495,
+    "y": 0.8450704225352113
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-mother-drowned-hands 23.png",
+   "frame": {
+    "x": 273,
+    "y": 284,
+    "w": 91,
+    "h": 71
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 91,
+    "h": 71
+   },
+   "sourceSize": {
+    "w": 91,
+    "h": 71
+   },
+   "pivot": {
+    "x": 0.5494505494505495,
+    "y": 0.8450704225352113
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hollow-road-rune-mother-drowned-hands.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 455,
+   "h": 355
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 50,
+   "y": 60
+  },
+  "frameTags": [
+   {
+    "name": "hollow-road-rune-mother-drowned-hands",
+    "from": 0,
+    "to": 23,
+    "direction": "forward"
+   }
+  ]
+ }
+}

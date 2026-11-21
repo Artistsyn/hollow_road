@@ -102,11 +102,14 @@ pub(crate) struct Audio {
     /// The tune wanted now, and the one playing (none while muted).
     tune: Option<Tune>,
     playing: Option<SoundHandle>,
+    /// The player's music and effects volumes (`Settings`), of each sound's own level.
+    music_level: f32,
+    effects_level: f32,
 }
 
 impl Audio {
     pub fn new() -> Audio {
-        Audio { rng: 0x2545_F491_4F6C_DD1D, stepped: 0.0, on: !cfg!(test) && std::env::var_os("HR_MUTE").is_none(), tune: None, playing: None }
+        Audio { rng: 0x2545_F491_4F6C_DD1D, stepped: 0.0, on: !cfg!(test) && std::env::var_os("HR_MUTE").is_none(), tune: None, playing: None, music_level: 1.0, effects_level: 1.0 }
     }
 
     /// Play `want` from here on, looping: the tune before fades out as it fades in. `None` lets
@@ -118,7 +121,14 @@ impl Audio {
         let Some(t) = want.filter(|_| self.on) else { return };
         let (file, level) = t.file();
         let path = crate::assets::path(file);
-        self.playing = Some(c.play_sound_with(&path.to_string_lossy(), SoundOptions::new().volume(level).looping(true).fade_in(CROSSFADE)));
+        self.playing = Some(c.play_sound_with(&path.to_string_lossy(), SoundOptions::new().volume(level * self.music_level).looping(true).fade_in(CROSSFADE)));
+    }
+
+    /// Play music at `music` and everything else at `effects` of their own levels from here on
+    /// (0 silent, 1 as made); the tune playing changes at once.
+    pub fn set_levels(&mut self, music: f32, effects: f32) {
+        (self.music_level, self.effects_level) = (music.clamp(0.0, 1.0), effects.clamp(0.0, 1.0));
+        if let (Some(h), Some(t)) = (&self.playing, self.tune) { h.set_volume(t.file().1 * self.music_level); }
     }
 
     fn roll(&mut self) -> f32 {
@@ -128,11 +138,11 @@ impl Audio {
 
     /// `s` at `volume` of its own level and `pitch` of its own, nudged a few percent either way.
     pub fn play_at(&mut self, c: &Canvas, s: Sfx, volume: f32, pitch: f32) {
-        if !self.on { return; }
+        if !self.on || self.effects_level <= 0.0 { return; }
         let (takes, level) = s.takes();
         let pick = takes[(self.roll() * takes.len() as f32) as usize % takes.len()];
         let wobble = 1.0 + (self.roll() - 0.5) * 0.1;
-        c.play_sound_bytes_with(pick, SoundOptions::new().volume(level * volume).pitch(pitch * wobble));
+        c.play_sound_bytes_with(pick, SoundOptions::new().volume(level * volume * self.effects_level).pitch(pitch * wobble));
     }
     pub fn play(&mut self, c: &Canvas, s: Sfx) { self.play_at(c, s, 1.0, 1.0); }
 

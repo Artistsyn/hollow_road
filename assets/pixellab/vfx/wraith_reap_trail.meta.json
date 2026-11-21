@@ -1,0 +1,31 @@
+{
+ "name": "wraith_reap_trail",
+ "for": "The Wraith Lord - reap (side.rs WRAITH_BLOWS reach -2.4..3.4 m, height 0-1.2 m: reaps both ways, jump it)",
+ "px_per_m": 48.9,
+ "anchor": "feet",
+ "anchor_px": [
+  177,
+  57
+ ],
+ "faces": "left (as the wraith_lord sweep clip; mirror with the sprite)",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": [
+  0.0,
+  1.2
+ ],
+ "reach_m": [
+  -2.4,
+  3.4
+ ],
+ "fps": 12,
+ "start_on": "first live tick (sweep frame 6)",
+ "pixellab_effect_id": "ff07d3b1-8ef1-40db-97a3-0b07935de1af",
+ "game_pack": "wraith_reap_trail_game.zip (behind.png / front.png / whole.png + manifest.json offsets: draw behind.png under the wraith and front.png over it)",
+ "notes": "The scythe reaping a full low loop round the wraith at knee height: the near half (in front of its legs) whips from 2.4 m behind to 3.4 m in front, then the far half carries on behind its legs back round; soul-ice cyan from its own scythe glow; grit and a dust breath kicked along the ground, motes shed. Ellipse spans ~0.1-1.1 m: clearly a jump. NOTE the borrowed sweep clip swings the scythe overhead, so its art disagrees with this blow band; the effect follows the band.",
+ "frames": 10,
+ "frame_px": [
+  303,
+  65
+ ]
+}

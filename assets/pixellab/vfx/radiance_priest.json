@@ -1,0 +1,339 @@
+{
+ "frames": [
+  {
+   "filename": "angel-priest-radiance-front 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 78,
+    "h": 90
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 78,
+    "h": 90
+   },
+   "sourceSize": {
+    "w": 78,
+    "h": 90
+   },
+   "pivot": {
+    "x": 0.5128205128205128,
+    "y": 0.4888888888888889
+   },
+   "duration": 83
+  },
+  {
+   "filename": "angel-priest-radiance-front 1.png",
+   "frame": {
+    "x": 78,
+    "y": 0,
+    "w": 78,
+    "h": 90
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 78,
+    "h": 90
+   },
+   "sourceSize": {
+    "w": 78,
+    "h": 90
+   },
+   "pivot": {
+    "x": 0.5128205128205128,
+    "y": 0.4888888888888889
+   },
+   "duration": 83
+  },
+  {
+   "filename": "angel-priest-radiance-front 2.png",
+   "frame": {
+    "x": 156,
+    "y": 0,
+    "w": 78,
+    "h": 90
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 78,
+    "h": 90
+   },
+   "sourceSize": {
+    "w": 78,
+    "h": 90
+   },
+   "pivot": {
+    "x": 0.5128205128205128,
+    "y": 0.4888888888888889
+   },
+   "duration": 83
+  },
+  {
+   "filename": "angel-priest-radiance-front 3.png",
+   "frame": {
+    "x": 234,
+    "y": 0,
+    "w": 78,
+    "h": 90
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 78,
+    "h": 90
+   },
+   "sourceSize": {
+    "w": 78,
+    "h": 90
+   },
+   "pivot": {
+    "x": 0.5128205128205128,
+    "y": 0.4888888888888889
+   },
+   "duration": 83
+  },
+  {
+   "filename": "angel-priest-radiance-front 4.png",
+   "frame": {
+    "x": 0,
+    "y": 90,
+    "w": 78,
+    "h": 90
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 78,
+    "h": 90
+   },
+   "sourceSize": {
+    "w": 78,
+    "h": 90
+   },
+   "pivot": {
+    "x": 0.5128205128205128,
+    "y": 0.4888888888888889
+   },
+   "duration": 83
+  },
+  {
+   "filename": "angel-priest-radiance-front 5.png",
+   "frame": {
+    "x": 78,
+    "y": 90,
+    "w": 78,
+    "h": 90
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 78,
+    "h": 90
+   },
+   "sourceSize": {
+    "w": 78,
+    "h": 90
+   },
+   "pivot": {
+    "x": 0.5128205128205128,
+    "y": 0.4888888888888889
+   },
+   "duration": 83
+  },
+  {
+   "filename": "angel-priest-radiance-front 6.png",
+   "frame": {
+    "x": 156,
+    "y": 90,
+    "w": 78,
+    "h": 90
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 78,
+    "h": 90
+   },
+   "sourceSize": {
+    "w": 78,
+    "h": 90
+   },
+   "pivot": {
+    "x": 0.5128205128205128,
+    "y": 0.4888888888888889
+   },
+   "duration": 83
+  },
+  {
+   "filename": "angel-priest-radiance-front 7.png",
+   "frame": {
+    "x": 234,
+    "y": 90,
+    "w": 78,
+    "h": 90
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 78,
+    "h": 90
+   },
+   "sourceSize": {
+    "w": 78,
+    "h": 90
+   },
+   "pivot": {
+    "x": 0.5128205128205128,
+    "y": 0.4888888888888889
+   },
+   "duration": 83
+  },
+  {
+   "filename": "angel-priest-radiance-front 8.png",
+   "frame": {
+    "x": 0,
+    "y": 180,
+    "w": 78,
+    "h": 90
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 78,
+    "h": 90
+   },
+   "sourceSize": {
+    "w": 78,
+    "h": 90
+   },
+   "pivot": {
+    "x": 0.5128205128205128,
+    "y": 0.4888888888888889
+   },
+   "duration": 83
+  },
+  {
+   "filename": "angel-priest-radiance-front 9.png",
+   "frame": {
+    "x": 78,
+    "y": 180,
+    "w": 78,
+    "h": 90
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 78,
+    "h": 90
+   },
+   "sourceSize": {
+    "w": 78,
+    "h": 90
+   },
+   "pivot": {
+    "x": 0.5128205128205128,
+    "y": 0.4888888888888889
+   },
+   "duration": 83
+  },
+  {
+   "filename": "angel-priest-radiance-front 10.png",
+   "frame": {
+    "x": 156,
+    "y": 180,
+    "w": 78,
+    "h": 90
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 78,
+    "h": 90
+   },
+   "sourceSize": {
+    "w": 78,
+    "h": 90
+   },
+   "pivot": {
+    "x": 0.5128205128205128,
+    "y": 0.4888888888888889
+   },
+   "duration": 83
+  },
+  {
+   "filename": "angel-priest-radiance-front 11.png",
+   "frame": {
+    "x": 234,
+    "y": 180,
+    "w": 78,
+    "h": 90
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 78,
+    "h": 90
+   },
+   "sourceSize": {
+    "w": 78,
+    "h": 90
+   },
+   "pivot": {
+    "x": 0.5128205128205128,
+    "y": 0.4888888888888889
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "angel-priest-radiance-front.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 312,
+   "h": 270
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 40,
+   "y": 44
+  },
+  "frameTags": [
+   {
+    "name": "angel-priest-radiance-front",
+    "from": 0,
+    "to": 11,
+    "direction": "forward"
+   }
+  ]
+ }
+}

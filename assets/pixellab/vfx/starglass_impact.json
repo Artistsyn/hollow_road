@@ -1,0 +1,339 @@
+{
+ "frames": [
+  {
+   "filename": "hr-shots-starglass-impact 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 122,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 122,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 122,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.5573770491803278,
+    "y": 0.3473684210526316
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-starglass-impact 1.png",
+   "frame": {
+    "x": 122,
+    "y": 0,
+    "w": 122,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 122,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 122,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.5573770491803278,
+    "y": 0.3473684210526316
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-starglass-impact 2.png",
+   "frame": {
+    "x": 244,
+    "y": 0,
+    "w": 122,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 122,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 122,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.5573770491803278,
+    "y": 0.3473684210526316
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-starglass-impact 3.png",
+   "frame": {
+    "x": 366,
+    "y": 0,
+    "w": 122,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 122,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 122,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.5573770491803278,
+    "y": 0.3473684210526316
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-starglass-impact 4.png",
+   "frame": {
+    "x": 0,
+    "y": 95,
+    "w": 122,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 122,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 122,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.5573770491803278,
+    "y": 0.3473684210526316
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-starglass-impact 5.png",
+   "frame": {
+    "x": 122,
+    "y": 95,
+    "w": 122,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 122,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 122,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.5573770491803278,
+    "y": 0.3473684210526316
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-starglass-impact 6.png",
+   "frame": {
+    "x": 244,
+    "y": 95,
+    "w": 122,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 122,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 122,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.5573770491803278,
+    "y": 0.3473684210526316
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-starglass-impact 7.png",
+   "frame": {
+    "x": 366,
+    "y": 95,
+    "w": 122,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 122,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 122,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.5573770491803278,
+    "y": 0.3473684210526316
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-starglass-impact 8.png",
+   "frame": {
+    "x": 0,
+    "y": 190,
+    "w": 122,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 122,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 122,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.5573770491803278,
+    "y": 0.3473684210526316
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-starglass-impact 9.png",
+   "frame": {
+    "x": 122,
+    "y": 190,
+    "w": 122,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 122,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 122,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.5573770491803278,
+    "y": 0.3473684210526316
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-starglass-impact 10.png",
+   "frame": {
+    "x": 244,
+    "y": 190,
+    "w": 122,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 122,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 122,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.5573770491803278,
+    "y": 0.3473684210526316
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-starglass-impact 11.png",
+   "frame": {
+    "x": 366,
+    "y": 190,
+    "w": 122,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 122,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 122,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.5573770491803278,
+    "y": 0.3473684210526316
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hr-shots-starglass-impact.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 488,
+   "h": 285
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 68,
+   "y": 33
+  },
+  "frameTags": [
+   {
+    "name": "hr-shots-starglass-impact",
+    "from": 0,
+    "to": 11,
+    "direction": "forward"
+   }
+  ]
+ }
+}

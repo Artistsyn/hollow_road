@@ -256,7 +256,7 @@ impl Prologue {
         if counted { return; }
         match (hurt, rolled) {
             (false, true) => { self.got += 1; self.say("Rolled clear."); }
-            (true, true) => self.say(if self.lesson == Lesson::Late { "Too soon: this blow hangs. Wait for the glint, then roll." } else { "Too soon: roll as the mark fills, not when it appears." }),
+            (true, true) => self.say(if self.lesson == Lesson::Late { "Too soon: this blow hangs. Roll out of its lane, or wait for the glint." } else { "Too soon: roll as the mark fills, not when it appears." }),
             (true, false) => self.say(self.k("Roll with Shift + A or D (or W) as the mark under you fills.", "Tap ROLL as the mark under you fills.")),
             (false, false) => self.say("Stepping out of its way or blocking works too, but try a roll."),
         }
@@ -275,14 +275,14 @@ impl Prologue {
             Lesson::Run => ("Run", self.k("Tap W twice and hold it to run.", "Push the left thumb all the way up to run.").to_owned() + " Running spends stamina (the green bar).", vec![format!("Run  {}", n(self.got / 6, 10))]),
             Lesson::Lanes => ("Lanes", self.k("A and D step", "Push the left thumb left or right to step").to_owned() + " a lane across, free, but with no dodge in it: a blow aimed at your lane still finds you mid-step.",
                 vec![format!("Left  {}", if self.went.0 { "done" } else { "-" }), format!("Right  {}", if self.went.1 { "done" } else { "-" })]),
-            Lesson::Strike => ("Strike", "Walk up until the husk stops you. ".to_owned() + self.k("Left click strikes; Shift + left click is", "STRIKE strikes; HEAVY is") + " a heavy blow, slower but it breaks stance.",
+            Lesson::Strike => ("Strike", "Walk up until the husk stops you. ".to_owned() + self.k("Left click strikes; Shift + left click is", "STRIKE strikes; HEAVY is") + " a heavy blow, slower but it breaks stance. Hold it at the top of the swing to gather strength: up to twice the blow. Strike, strike, then heavy is a finisher; gathered to the full, it lands your weapon's finishing blow.",
                 vec![format!("Light  {}", n(self.got, 3)), format!("Heavy  {}", n(self.also, 1))]),
             Lesson::Pace => ("Every weapon has its own pace", format!(
                 "Your {} swings the way you just felt. A dagger starts and recovers quickly; a greatsword winds up long, hits hard and rides out a flinch. Learn when your weapon's blow lands and how long it leaves you open: timing on the road is the weapon's as much as yours.",
                 fight.hero.stats.kit.arms.class.name()), vec![]),
             Lesson::Guard => ("Guard", self.k("Hold the right mouse button", "Hold GUARD").to_owned() + " to guard. A block costs stamina; run out and the guard breaks.", vec![format!("Blocked  {}", n(self.got, 2))]),
-            Lesson::Roll => ("Roll", "Warning marks show where a blow will land, and fill as it comes. Orange: roll or block. ".to_owned() + self.k("Roll with Shift + A or D", "Tap ROLL (lean the left thumb to pick the way)") + " as the mark fills: too early and the roll is over before the blow.", vec![format!("Rolled clear  {}", n(self.got, 2))]),
-            Lesson::Late => ("A blow that hangs", "Some blows are held up before they fall: this one flashes early and waits. Do not roll at the flash; wait for the glint, then roll.".into(), vec![format!("Rolled clear  {}", n(self.got, 1))]),
+            Lesson::Roll => ("Roll", "Watch the foe: how far back a blow is drawn is where it lands. Here a mark under it fills as it comes (on the road it is faint; see Settings, Attack hints). Orange: roll or block. ".to_owned() + self.k("Roll with Shift + A or D", "Tap ROLL (lean the left thumb to pick the way)") + " as the mark fills: too early and the roll is over before the blow.", vec![format!("Rolled clear  {}", n(self.got, 2))]),
+            Lesson::Late => ("A blow that hangs", "Some blows are held up before they fall: this one flashes early and waits, fixed on the lane it flashed on. Roll out of that lane, or wait for the glint and roll through it; a roll in place at the flash is over too soon.".into(), vec![format!("Rolled clear  {}", n(self.got, 1))]),
             Lesson::Parry => ("Parry", "Gold marks can be parried: ".to_owned() + self.k("Shift + right click", "tap PARRY") + " just as the mark fills. A parried foe is open; strike at once for a riposte.",
                 vec![format!("Parry  {}", if self.got > 0 || self.also > 0 { "done" } else { "-" }), format!("Riposte  {}", n(self.also, 1))]),
             Lesson::Flask => ("Flask", self.k("R", "FLASK").to_owned() + " drinks a flask to heal. Drinking takes a moment and leaves you open: step back out of reach first.", vec![]),
@@ -291,7 +291,7 @@ impl Prologue {
                     else if fight.hero.stats.kit.imbues() { self.k("F", "SHOOT").to_owned() + " looses an arrow down your lane. " + self.k("C", "CAST") + " draws your own blood into the next five: harder, each drinking a little of it back. Once spent it comes back slowly, sooner for blows landed." } else { self.k("F", "SHOOT").to_owned() + " is your ranged attack: it flies down your lane to the first foe in it." };
                 ("From afar", what, vec![format!("Shots  {}", n(self.got, 2))])
             }
-            Lesson::Turn => ("Side-on", "Some fights turn the road to the side: ".to_owned() + self.k("A and D move, Space jumps", "the left thumb moves, JUMP jumps") + ", the same strikes, guard, rolls and parries. Fell the husk to finish.", vec![]),
+            Lesson::Turn => ("Side-on", "Some fights turn the road to the side: ".to_owned() + self.k("A and D move, Space jumps", "the left thumb moves, JUMP jumps") + ", the same strikes, guard, rolls and parries. A blow shows the height it hits: jump what runs low, roll through what stands tall. Fell the husk to finish.", vec![]),
             Lesson::Side => ("Side-on", self.k("A / D move   Space jump", "Left thumb move   JUMP jump").to_owned() + "   strike, guard, roll and parry as before", vec![]),
             Lesson::End => ("The memory fades", "The old soldier's road is long behind you. You wake on the road to Hollowmere.".into(), vec![]),
         };

@@ -1,0 +1,287 @@
+{
+ "frames": [
+  {
+   "filename": "hollow-road-wraith-lord-scythe-reap 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 303,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 303,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 303,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.5082508250825083,
+    "y": -0.4461538461538462
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-wraith-lord-scythe-reap 1.png",
+   "frame": {
+    "x": 303,
+    "y": 0,
+    "w": 303,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 303,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 303,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.5082508250825083,
+    "y": -0.4461538461538462
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-wraith-lord-scythe-reap 2.png",
+   "frame": {
+    "x": 606,
+    "y": 0,
+    "w": 303,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 303,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 303,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.5082508250825083,
+    "y": -0.4461538461538462
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-wraith-lord-scythe-reap 3.png",
+   "frame": {
+    "x": 909,
+    "y": 0,
+    "w": 303,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 303,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 303,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.5082508250825083,
+    "y": -0.4461538461538462
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-wraith-lord-scythe-reap 4.png",
+   "frame": {
+    "x": 0,
+    "y": 65,
+    "w": 303,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 303,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 303,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.5082508250825083,
+    "y": -0.4461538461538462
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-wraith-lord-scythe-reap 5.png",
+   "frame": {
+    "x": 303,
+    "y": 65,
+    "w": 303,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 303,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 303,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.5082508250825083,
+    "y": -0.4461538461538462
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-wraith-lord-scythe-reap 6.png",
+   "frame": {
+    "x": 606,
+    "y": 65,
+    "w": 303,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 303,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 303,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.5082508250825083,
+    "y": -0.4461538461538462
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-wraith-lord-scythe-reap 7.png",
+   "frame": {
+    "x": 909,
+    "y": 65,
+    "w": 303,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 303,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 303,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.5082508250825083,
+    "y": -0.4461538461538462
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-wraith-lord-scythe-reap 8.png",
+   "frame": {
+    "x": 0,
+    "y": 130,
+    "w": 303,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 303,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 303,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.5082508250825083,
+    "y": -0.4461538461538462
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-wraith-lord-scythe-reap 9.png",
+   "frame": {
+    "x": 303,
+    "y": 130,
+    "w": 303,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 303,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 303,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.5082508250825083,
+    "y": -0.4461538461538462
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hollow-road-wraith-lord-scythe-reap.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 1212,
+   "h": 195
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 154,
+   "y": -29
+  },
+  "frameTags": [
+   {
+    "name": "hollow-road-wraith-lord-scythe-reap",
+    "from": 0,
+    "to": 9,
+    "direction": "forward"
+   }
+  ]
+ }
+}

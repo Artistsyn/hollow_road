@@ -1,0 +1,339 @@
+{
+ "frames": [
+  {
+   "filename": "mother-of-the-black-water-many-voices-front 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 90
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 90
+   },
+   "sourceSize": {
+    "w": 66,
+    "h": 90
+   },
+   "pivot": {
+    "x": 0.3787878787878788,
+    "y": 0.4888888888888889
+   },
+   "duration": 83
+  },
+  {
+   "filename": "mother-of-the-black-water-many-voices-front 1.png",
+   "frame": {
+    "x": 66,
+    "y": 0,
+    "w": 66,
+    "h": 90
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 90
+   },
+   "sourceSize": {
+    "w": 66,
+    "h": 90
+   },
+   "pivot": {
+    "x": 0.3787878787878788,
+    "y": 0.4888888888888889
+   },
+   "duration": 83
+  },
+  {
+   "filename": "mother-of-the-black-water-many-voices-front 2.png",
+   "frame": {
+    "x": 132,
+    "y": 0,
+    "w": 66,
+    "h": 90
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 90
+   },
+   "sourceSize": {
+    "w": 66,
+    "h": 90
+   },
+   "pivot": {
+    "x": 0.3787878787878788,
+    "y": 0.4888888888888889
+   },
+   "duration": 83
+  },
+  {
+   "filename": "mother-of-the-black-water-many-voices-front 3.png",
+   "frame": {
+    "x": 198,
+    "y": 0,
+    "w": 66,
+    "h": 90
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 90
+   },
+   "sourceSize": {
+    "w": 66,
+    "h": 90
+   },
+   "pivot": {
+    "x": 0.3787878787878788,
+    "y": 0.4888888888888889
+   },
+   "duration": 83
+  },
+  {
+   "filename": "mother-of-the-black-water-many-voices-front 4.png",
+   "frame": {
+    "x": 0,
+    "y": 90,
+    "w": 66,
+    "h": 90
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 90
+   },
+   "sourceSize": {
+    "w": 66,
+    "h": 90
+   },
+   "pivot": {
+    "x": 0.3787878787878788,
+    "y": 0.4888888888888889
+   },
+   "duration": 83
+  },
+  {
+   "filename": "mother-of-the-black-water-many-voices-front 5.png",
+   "frame": {
+    "x": 66,
+    "y": 90,
+    "w": 66,
+    "h": 90
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 90
+   },
+   "sourceSize": {
+    "w": 66,
+    "h": 90
+   },
+   "pivot": {
+    "x": 0.3787878787878788,
+    "y": 0.4888888888888889
+   },
+   "duration": 83
+  },
+  {
+   "filename": "mother-of-the-black-water-many-voices-front 6.png",
+   "frame": {
+    "x": 132,
+    "y": 90,
+    "w": 66,
+    "h": 90
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 90
+   },
+   "sourceSize": {
+    "w": 66,
+    "h": 90
+   },
+   "pivot": {
+    "x": 0.3787878787878788,
+    "y": 0.4888888888888889
+   },
+   "duration": 83
+  },
+  {
+   "filename": "mother-of-the-black-water-many-voices-front 7.png",
+   "frame": {
+    "x": 198,
+    "y": 90,
+    "w": 66,
+    "h": 90
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 90
+   },
+   "sourceSize": {
+    "w": 66,
+    "h": 90
+   },
+   "pivot": {
+    "x": 0.3787878787878788,
+    "y": 0.4888888888888889
+   },
+   "duration": 83
+  },
+  {
+   "filename": "mother-of-the-black-water-many-voices-front 8.png",
+   "frame": {
+    "x": 0,
+    "y": 180,
+    "w": 66,
+    "h": 90
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 90
+   },
+   "sourceSize": {
+    "w": 66,
+    "h": 90
+   },
+   "pivot": {
+    "x": 0.3787878787878788,
+    "y": 0.4888888888888889
+   },
+   "duration": 83
+  },
+  {
+   "filename": "mother-of-the-black-water-many-voices-front 9.png",
+   "frame": {
+    "x": 66,
+    "y": 180,
+    "w": 66,
+    "h": 90
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 90
+   },
+   "sourceSize": {
+    "w": 66,
+    "h": 90
+   },
+   "pivot": {
+    "x": 0.3787878787878788,
+    "y": 0.4888888888888889
+   },
+   "duration": 83
+  },
+  {
+   "filename": "mother-of-the-black-water-many-voices-front 10.png",
+   "frame": {
+    "x": 132,
+    "y": 180,
+    "w": 66,
+    "h": 90
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 90
+   },
+   "sourceSize": {
+    "w": 66,
+    "h": 90
+   },
+   "pivot": {
+    "x": 0.3787878787878788,
+    "y": 0.4888888888888889
+   },
+   "duration": 83
+  },
+  {
+   "filename": "mother-of-the-black-water-many-voices-front 11.png",
+   "frame": {
+    "x": 198,
+    "y": 180,
+    "w": 66,
+    "h": 90
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 90
+   },
+   "sourceSize": {
+    "w": 66,
+    "h": 90
+   },
+   "pivot": {
+    "x": 0.3787878787878788,
+    "y": 0.4888888888888889
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "mother-of-the-black-water-many-voices-front.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 264,
+   "h": 270
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 25,
+   "y": 44
+  },
+  "frameTags": [
+   {
+    "name": "mother-of-the-black-water-many-voices-front",
+    "from": 0,
+    "to": 11,
+    "direction": "forward"
+   }
+  ]
+ }
+}

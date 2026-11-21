@@ -1,0 +1,339 @@
+{
+ "frames": [
+  {
+   "filename": "hollowmere-screamer-second-scream-front 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 109,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 109,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 109,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.28440366972477066,
+    "y": 0.20833333333333334
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollowmere-screamer-second-scream-front 1.png",
+   "frame": {
+    "x": 109,
+    "y": 0,
+    "w": 109,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 109,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 109,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.28440366972477066,
+    "y": 0.20833333333333334
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollowmere-screamer-second-scream-front 2.png",
+   "frame": {
+    "x": 218,
+    "y": 0,
+    "w": 109,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 109,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 109,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.28440366972477066,
+    "y": 0.20833333333333334
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollowmere-screamer-second-scream-front 3.png",
+   "frame": {
+    "x": 327,
+    "y": 0,
+    "w": 109,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 109,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 109,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.28440366972477066,
+    "y": 0.20833333333333334
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollowmere-screamer-second-scream-front 4.png",
+   "frame": {
+    "x": 0,
+    "y": 72,
+    "w": 109,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 109,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 109,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.28440366972477066,
+    "y": 0.20833333333333334
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollowmere-screamer-second-scream-front 5.png",
+   "frame": {
+    "x": 109,
+    "y": 72,
+    "w": 109,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 109,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 109,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.28440366972477066,
+    "y": 0.20833333333333334
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollowmere-screamer-second-scream-front 6.png",
+   "frame": {
+    "x": 218,
+    "y": 72,
+    "w": 109,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 109,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 109,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.28440366972477066,
+    "y": 0.20833333333333334
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollowmere-screamer-second-scream-front 7.png",
+   "frame": {
+    "x": 327,
+    "y": 72,
+    "w": 109,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 109,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 109,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.28440366972477066,
+    "y": 0.20833333333333334
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollowmere-screamer-second-scream-front 8.png",
+   "frame": {
+    "x": 0,
+    "y": 144,
+    "w": 109,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 109,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 109,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.28440366972477066,
+    "y": 0.20833333333333334
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollowmere-screamer-second-scream-front 9.png",
+   "frame": {
+    "x": 109,
+    "y": 144,
+    "w": 109,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 109,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 109,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.28440366972477066,
+    "y": 0.20833333333333334
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollowmere-screamer-second-scream-front 10.png",
+   "frame": {
+    "x": 218,
+    "y": 144,
+    "w": 109,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 109,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 109,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.28440366972477066,
+    "y": 0.20833333333333334
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollowmere-screamer-second-scream-front 11.png",
+   "frame": {
+    "x": 327,
+    "y": 144,
+    "w": 109,
+    "h": 72
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 109,
+    "h": 72
+   },
+   "sourceSize": {
+    "w": 109,
+    "h": 72
+   },
+   "pivot": {
+    "x": 0.28440366972477066,
+    "y": 0.20833333333333334
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hollowmere-screamer-second-scream-front.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 436,
+   "h": 216
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 31,
+   "y": 15
+  },
+  "frameTags": [
+   {
+    "name": "hollowmere-screamer-second-scream-front",
+    "from": 0,
+    "to": 11,
+    "direction": "forward"
+   }
+  ]
+ }
+}

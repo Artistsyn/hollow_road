@@ -1,0 +1,11 @@
+{
+ "name": "starglass_launch",
+ "for": "radiant_construct starglass, cast flash at the fist (art cast)",
+ "px_per_m": 38.4,
+ "anchor": "centre",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": null,
+ "pixellab_effect_id": "61243882-5fa0-484f-8d02-18dd624296d6",
+ "notes": "One-shot at the casting fist (construct sprite: fist front at about image px 146,92 in cast/005): a hard 4-point star glint with a diagonal cross, light streaks thrown forward (+x), slivers of star-glass spraying forward and dropping, glitter blinking out. Anchor = fist."
+}

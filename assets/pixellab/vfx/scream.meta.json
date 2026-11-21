@@ -1,0 +1,20 @@
+{
+ "name": "scream",
+ "for": "Hollowmere Screamer: scream",
+ "px_per_m": 28.3,
+ "anchor": "feet",
+ "loop": true,
+ "travels": true,
+ "hit_band_m": [
+  0.0,
+  2.2
+ ],
+ "pixellab_effect_id": "82ba21fe-4396-4efe-81ef-279fb13fbe74",
+ "ground_y_px": 67,
+ "front_x_px": 99,
+ "notes": "Raw shriek: a ragged bile-green waveform crescent 62 px tall (wild at mid-height, calm at the tips) with a dark-olive wake band, two ragged echoes catching up, a light haze quiver, bile streaks streaming back, marsh-water droplets and mud clods torn up at its foot. Chest-high: roll through it. Facing +x, exported in place (12 frames @ 12 fps, seamless loop). Feet anchor: ground is canvas row 67; the front's leading edge is at canvas x 99; place that point on the ring's position.",
+ "anchor_px": [
+  99,
+  67
+ ]
+}

@@ -1,0 +1,339 @@
+{
+ "frames": [
+  {
+   "filename": "hr-shots-void-bolt-impact 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 57,
+    "h": 62
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 57,
+    "h": 62
+   },
+   "sourceSize": {
+    "w": 57,
+    "h": 62
+   },
+   "pivot": {
+    "x": 0.543859649122807,
+    "y": 0.4032258064516129
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-void-bolt-impact 1.png",
+   "frame": {
+    "x": 57,
+    "y": 0,
+    "w": 57,
+    "h": 62
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 57,
+    "h": 62
+   },
+   "sourceSize": {
+    "w": 57,
+    "h": 62
+   },
+   "pivot": {
+    "x": 0.543859649122807,
+    "y": 0.4032258064516129
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-void-bolt-impact 2.png",
+   "frame": {
+    "x": 114,
+    "y": 0,
+    "w": 57,
+    "h": 62
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 57,
+    "h": 62
+   },
+   "sourceSize": {
+    "w": 57,
+    "h": 62
+   },
+   "pivot": {
+    "x": 0.543859649122807,
+    "y": 0.4032258064516129
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-void-bolt-impact 3.png",
+   "frame": {
+    "x": 171,
+    "y": 0,
+    "w": 57,
+    "h": 62
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 57,
+    "h": 62
+   },
+   "sourceSize": {
+    "w": 57,
+    "h": 62
+   },
+   "pivot": {
+    "x": 0.543859649122807,
+    "y": 0.4032258064516129
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-void-bolt-impact 4.png",
+   "frame": {
+    "x": 0,
+    "y": 62,
+    "w": 57,
+    "h": 62
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 57,
+    "h": 62
+   },
+   "sourceSize": {
+    "w": 57,
+    "h": 62
+   },
+   "pivot": {
+    "x": 0.543859649122807,
+    "y": 0.4032258064516129
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-void-bolt-impact 5.png",
+   "frame": {
+    "x": 57,
+    "y": 62,
+    "w": 57,
+    "h": 62
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 57,
+    "h": 62
+   },
+   "sourceSize": {
+    "w": 57,
+    "h": 62
+   },
+   "pivot": {
+    "x": 0.543859649122807,
+    "y": 0.4032258064516129
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-void-bolt-impact 6.png",
+   "frame": {
+    "x": 114,
+    "y": 62,
+    "w": 57,
+    "h": 62
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 57,
+    "h": 62
+   },
+   "sourceSize": {
+    "w": 57,
+    "h": 62
+   },
+   "pivot": {
+    "x": 0.543859649122807,
+    "y": 0.4032258064516129
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-void-bolt-impact 7.png",
+   "frame": {
+    "x": 171,
+    "y": 62,
+    "w": 57,
+    "h": 62
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 57,
+    "h": 62
+   },
+   "sourceSize": {
+    "w": 57,
+    "h": 62
+   },
+   "pivot": {
+    "x": 0.543859649122807,
+    "y": 0.4032258064516129
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-void-bolt-impact 8.png",
+   "frame": {
+    "x": 0,
+    "y": 124,
+    "w": 57,
+    "h": 62
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 57,
+    "h": 62
+   },
+   "sourceSize": {
+    "w": 57,
+    "h": 62
+   },
+   "pivot": {
+    "x": 0.543859649122807,
+    "y": 0.4032258064516129
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-void-bolt-impact 9.png",
+   "frame": {
+    "x": 57,
+    "y": 124,
+    "w": 57,
+    "h": 62
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 57,
+    "h": 62
+   },
+   "sourceSize": {
+    "w": 57,
+    "h": 62
+   },
+   "pivot": {
+    "x": 0.543859649122807,
+    "y": 0.4032258064516129
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-void-bolt-impact 10.png",
+   "frame": {
+    "x": 114,
+    "y": 124,
+    "w": 57,
+    "h": 62
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 57,
+    "h": 62
+   },
+   "sourceSize": {
+    "w": 57,
+    "h": 62
+   },
+   "pivot": {
+    "x": 0.543859649122807,
+    "y": 0.4032258064516129
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-void-bolt-impact 11.png",
+   "frame": {
+    "x": 171,
+    "y": 124,
+    "w": 57,
+    "h": 62
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 57,
+    "h": 62
+   },
+   "sourceSize": {
+    "w": 57,
+    "h": 62
+   },
+   "pivot": {
+    "x": 0.543859649122807,
+    "y": 0.4032258064516129
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hr-shots-void-bolt-impact.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 228,
+   "h": 186
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 31,
+   "y": 25
+  },
+  "frameTags": [
+   {
+    "name": "hr-shots-void-bolt-impact",
+    "from": 0,
+    "to": 11,
+    "direction": "forward"
+   }
+  ]
+ }
+}

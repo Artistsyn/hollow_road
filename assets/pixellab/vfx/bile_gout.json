@@ -1,0 +1,235 @@
+{
+ "frames": [
+  {
+   "filename": "hr-shots-bile-gout 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 146,
+    "h": 97
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 146,
+    "h": 97
+   },
+   "sourceSize": {
+    "w": 146,
+    "h": 97
+   },
+   "pivot": {
+    "x": 0.03424657534246575,
+    "y": 0.12371134020618557
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-bile-gout 1.png",
+   "frame": {
+    "x": 146,
+    "y": 0,
+    "w": 146,
+    "h": 97
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 146,
+    "h": 97
+   },
+   "sourceSize": {
+    "w": 146,
+    "h": 97
+   },
+   "pivot": {
+    "x": 0.03424657534246575,
+    "y": 0.12371134020618557
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-bile-gout 2.png",
+   "frame": {
+    "x": 292,
+    "y": 0,
+    "w": 146,
+    "h": 97
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 146,
+    "h": 97
+   },
+   "sourceSize": {
+    "w": 146,
+    "h": 97
+   },
+   "pivot": {
+    "x": 0.03424657534246575,
+    "y": 0.12371134020618557
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-bile-gout 3.png",
+   "frame": {
+    "x": 0,
+    "y": 97,
+    "w": 146,
+    "h": 97
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 146,
+    "h": 97
+   },
+   "sourceSize": {
+    "w": 146,
+    "h": 97
+   },
+   "pivot": {
+    "x": 0.03424657534246575,
+    "y": 0.12371134020618557
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-bile-gout 4.png",
+   "frame": {
+    "x": 146,
+    "y": 97,
+    "w": 146,
+    "h": 97
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 146,
+    "h": 97
+   },
+   "sourceSize": {
+    "w": 146,
+    "h": 97
+   },
+   "pivot": {
+    "x": 0.03424657534246575,
+    "y": 0.12371134020618557
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-bile-gout 5.png",
+   "frame": {
+    "x": 292,
+    "y": 97,
+    "w": 146,
+    "h": 97
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 146,
+    "h": 97
+   },
+   "sourceSize": {
+    "w": 146,
+    "h": 97
+   },
+   "pivot": {
+    "x": 0.03424657534246575,
+    "y": 0.12371134020618557
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-bile-gout 6.png",
+   "frame": {
+    "x": 0,
+    "y": 194,
+    "w": 146,
+    "h": 97
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 146,
+    "h": 97
+   },
+   "sourceSize": {
+    "w": 146,
+    "h": 97
+   },
+   "pivot": {
+    "x": 0.03424657534246575,
+    "y": 0.12371134020618557
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-bile-gout 7.png",
+   "frame": {
+    "x": 146,
+    "y": 194,
+    "w": 146,
+    "h": 97
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 146,
+    "h": 97
+   },
+   "sourceSize": {
+    "w": 146,
+    "h": 97
+   },
+   "pivot": {
+    "x": 0.03424657534246575,
+    "y": 0.12371134020618557
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hr-shots-bile-gout.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 438,
+   "h": 291
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 5,
+   "y": 12
+  },
+  "frameTags": [
+   {
+    "name": "hr-shots-bile-gout",
+    "from": 0,
+    "to": 7,
+    "direction": "forward"
+   }
+  ]
+ }
+}

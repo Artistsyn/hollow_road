@@ -1,0 +1,235 @@
+{
+ "frames": [
+  {
+   "filename": "hollow-road-tell-steel-glint 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 62,
+    "h": 16
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 62,
+    "h": 16
+   },
+   "sourceSize": {
+    "w": 62,
+    "h": 16
+   },
+   "pivot": {
+    "x": 0.532258064516129,
+    "y": 0.4375
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-tell-steel-glint 1.png",
+   "frame": {
+    "x": 62,
+    "y": 0,
+    "w": 62,
+    "h": 16
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 62,
+    "h": 16
+   },
+   "sourceSize": {
+    "w": 62,
+    "h": 16
+   },
+   "pivot": {
+    "x": 0.532258064516129,
+    "y": 0.4375
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-tell-steel-glint 2.png",
+   "frame": {
+    "x": 124,
+    "y": 0,
+    "w": 62,
+    "h": 16
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 62,
+    "h": 16
+   },
+   "sourceSize": {
+    "w": 62,
+    "h": 16
+   },
+   "pivot": {
+    "x": 0.532258064516129,
+    "y": 0.4375
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-tell-steel-glint 3.png",
+   "frame": {
+    "x": 0,
+    "y": 16,
+    "w": 62,
+    "h": 16
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 62,
+    "h": 16
+   },
+   "sourceSize": {
+    "w": 62,
+    "h": 16
+   },
+   "pivot": {
+    "x": 0.532258064516129,
+    "y": 0.4375
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-tell-steel-glint 4.png",
+   "frame": {
+    "x": 62,
+    "y": 16,
+    "w": 62,
+    "h": 16
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 62,
+    "h": 16
+   },
+   "sourceSize": {
+    "w": 62,
+    "h": 16
+   },
+   "pivot": {
+    "x": 0.532258064516129,
+    "y": 0.4375
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-tell-steel-glint 5.png",
+   "frame": {
+    "x": 124,
+    "y": 16,
+    "w": 62,
+    "h": 16
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 62,
+    "h": 16
+   },
+   "sourceSize": {
+    "w": 62,
+    "h": 16
+   },
+   "pivot": {
+    "x": 0.532258064516129,
+    "y": 0.4375
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-tell-steel-glint 6.png",
+   "frame": {
+    "x": 0,
+    "y": 32,
+    "w": 62,
+    "h": 16
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 62,
+    "h": 16
+   },
+   "sourceSize": {
+    "w": 62,
+    "h": 16
+   },
+   "pivot": {
+    "x": 0.532258064516129,
+    "y": 0.4375
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-tell-steel-glint 7.png",
+   "frame": {
+    "x": 62,
+    "y": 32,
+    "w": 62,
+    "h": 16
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 62,
+    "h": 16
+   },
+   "sourceSize": {
+    "w": 62,
+    "h": 16
+   },
+   "pivot": {
+    "x": 0.532258064516129,
+    "y": 0.4375
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hollow-road-tell-steel-glint.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 186,
+   "h": 48
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 33,
+   "y": 7
+  },
+  "frameTags": [
+   {
+    "name": "hollow-road-tell-steel-glint",
+    "from": 0,
+    "to": 7,
+    "direction": "forward"
+   }
+  ]
+ }
+}

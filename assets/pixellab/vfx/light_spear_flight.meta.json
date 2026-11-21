@@ -1,0 +1,14 @@
+{
+ "name": "light_spear_flight",
+ "for": "angel_priest lance of light (Motion::Shot 11/TPS); also usable for the_archangel at x0.86 (see light_spear_flight_archangel)",
+ "px_per_m": 53.3,
+ "anchor": "centre",
+ "loop": true,
+ "travels": true,
+ "hit_band_m": [
+  0.7,
+  2.4
+ ],
+ "pixellab_effect_id": "75557bab-1651-45ea-80b8-c7ebde8ebacc",
+ "notes": "A drawn winged spear of solid light (80 px, 1.5 m at the priest's 53.3 px/m): white core shaft with gold edges, a leaf blade with a white midrib, swept-back light barbs at the collar, a lit needle tip; a bright pulse runs up the shaft toward the blade, hard 4-point glints flick on the blade and shaft, short gold speed lines behind. Anchor = spear centre."
+}

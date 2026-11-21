@@ -513,6 +513,10 @@ fn perf() {
     let t0 = std::time::Instant::now();
     let mut last = 0.0;
     let mut ms: Vec<f32> = Vec::new();
+    let mut whole: Vec<f32> = Vec::new();
+    // The game's own work (update + building the draw list) apart from the headless renderer,
+    // whose wait for the GPU and read back of the whole screen a window never does.
+    let mut game: Vec<f32> = Vec::new();
     while t0.elapsed().as_secs_f32() < 240.0 {
         let st = p.walk_state();
         if st.stop.as_deref() == Some("gate@vale") { break; }
@@ -525,7 +529,9 @@ fn perf() {
         OnEvent::on_event(&mut p.canvas, &mut p.ctx, &sized, Box::new(TickEvent) as Box<dyn Event>);
         // Draw as a window would, every tick, at 60 a second.
         let items = p.canvas.draw(&sized, (0.0, 0.0), (0.0, 0.0, screen().0, screen().1));
+        game.push(tick.elapsed().as_secs_f32() * 1000.0);
         if let Some(r) = p.renderer.as_mut() { let _ = r.render(items); }
+        whole.push(tick.elapsed().as_secs_f32() * 1000.0);
         if let Some(rest) = std::time::Duration::from_micros(16_667).checked_sub(tick.elapsed()) { std::thread::sleep(rest); }
         let pf = p.canvas.get_plugin::<quartz_path_forge::PathForgePlugin>().unwrap();
         ms.push(pf.render_ms());
@@ -533,9 +539,14 @@ fn perf() {
         if now - last >= 1.0 {
             last = now;
             ms.sort_by(f32::total_cmp);
-            eprintln!("[perf] {:5.1}s  {:<12} progress {:?}  road ms median {:6.1} max {:6.1}  churn {:?}", now, st.stop.as_deref().unwrap_or("-"), st.progress.map(|p| (p * 100.0).round()), ms[ms.len() / 2], ms[ms.len() - 1],
-                p.renderer.as_mut().map(|r| r.take_image_churn(4)));
+            whole.sort_by(f32::total_cmp);
+            game.sort_by(f32::total_cmp);
+            eprintln!("[perf] {:5.1}s  {:<12} progress {:?}  road {:3} fps {:6.1} ms median max {:6.1}  game ms median {:5.2} p90 {:5.2} max {:5.2}  tick ms median {:6.1} p90 {:6.1} max {:6.1}  churn {:?}", now, st.stop.as_deref().unwrap_or("-"), st.progress.map(|p| (p * 100.0).round()), p.game().road_fps(), ms[ms.len() / 2], ms[ms.len() - 1],
+                game[game.len() / 2], game[game.len() * 9 / 10], game[game.len() - 1],
+                whole[whole.len() / 2], whole[whole.len() * 9 / 10], whole[whole.len() - 1], p.renderer.as_mut().map(|r| r.take_image_churn(4)));
             ms.clear();
+            whole.clear();
+            game.clear();
         }
     }
 }
@@ -809,6 +820,31 @@ fn boss_moves() {
     p.ticks(w + 14);
     p.shot("m07_scream");
     p.ticks(100);
+    // The three of the marsh, each by its own moves: the Screamer's mire spit, the Keening Cage's
+    // keen, bone thicket and antler charge, the Mother's black water, voice and drowned hands.
+    let moves: [(&'static crate::side::Breed, usize, &str, u32); 7] = [
+        (&crate::side::SCREAMER, 7, "m50_screamer_mire_spit", 9),
+        (&crate::side::KEENER, 3, "m51_keener_keen", 14),
+        (&crate::side::KEENER, 6, "m52_keener_bone_thicket", 9),
+        (&crate::side::KEENER, 4, "m53_keener_antler_charge", 12),
+        (&crate::side::MOTHER, 3, "m54_mother_black_water", 18),
+        (&crate::side::MOTHER, 4, "m55_mother_voice", 14),
+        (&crate::side::MOTHER, 7, "m56_mother_drowned_hands", 9),
+    ];
+    for (breed, i, name, after) in moves {
+        arena(&mut p).side.foes[0] = crate::side::Foe::new(breed, 2.0, -1.0, 400);
+        p.ticks(2);
+        throw(&mut p, i, 4.0);
+        let w = windup(&mut p, i);
+        // A rune is shown as it opens; the rest a few ticks past their windup.
+        let at = if breed.blows[i].motion == crate::side::Motion::Rune { w * 9 / 10 } else { w + after };
+        // A charge also just before it sets off: its mark is the track it then runs, unmoved.
+        let laid = if matches!(breed.blows[i].motion, crate::side::Motion::Charge(_)) { w.saturating_sub(4) } else { 0 };
+        if laid > 0 { p.ticks(laid); p.shot(&format!("{name}_laid")); }
+        p.ticks(at - laid);
+        p.shot(name);
+        p.ticks(120);
+    }
     // The other region bosses and the mini-bosses, each in its own art: standing, then near the
     // end of one of its own moves' windups.
     use crate::side::{AGENT, ALPHA, ARCHANGEL, BUTCHER, COLLECTOR, MAGISTRATE, PRIEST, SENTINEL, STALKER, STATUE, WRAITH};
@@ -1350,12 +1386,12 @@ fn movesets() {
             let h = &mut p.game().fight.hero;
             // Halfway through the live ticks: the blow at full stretch.
             // (one tick before it: the frame is chosen as the tick runs)
-            h.act = Some(Act { mv, spec, t: spec.frames.0 + spec.frames.1 / 2 - 1, landed: true, from_lane: h.lane, from_x: h.x });
+            h.act = Some(Act { mv, spec, t: spec.frames.0 + spec.frames.1 / 2 - 1, landed: true, from_lane: h.lane, from_x: h.x, link: 0, charge: crate::fight::Charge::default(), route: crate::combo::Route::Plain });
             p.ticks(1);
             p.shot(&format!("m_{}_{label}", class.slug()));
             // Two frames into the weapon's strike effect (three fight ticks a frame).
             let h = &mut p.game().fight.hero;
-            h.act = Some(Act { mv, spec, t: spec.frames.0 + 6 - 1, landed: true, from_lane: h.lane, from_x: h.x });
+            h.act = Some(Act { mv, spec, t: spec.frames.0 + 6 - 1, landed: true, from_lane: h.lane, from_x: h.x, link: 0, charge: crate::fight::Charge::default(), route: crate::combo::Route::Plain });
             p.ticks(1);
             p.shot(&format!("m_{}_{label}_fx", class.slug()));
         }
@@ -1384,7 +1420,7 @@ fn thrusts() {
             let all = spec.frames.0 + spec.frames.1 + spec.frames.2;
             for t in (0..all).step_by(2) {
                 let h = &mut p.game().fight.hero;
-                h.act = Some(Act { mv, spec, t, landed: true, from_lane: h.lane, from_x: h.x });
+                h.act = Some(Act { mv, spec, t, landed: true, from_lane: h.lane, from_x: h.x, link: 0, charge: crate::fight::Charge::default(), route: crate::combo::Route::Plain });
                 p.ticks(1);
                 p.shot(&format!("t_{}_{label}_{t:02}", class.slug()));
             }
@@ -1413,7 +1449,7 @@ fn strike_effects() {
             let spec = mv.spec_for(class, None);
             for k in 0..4 {
                 let h = &mut p.game().fight.hero;
-                h.act = Some(Act { mv, spec, t: spec.frames.0 + 3 * k + 1, landed: true, from_lane: h.lane, from_x: h.x });
+                h.act = Some(Act { mv, spec, t: spec.frames.0 + 3 * k + 1, landed: true, from_lane: h.lane, from_x: h.x, link: 0, charge: crate::fight::Charge::default(), route: crate::combo::Route::Plain });
                 p.ticks(1);
                 p.shot(&format!("fx_{}_{label}_{k}", class.slug()));
             }
@@ -1459,7 +1495,7 @@ fn capstone_looks() {
         let class = p.game().fight.hero.stats.kit.arms.class;
         let spec = Move::Light.spec_for(class, None);
         let h = &mut p.game().fight.hero;
-        h.act = Some(Act { mv: Move::Light, spec, t: spec.frames.0 + 2, landed: true, from_lane: h.lane, from_x: h.x });
+        h.act = Some(Act { mv: Move::Light, spec, t: spec.frames.0 + 2, landed: true, from_lane: h.lane, from_x: h.x, link: 0, charge: crate::fight::Charge::default(), route: crate::combo::Route::Plain });
         p.ticks(1);
         p.shot(&format!("{name}_{tag}_swing"));
         p.game().fight.hero.act = None;
@@ -1940,7 +1976,7 @@ fn pause_keeps() {
     assert!(p.until_mode(10, |m| matches!(m, Mode::Front(crate::shrine::Front::Pause(_)))), "never paused");
     p.shot("q01_paused");
     // Change profile.
-    p.tap("s");
+    for _ in 0..3 { p.tap("s"); }
     p.tap("e");
     p.ticks(2);
     let saved = profile::read(&dir, 0).expect("nothing kept");
@@ -2396,6 +2432,179 @@ fn east_gate() {
     assert!(!matches!(p.mode(), Mode::Side(_)), "no beast to fight");
 }
 
+/// A heavy held back in a boss yard: the wind-up, its strength gathering, the flare once full
+/// and the blow landing. `cargo test --release --lib -- --ignored --exact shots::charged_heavy`
+/// writes target/shots/ch*.png.
+#[test]
+#[ignore]
+fn charged_heavy() {
+    use crate::game::Mode;
+    use prism::event::MouseButton;
+    let mut p = Play::started();
+    p.game().world.warping = Some("chief_hold@ridge_camp".into());
+    p.canvas.run(Action::RunPlugin { name: "path_forge".into(), data: "warp:chief_hold@ridge_camp".into() });
+    assert!(p.walk_until(3000, false, |s| s.stop.as_deref() == Some("chief_hold@ridge_camp")), "never reached the hold: {}", p.status());
+    p.ticks(10);
+    p.key("w", KeyboardState::Pressed);
+    for _ in 0..6000 { p.fell_all(); p.ticks(1); p.step_through_veil(); if matches!(p.mode(), Mode::Side(_)) { break; } }
+    p.key("w", KeyboardState::Released);
+    p.skip_scene();
+    assert!(p.until_mode(400, |m| matches!(m, Mode::Side(a) if a.t >= 140)), "no yard: {}", p.status());
+    let a = arena(&mut p);
+    for f in &mut a.side.foes { f.ai = crate::side::Ai::Wait(u32::MAX / 2); }
+    let boss = a.side.foes[0].s;
+    (a.side.hero.s, a.side.hero.facing) = (boss - 1.8, 1.0);
+    p.ticks(10);
+    let hp = arena(&mut p).side.foes[0].hp;
+    p.key_as(Key::Named(NamedKey::Shift), KeyboardState::Pressed);
+    p.mouse(MouseButton::Left, MouseState::Pressed);
+    p.key_as(Key::Named(NamedKey::Shift), KeyboardState::Released);
+    let charge = |p: &mut Play| arena(p).side.hero.charge;
+    for _ in 0..200 { p.ticks(1); if charge(&mut p).ticks >= 20 { break; } }
+    p.shot("ch_1_gathering");
+    for _ in 0..200 { p.ticks(1); if charge(&mut p).ticks >= 45 { break; } }
+    p.shot("ch_2_gathering_more");
+    for _ in 0..200 { p.ticks(1); if charge(&mut p).is_full() { break; } }
+    assert!(charge(&mut p).is_full(), "never came full: {}", p.status());
+    p.ticks(1);
+    p.shot("ch_3_flare");
+    for _ in 0..60 { if arena(&mut p).side.foes[0].hp < hp { break; } p.ticks(1); }
+    p.shot("ch_4_landed");
+    p.mouse(MouseButton::Left, MouseState::Released);
+    assert!(arena(&mut p).side.foes[0].hp < hp, "the gathered heavy never landed: {}", p.status());
+    // Knocked reeling (or thrown open, if the blow broke its stance as well).
+    let ai = arena(&mut p).side.foes[0].ai;
+    assert!(matches!(ai, crate::side::Ai::Reel { .. } | crate::side::Ai::Open(_)), "it never reeled: {ai:?}");
+    p.ticks(8);
+    p.shot("ch_5_reeling");
+    p.ticks(14);
+    p.shot("ch_6_reeling_more");
+    p.ticks(20);
+    p.shot("ch_7_recovering");
+}
+
+/// Light, light, then a heavy held to the full at the first husk, with each kind of weapon (its
+/// finisher and its trail): `cargo test --release --lib -- --ignored --exact
+/// shots::finisher_road` writes target/shots/fin_*.png.
+#[test]
+#[ignore]
+fn finisher_road() {
+    use crate::fight::Phase;
+    use prism::event::MouseButton;
+    let mut p = Play::started();
+    p.ticks(40);
+    p.key("w", KeyboardState::Pressed);
+    for _ in 0..600 {
+        let walked = p.canvas.get_plugin::<quartz_path_forge::PathForgePlugin>().unwrap().walked_ahead();
+        if p.fight().enemies[0].gap(walked) <= crate::fight::ENGAGE + 0.05 { break; }
+        p.ticks(1);
+    }
+    p.key("w", KeyboardState::Released);
+    for (tag, name) in [("sword", "Wayfarer's Sword"), ("ultra", "Gravewarden's Slab"), ("rapier", "Duelist's Rapier"), ("spear", "Lancer's Shortspear"), ("axe", "Husk Cleaver"), ("greatsword", "Bell-Hammer")] {
+        let g = p.game();
+        let i = crate::gear::find(name);
+        g.world.gear.gain(i);
+        assert!(g.world.gear.wear(0, Some(i)), "{name} would not go on");
+        g.fight.hero.stats.kit = g.world.gear.kit();
+        g.fight.hero.stamina = g.fight.hero.stats.max_stamina();
+        for e in g.fight.enemies.iter_mut().filter(|e| e.alive()) { (e.ai, e.hp, e.top, e.stance) = (crate::fight::Ai::Wait(u32::MAX / 2), 1e4, 1e4, 1e4); }
+        p.ticks(30);
+        for link in 0..2u8 {
+            p.click(MouseButton::Left, false);
+            if link == 1 {
+                // The second light mid-swing: its trail across the road.
+                p.until(200, |f| f.hero.act.is_some_and(|a| a.link == 1 && a.phase() == Phase::Active));
+                p.ticks(8);
+                p.shot(&format!("fin_{tag}_0_light"));
+            }
+            let recovering = move |f: &crate::fight::Fight| f.hero.act.is_some_and(|a| a.link == link && a.phase() == Phase::Recover);
+            assert!(p.until(200, recovering), "{tag}: light {link} never swung");
+        }
+        p.key_as(Key::Named(NamedKey::Shift), KeyboardState::Pressed);
+        p.mouse(MouseButton::Left, MouseState::Pressed);
+        p.key_as(Key::Named(NamedKey::Shift), KeyboardState::Released);
+        assert!(p.until(200, |f| f.hero.act.is_some_and(|a| a.route == crate::combo::Route::Finisher)), "{tag}: no finisher");
+        p.until(200, |f| f.hero.act.is_some_and(|a| a.charge.ticks >= 30));
+        p.shot(&format!("fin_{tag}_1_gathering"));
+        p.until(200, |f| f.hero.act.is_some_and(|a| a.landed));
+        p.mouse(MouseButton::Left, MouseState::Released);
+        p.ticks(2);
+        p.shot(&format!("fin_{tag}_2_blow"));
+        for (k, n) in [(3, 6), (4, 12), (5, 12)] {
+            p.ticks(n);
+            p.shot(&format!("fin_{tag}_{k}_after"));
+        }
+        p.until(300, |f| f.hero.act.is_none());
+        p.ticks(40);
+    }
+    // A bow held at full draw, then let go.
+    {
+        let mut gear = crate::gear::Loadout::starting();
+        let bow = crate::gear::find("Hunter's Shortbow");
+        gear.gain(bow);
+        assert!(gear.wear(crate::gear::Loadout::place_for(bow), Some(bow)), "the bow would not go on");
+        let h = &mut p.game().fight.hero;
+        h.stats.kit = gear.kit();
+        *h = crate::fight::Hero { quiver: crate::fight::Quiver::SETTING_OUT, ..crate::fight::Hero::with(h.stats) };
+        for e in p.game().fight.enemies.iter_mut().filter(|e| e.alive()) { e.ai = crate::fight::Ai::Wait(u32::MAX / 2); }
+    }
+    p.key("f", KeyboardState::Pressed);
+    assert!(p.until(300, |f| f.hero.act.is_some_and(|a| a.mv == crate::fight::Move::Loose && a.charge.ticks >= 30)), "the bow never drew");
+    p.shot("fin_bow_1_drawing");
+    p.until(100, |f| f.hero.act.is_some_and(|a| a.charge.is_full()));
+    p.ticks(2);
+    p.shot("fin_bow_2_full");
+    p.key("f", KeyboardState::Released);
+    p.ticks(6);
+    p.shot("fin_bow_3_loosed");
+}
+
+/// The pause menu's combo list, the first rows and the finishers: `cargo test --release --lib --
+/// --ignored --exact shots::combo_list` writes target/shots/cl*.png.
+#[test]
+#[ignore]
+fn combo_list() {
+    let mut p = Play::started();
+    p.ticks(40);
+    use crate::game::Mode;
+    p.key_as(Key::Named(NamedKey::Escape), KeyboardState::Pressed);
+    p.key_as(Key::Named(NamedKey::Escape), KeyboardState::Released);
+    p.ticks(2);
+    assert!(p.until_mode(10, |m| matches!(m, Mode::Front(crate::shrine::Front::Pause(_)))), "never paused: {}", p.status());
+    for _ in 0..2 { p.tap("s"); }
+    p.ticks(2);
+    p.shot("cl1_pause_menu");
+    p.tap("e");
+    p.ticks(2);
+    assert!(matches!(p.mode(), Mode::Front(crate::shrine::Front::Combos(..))), "no combo list: {}", p.status());
+    p.shot("cl2_combos");
+    for _ in 0..7 { p.tap("s"); }
+    p.ticks(2);
+    p.shot("cl3_finishers");
+}
+
+/// Stilt Lane out through the lashed arch into the East Gate, a frame a second, to judge how the
+/// ground meets the mire: `cargo test --release --lib -- --ignored --exact shots::stilt_to_gate`
+/// writes target/shots/sg*.png.
+#[test]
+#[ignore]
+fn stilt_to_gate() {
+    let mut p = Play::started();
+    p.game().world.warping = Some("~east_gate@warrens_lane".into());
+    p.canvas.run(Action::RunPlugin { name: "path_forge".into(), data: "warp:~east_gate@warrens_lane".into() });
+    assert!(p.walk_until(3000, false, |s| s.stop.as_deref() == Some("~east_gate@warrens_lane")), "never reached Stilt Lane's gate stretch");
+    p.key("w", KeyboardState::Pressed);
+    let mut through = 0;
+    for k in 0..40 {
+        for _ in 0..60 { p.fell_all(); p.ticks(1); }
+        p.shot(&format!("sg{k:02}"));
+        if p.walk_state().stop.as_deref() == Some("east_gate@warrens_lane") { through += 1; }
+        if through > 8 { break; }
+    }
+    p.key("w", KeyboardState::Released);
+    assert!(through > 0, "never came through the gate: {}", p.status());
+}
+
 /// Down the side path off the Bandit Hollows into the crew's hole under the ridge, before their
 /// chief has fallen: the stash's guards spring at the chest, and the Caravan Signet is in it.
 /// `cargo test --release --lib -- --ignored --exact shots::bandit_cave` writes target/shots/bc*.png.
@@ -2781,7 +2990,7 @@ fn turn_anywhere() {
     let st = p.walk_state();
     assert_eq!(st.stop.as_deref(), Some("road@^"), "{}", p.status());
     let (again, at) = under(&st).expect("the crossing under way");
-    assert!((again - travel).abs() < 1.5 && at == handover, "{again:.1} m into the crossing, not {travel:.1}: {}", p.status());
+    assert!((again - travel).abs() < 1.5 && at == handover, "{again:.1} m into the crossing, not {travel:.1} (hand-over {at} vs {handover}): {}", p.status());
     // Past the boundary: Stilt Lane walked the other way, the crossing back to the road under
     // way as far short of the boundary as the hero is past it.
     p.run_on("w");
@@ -2957,7 +3166,8 @@ fn turn_on_a_lane() {
         for lane in [false, true] {
             let mut p = Play::started();
             p.ticks(20);
-            if start != crate::world::START {
+            // `started` leaves the hero on the road: any other start is warped to.
+            if p.walk_state().stop.as_deref() != Some(start) {
                 let go = { let w = &mut p.game().world; w.checkpoint = start.into(); let go = w.resume(); w.checkpoint = crate::world::START.into(); go };
                 let pf = p.canvas.get_plugin_mut::<quartz_path_forge::PathForgePlugin>().unwrap();
                 match go { crate::world::Go::WarpAt(s, m) => pf.warp_at(&s, m), crate::world::Go::Warp(s) => pf.warp(&s), _ => unreachable!() }
@@ -3628,5 +3838,193 @@ fn side_paths_seen() {
         assert!(p.walk_until(1200, false, |s| s.stop.as_deref() == Some(to)), "{place}: never reached {to}");
         p.ticks(30);
         p.shot(&format!("sp{k}c_{to}"));
+    }
+}
+
+/// The drawings added on 11-20 in play: the hero standing (two moments of the idle), the first
+/// husk walking in, and the flask raised. Writes target/shots/anim_*.png.
+#[test]
+#[ignore]
+fn anim_looks() {
+    use crate::fight::Move;
+    let mut p = Play::started();
+    p.ticks(40);
+    p.shot("anim_a_idle_0");
+    p.ticks(60);
+    p.shot("anim_b_idle_1");
+    p.key("w", KeyboardState::Pressed);
+    let noticed = p.until(900, |f| f.enemies.first().is_some_and(|e| e.idle.is_none()));
+    p.key("w", KeyboardState::Released);
+    assert!(noticed, "the husk never noticed");
+    for i in 0..3 {
+        assert!(p.until(240, |f| f.enemies.first().is_some_and(|e| e.stepping)), "it never walked in");
+        p.ticks(9);
+        p.shot(&format!("anim_c_walk_{i}"));
+    }
+    p.tap("r");
+    let (w, b, r) = Move::Flask.spec().frames;
+    let half = p.until(120, move |f| f.hero.act.is_some_and(|a| a.mv == Move::Flask && 2 * a.t >= w + b + r));
+    assert!(half, "never drank");
+    p.shot("anim_d_drink");
+}
+
+/// Turning round on the road: the view swings out to the side as the hero walks back across it,
+/// dips to dark, and swings in behind them on the way back; turned again at once (into the
+/// crossing just walked out of, whose camera is its own) the hero turns where they stand and the
+/// view comes back home. `cargo test --release turn_sweep -- --ignored --test-threads=1`, then
+/// look at `target/shots/turn_*.png`.
+#[test]
+#[ignore]
+fn turn_sweep() {
+    use crate::game::Mode;
+    let mut p = Play::started();
+    p.ticks(20);
+    p.run_on("w");
+    let from = p.walk_state().walked;
+    assert!(p.walk_until(6000, true, |s| s.walked > from + 40.0 && s.travel.is_none()), "never walked on: {}", p.status());
+    p.key("w", KeyboardState::Released);
+    p.fell_all();
+    p.ticks(30);
+    p.shot("turn_0_before");
+    p.tap("t");
+    assert!(p.until_mode(20, |m| matches!(m, Mode::Turn(t, true) if *t >= 18)), "the turn never swung: {:?} {}", p.mode(), p.status());
+    p.shot("turn_1_swinging");
+    assert!(p.until_mode(40, |m| matches!(m, Mode::Turn(t, _) if *t >= 35)), "{}", p.status());
+    p.shot("turn_2_side");
+    assert!(p.until_mode(900, |m| matches!(m, Mode::Turned(t) if *t >= 2)), "never swung back in: {:?} {}", p.mode(), p.status());
+    p.shot("turn_3_back");
+    assert!(p.until_mode(40, |m| matches!(m, Mode::Turned(t) if *t >= 26)), "{}", p.status());
+    p.shot("turn_4_swinging_in");
+    assert!(p.until_playing(60), "the turn never ended: {}", p.status());
+    p.ticks(60);
+    p.shot("turn_5_walking_back");
+    // Back toward the start: turned near its boundary, with the crossing under way, it swings too.
+    p.run_on("w");
+    assert!(p.walk_until(8000, true, |s| s.travel.is_some()), "never reached the crossing: {}", p.status());
+    p.key("w", KeyboardState::Released);
+    p.fell_all();
+    p.ticks(2);
+    p.tap("t");
+    assert!(p.until_mode(20, |m| matches!(m, Mode::Turn(t, true) if *t >= 18)), "the turn in a crossing never swung: {:?} {}", p.mode(), p.status());
+    p.shot("turn_6_swinging_in_crossing");
+    assert!(p.until_mode(40, |m| matches!(m, Mode::Turn(t, _) if *t >= 35)), "{}", p.status());
+    p.shot("turn_7_side_in_crossing");
+    assert!(p.until_playing(900), "the turn in the crossing never ended: {}", p.status());
+    p.ticks(60);
+    p.shot("turn_8_turned_in_crossing");
+}
+
+/// Shrines stood in the world by PathForge, each in its place's look, settled into the ground
+/// there: the road's (woodland), Hollowmere Gate's (marsh), the Lantern Market's (street) and the
+/// Vine Halls' (crypt). `cargo test --release shrines_in_place -- --ignored --test-threads=1`.
+#[test]
+#[ignore]
+fn shrines_in_place() {
+    let mut p = Play::started();
+    for place in ["road", "gate", "stone_market", "vine_halls"] {
+        let from = crate::atlas::PLACES.iter().find(|pl| pl.id == place).map_or("", |pl| pl.from);
+        p.warp(&crate::atlas::stop(place, from));
+        p.fell_all();
+        p.ticks(40);
+        p.shot(&format!("shrine_{place}"));
+    }
+}
+
+/// Blows drawn as they hit, with no ground warning (attack hints off): a road husk's chop
+/// mid-swing across its lane, then the Bandit Chief's strikes in the yard mid-swing over their
+/// reach and heights. `cargo test --release shots::blow_traces -- --ignored` writes
+/// target/shots/bt_*.png.
+#[test]
+#[ignore]
+fn blow_traces() {
+    use crate::fight::Ai;
+    let mut p = Play::started();
+    p.game().settings.hints = crate::settings::Hints::Off;
+    p.key("w", KeyboardState::Pressed);
+    for _ in 0..600 {
+        let walked = p.canvas.get_plugin::<quartz_path_forge::PathForgePlugin>().unwrap().walked_ahead();
+        if p.fight().enemies[0].gap(walked) <= crate::fight::ENGAGE + 0.05 { break; }
+        p.ticks(1);
+    }
+    p.key("w", KeyboardState::Released);
+    assert!(p.until_attack("chop"), "no chop");
+    let frames = p.fight().enemies[0].attack().unwrap().0.frames;
+    for (k, live) in [(0, frames.1 / 4), (1, frames.1 / 2), (2, 3 * frames.1 / 4)] {
+        let g = p.game();
+        let e = &mut g.fight.enemies[0];
+        if let Ai::Attack { t, landed, .. } = &mut e.ai { (*t, *landed) = (frames.0 + live - 1, true); }
+        g.fight.hero.hp = g.fight.hero.stats.max_hp();
+        p.ticks(1);
+        p.shot(&format!("bt_road_{k}"));
+    }
+    p.fell_all();
+    p.game().world.warping = Some("chief_hold@ridge_camp".into());
+    p.canvas.run(Action::RunPlugin { name: "path_forge".into(), data: "warp:chief_hold@ridge_camp".into() });
+    assert!(p.walk_until(3000, false, |s| s.stop.as_deref() == Some("chief_hold@ridge_camp")), "never reached the hold: {}", p.status());
+    p.ticks(10);
+    p.key("w", KeyboardState::Pressed);
+    let mut met = false;
+    for _ in 0..6000 {
+        p.fell_all();
+        p.ticks(1);
+        p.step_through_veil();
+        if matches!(p.mode(), crate::game::Mode::Side(_)) { met = true; break; }
+    }
+    p.key("w", KeyboardState::Released);
+    assert!(met, "the chief never stepped out: {}", p.status());
+    p.skip_scene();
+    assert!(p.until_mode(400, |m| matches!(m, crate::game::Mode::Side(a) if a.t >= 140)));
+    let strikes: Vec<usize> = (0..8).filter(|&i| arena(&mut p).side.foes[0].breed.blows.get(i).is_some_and(|b| b.motion == crate::side::Motion::Strike)).collect();
+    assert!(!strikes.is_empty(), "the chief has no strikes");
+    for i in strikes {
+        let a = arena(&mut p);
+        a.side.hero.hp = a.side.hero.stats.max_hp();
+        a.side.hero.s = -3.5;
+        a.side.hero.facing = 1.0;
+        let f = &mut a.side.foes[0];
+        f.s = a.side.hero.s + 2.2;
+        f.facing = -1.0;
+        let b = f.timed(i);
+        f.ai = crate::side::Ai::Blow { i, t: b.frames.0 + b.frames.1 / 2 - 1, hit: true, from: f.s, aim: a.side.hero.s };
+        p.ticks(1);
+        assert!(arena(&mut p).side.foes[0].swing().is_some(), "blow {i} is not live");
+        p.shot(&format!("bt_chief_{i}_{}", b.name.replace(' ', "_")));
+        p.ticks(90);
+    }
+}
+
+/// Every weapon's combo enders on the road (a string's third strike, the breaker, the
+/// follow-through and the finisher), each at six points from wind-up to recovery:
+/// `cargo test --release combo_enders -- --ignored --test-threads=1` writes
+/// target/shots/ce_<weapon>_<ender>_<k>.png.
+#[test]
+#[ignore]
+fn combo_enders() {
+    use crate::fight::{Act, Move};
+    use crate::combo::Route;
+    let mut p = Play::started();
+    p.ticks(240);
+    for name in ["Wayfarer's Sword", "Duelist's Rapier", "Lancer's Shortspear", "Husk Cleaver", "Executioner's Greatsword", "Gravewarden's Slab", "Bell-Hammer"] {
+        let g = p.game();
+        let i = crate::gear::find(name);
+        g.world.gear.gain(i);
+        assert!(g.world.gear.wear(0, Some(i)), "{name} would not go on");
+        g.fight.hero.stats.kit = g.world.gear.kit();
+        for e in g.fight.enemies.iter_mut() { e.ai = crate::fight::Ai::Dead; }
+        let class = g.fight.hero.stats.kit.arms.class;
+        let tag = name.split_whitespace().last().unwrap_or(name).replace('\'', "").to_lowercase();
+        let enders = [(Move::Light, Route::Plain, crate::fight::CHAIN - 1, "third"), (Move::Heavy, Route::Breaker, 0, "breaker"),
+                      (Move::Heavy, Route::FollowThrough, 0, "follow"), (Move::Heavy, Route::Finisher, 0, "finisher")];
+        for (mv, route, link, label) in enders {
+            let spec = if mv == Move::Heavy { route.shape(mv.spec_for(class, None)) } else { mv.spec_for(class, None) };
+            let all = spec.frames.0 + spec.frames.1 + spec.frames.2;
+            for (k, t) in [0, all / 6, all / 3, all / 2, all * 2 / 3, all * 5 / 6].into_iter().enumerate() {
+                let h = &mut p.game().fight.hero;
+                h.act = Some(Act { mv, spec, t, landed: true, from_lane: h.lane, from_x: h.x, link, charge: crate::fight::Charge::default(), route });
+                p.ticks(1);
+                p.shot(&format!("ce_{tag}_{label}_{k}"));
+            }
+        }
+        p.game().fight.hero.act = None;
     }
 }

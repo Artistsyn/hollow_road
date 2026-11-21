@@ -1,0 +1,14 @@
+{
+ "name": "void_bolt_flight",
+ "for": "void_stalker (and Hooded Thing) void bolt (Motion::Shot 8/TPS)",
+ "px_per_m": 68.8,
+ "anchor": "centre",
+ "loop": true,
+ "travels": true,
+ "hit_band_m": [
+  0.4,
+  1.6
+ ],
+ "pixellab_effect_id": "1f25648b-e58a-4b83-a484-048737e40812",
+ "notes": "A hole in the world: a pure-black core (14 px) in a ragged, crackling violet corona with a white-hot crescent whipping round it; broken lens arcs close in on it each half-loop and violet streaks, motes and grit are SUCKED in from behind and around (nothing trails out). Violets from the stalker's own body. Anchor = core centre. 8 frames @12 fps. px_per_m from the idle frame (crouched pose, 179 px / 2.6 m)."
+}

@@ -1,0 +1,287 @@
+{
+ "frames": [
+  {
+   "filename": "hr-shots-bog-wail-impact 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 90
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 90
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 90
+   },
+   "pivot": {
+    "x": 0.5375,
+    "y": 0.34444444444444444
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-bog-wail-impact 1.png",
+   "frame": {
+    "x": 80,
+    "y": 0,
+    "w": 80,
+    "h": 90
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 90
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 90
+   },
+   "pivot": {
+    "x": 0.5375,
+    "y": 0.34444444444444444
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-bog-wail-impact 2.png",
+   "frame": {
+    "x": 160,
+    "y": 0,
+    "w": 80,
+    "h": 90
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 90
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 90
+   },
+   "pivot": {
+    "x": 0.5375,
+    "y": 0.34444444444444444
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-bog-wail-impact 3.png",
+   "frame": {
+    "x": 240,
+    "y": 0,
+    "w": 80,
+    "h": 90
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 90
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 90
+   },
+   "pivot": {
+    "x": 0.5375,
+    "y": 0.34444444444444444
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-bog-wail-impact 4.png",
+   "frame": {
+    "x": 0,
+    "y": 90,
+    "w": 80,
+    "h": 90
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 90
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 90
+   },
+   "pivot": {
+    "x": 0.5375,
+    "y": 0.34444444444444444
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-bog-wail-impact 5.png",
+   "frame": {
+    "x": 80,
+    "y": 90,
+    "w": 80,
+    "h": 90
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 90
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 90
+   },
+   "pivot": {
+    "x": 0.5375,
+    "y": 0.34444444444444444
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-bog-wail-impact 6.png",
+   "frame": {
+    "x": 160,
+    "y": 90,
+    "w": 80,
+    "h": 90
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 90
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 90
+   },
+   "pivot": {
+    "x": 0.5375,
+    "y": 0.34444444444444444
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-bog-wail-impact 7.png",
+   "frame": {
+    "x": 240,
+    "y": 90,
+    "w": 80,
+    "h": 90
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 90
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 90
+   },
+   "pivot": {
+    "x": 0.5375,
+    "y": 0.34444444444444444
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-bog-wail-impact 8.png",
+   "frame": {
+    "x": 0,
+    "y": 180,
+    "w": 80,
+    "h": 90
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 90
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 90
+   },
+   "pivot": {
+    "x": 0.5375,
+    "y": 0.34444444444444444
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-bog-wail-impact 9.png",
+   "frame": {
+    "x": 80,
+    "y": 180,
+    "w": 80,
+    "h": 90
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 90
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 90
+   },
+   "pivot": {
+    "x": 0.5375,
+    "y": 0.34444444444444444
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hr-shots-bog-wail-impact.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 320,
+   "h": 270
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 43,
+   "y": 31
+  },
+  "frameTags": [
+   {
+    "name": "hr-shots-bog-wail-impact",
+    "from": 0,
+    "to": 9,
+    "direction": "forward"
+   }
+  ]
+ }
+}

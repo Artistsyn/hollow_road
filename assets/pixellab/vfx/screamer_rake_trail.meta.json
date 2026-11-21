@@ -1,0 +1,30 @@
+{
+ "name": "screamer_rake_trail",
+ "for": "The Hollowmere Screamer - rake / rake again (side.rs SCREAMER_BLOWS reach 0.2-2.6 m, height 0-2.4 m; rending rake reaches 3.0 m)",
+ "px_per_m": 28.3,
+ "anchor": "feet",
+ "anchor_px": [
+  100,
+  78
+ ],
+ "faces": "left (as the hollowmere_screamer toll clip; mirror with the sprite)",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": [
+  0.0,
+  2.4
+ ],
+ "reach_m": [
+  0.2,
+  2.6
+ ],
+ "fps": 12,
+ "start_on": "first live tick (toll frame 6)",
+ "pixellab_effect_id": "4ebb9bea-cdbe-4b92-bed7-7b9000a6c1ca",
+ "notes": "Three strokes of its own luminous bog-green (the glowing tendril colour on the sprite) raking from head height to the mud in front; dark mire drops flung off that splat. px_per_m from idle figure 102 px / sprite 3.6 m (side.rs sprite metres). For the rending rake (3.0 m) draw it scaled x1.15 about the anchor or reuse as is.",
+ "frames": 8,
+ "frame_px": [
+  94,
+  82
+ ]
+}

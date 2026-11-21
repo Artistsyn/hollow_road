@@ -56,9 +56,10 @@ pub const COMMIT_M: f32 = 0.8;
 pub const HOLD_M: f32 = COMMIT_M + 0.6;
 /// The camera turns onto a branch over this many metres (the journey's `steer_m`).
 pub const STEER_M: f32 = 6.0;
-/// Where the signpost stands past the junction: on the island where the branches part
-/// (the paths' width over the angle between them, for the road's 2.4 m half width at 35 degrees).
-pub const SIGNPOST_PAST: f32 = 4.4;
+/// Where the signpost stands past the junction: on the island where the branches part, behind
+/// its rounded nose (PathForge rounds it from 5.2 m on, for the road's 2.4 m half width at 35
+/// degrees each way), with a metre and a half of grass to either side.
+pub const SIGNPOST_PAST: f32 = 6.0;
 /// How near a side path's mouth the hero must stand to turn down it, metres.
 pub const SIDE_REACH: f32 = 1.6;
 /// Levels under a region's (its tier times this) at which arriving there warns the hero.
@@ -313,6 +314,12 @@ impl World {
     fn along(&self, m: f32) -> f32 { if self.forward() { m } else { (self.here().length - m).max(0.0) } }
     /// The road metres of something `m` metres into the place as laid out.
     pub(crate) fn road_at(&self, m: f32) -> f64 { self.base + (HERO_D + self.along(m)) as f64 }
+
+    /// Who is drawn on the road with the frame at `walked`: the one here until passed, then
+    /// the next place's, seen ahead across the crossing (`visitor_ahead`).
+    pub fn visitor_shown(&self, walked: f64) -> Option<(f64, crate::visitors::Visitor)> {
+        self.visitor_at().filter(|&(at, _)| at > walked - 2.0).or_else(|| self.visitor_ahead())
+    }
 
     /// Whoever waits in the place the walk is crossing into, while the crossing is under way:
     /// road metres, and who. The place is in view across the whole approach, so they stand there
@@ -1114,6 +1121,44 @@ impl World {
         !self.chose && barred && choose_within.is_some_and(|l| l <= HOLD_M)
     }
 
+    /// The way the walk should lean at the fork ahead (`PathForgePlugin::lean`): the open one the
+    /// hero leans toward, else the only one open.
+    pub fn fork_lean(&self) -> Option<Branch> { self.lean.filter(|&b| !self.branch_barred(b)).or(self.only_open()) }
+
+    /// The way-finding line (`Settings::show_way`): where the road walked leads, or the ways on
+    /// at the fork ahead (`fork_in` metres off once it is under way), each named once its place
+    /// is found, the one leaned toward in brackets, a shut one marked; and a side path near by.
+    pub fn way_line(&self, fork_in: Option<f32>, side_path: Option<(f32, f32)>) -> String {
+        let name = |l: &atlas::Lead| if self.seen.contains(&l.shown) { Self::shown(l).to_owned() } else { "?".to_owned() };
+        let way = |b: Branch, l: &atlas::Lead| {
+            let named = if self.branch_barred(b) { format!("{} (shut)", name(l)) } else { name(l) };
+            if self.took.or(self.lean) == Some(b) { format!("[{named}]") } else { named }
+        };
+        let mut line = match self.ahead().as_slice() {
+            [] => "Way:  a dead end".to_owned(),
+            [one] => format!("Way:  toward {}", name(one)),
+            [left, right, ..] => {
+                let at = fork_in.map_or(String::new(), |m| format!(" in {m:.0} m"));
+                format!("Fork ahead{at}:   <  {}   |   {}  >", way(Branch::Left, left), way(Branch::Right, right))
+            }
+        };
+        if let Some((m, side)) = side_path {
+            line += &format!("      side path on the {} in {m:.0} m", if side < 0.0 { "left" } else { "right" });
+        }
+        line
+    }
+
+    /// The branch the walk settled on at the fork ahead (`WalkState::taken`) is the one walked,
+    /// whatever was chosen: a choice that reached the walk too late was not taken, and the names
+    /// at the next fork are reckoned from the way the hero really went. Says what taking it opens.
+    pub fn settled(&mut self, fight: &mut Fight, taken: Branch, walked: f64) -> Vec<Note> {
+        if self.took == Some(taken) { return Vec::new(); }
+        if !self.chose { fight.hero.lane = 0; }
+        (self.chose, self.took) = (true, Some(taken));
+        self.chose_at.get_or_insert(walked);
+        self.branch(taken).map_or_else(Vec::new, |l| self.pass(&l))
+    }
+
     /// The one way open at the fork ahead, when the other is barred: the walk takes it whichever
     /// lane the hero holds (a fork with a locked door down one side is no choice).
     fn only_open(&self) -> Option<Branch> {
@@ -1591,6 +1636,28 @@ mod tests {
         w.tick(&mut f, 103.0, Some(&back), Some(20.0));
         let length = atlas::JUNCTION_M;
         assert!(w.sent && w.at == back && (103.0 - w.base - f64::from(length + 35.0)).abs() < 1e-4, "{} m in", 103.0 - w.base);
+    }
+
+    #[test]
+    fn a_fork_walked_the_other_way_than_chosen_is_followed_and_turned_back_from_that_way() {
+        let mut w = on_road();
+        let mut f = Fight::new(w.foes());
+        fell(&mut f);
+        assert_eq!(w.tick(&mut f, 64.0, Some(ROAD), None).0, Some(Go::Next));
+        w.follow(70.0, Underway { travel: Some(6.0), handover: Some(40.0), length: None });
+        w.tick(&mut f, 70.0, Some(ROAD), Some(20.0));
+        // Leaning left: the walk is told at once; the choice of it reaches the walk too late, and
+        // the walk had settled right (the lean came in after the right lean, say).
+        f.hero.lane = -1;
+        w.tick(&mut f, 80.0, Some(ROAD), Some(8.0));
+        assert_eq!(w.fork_lean(), Some(Branch::Left));
+        assert_eq!(w.tick(&mut f, 92.0, Some(ROAD), Some(0.5)).0, Some(Go::Choose(Branch::Left)));
+        let right = w.ahead()[1].shown;
+        w.settled(&mut f, Branch::Right, 92.5);
+        assert_eq!(w.took, Some(Branch::Right), "the way walked, not the way chosen");
+        // Turned past the junction: back to it from the way really walked.
+        w.follow(103.0, Underway { travel: Some(45.0), handover: Some(40.0), length: None });
+        assert_eq!(w.turn(&f, 103.0), Some(Go::TurnInto(atlas::stop("road", right), 5.0)));
     }
 
     #[test]

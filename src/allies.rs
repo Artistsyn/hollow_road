@@ -319,7 +319,7 @@ impl SideFight {
         let foe = &self.foes[i];
         let windup = self.allies[k].who.style().frames.0;
         match foe.ai {
-            Ai::Open(_) => true,
+            Ai::Open(_) | Ai::Reel { .. } => true,
             Ai::Wait(n) => n > windup + 6 || foe.eyes != Some(k),
             Ai::Blow { i: bi, t, .. } => {
                 let blow = foe.timed(bi);

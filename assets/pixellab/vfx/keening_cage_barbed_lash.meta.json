@@ -1,0 +1,30 @@
+{
+ "name": "keening_cage_barbed_lash",
+ "for": "The Keening Cage - barbed lash / second lash (side.rs KEENER_BLOWS reach 0.2-3.4 m, height 0-2.6 m)",
+ "px_per_m": 37.5,
+ "anchor": "feet",
+ "anchor_px": [
+  150,
+  106
+ ],
+ "faces": "left (as the keening_cage toll clip; mirror with the sprite)",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": [
+  0.0,
+  2.6
+ ],
+ "reach_m": [
+  0.2,
+  3.4
+ ],
+ "fps": 12,
+ "start_on": "first live tick (toll frame 4)",
+ "pixellab_effect_id": "e67cd9e3-0c3e-4f4f-9c36-7b05700c3d79",
+ "notes": "Whip line in the approved pilot violet ramp with a bone zigzag of barbs riding along it; apex 2.6 m, out to 3.4 m and down to the ground; crack and snap where the tip breaks the air, bone splinters and grit shed. px_per_m = idle figure 135 px / sprite 3.6 m in side.rs (STYLE.md says 3.3 m / ~45 px/m: the code value is what the game draws, see report). anchor_px lies past the right edge.",
+ "frames": 9,
+ "frame_px": [
+  121,
+  111
+ ]
+}

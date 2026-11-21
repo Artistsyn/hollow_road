@@ -1,0 +1,21 @@
+{
+ "name": "charge_dust_trail",
+ "for": "Bell Warden 'charge' and Bandit Chief 'bull rush' (side.rs Motion::Charge)",
+ "px_per_m": 54,
+ "anchor": "feet",
+ "loop": true,
+ "travels": false,
+ "hit_band_m": null,
+ "pixellab_effect_id": "deb3fbc7-d1a5-47cc-9d71-0f0085f79cef",
+ "notes": "A looping trail at the feet of a charging boss: a rolling plume of dust streaming back (-x) and rising a little, a low skid plume, grit kicked back that bounces, and fine ground streaks. Export faces +x (the charger moves +x and the dust trails to the left); mirror when charging left. Attach it to the boss's feet for the whole charge. Built at Bell Warden density (181 px / 3.4 m; the Chief is 55). 12-frame seamless loop @ 12 fps.",
+ "frame_size": [
+  137,
+  90
+ ],
+ "frames": 12,
+ "fps": 12,
+ "anchor_px": [
+  135,
+  83
+ ]
+}

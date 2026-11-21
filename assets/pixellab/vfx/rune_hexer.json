@@ -1,0 +1,651 @@
+{
+ "frames": [
+  {
+   "filename": "hollow-road-rune-hexer 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 154,
+    "h": 137
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 154,
+    "h": 137
+   },
+   "sourceSize": {
+    "w": 154,
+    "h": 137
+   },
+   "pivot": {
+    "x": 0.487012987012987,
+    "y": 0.8467153284671532
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-hexer 1.png",
+   "frame": {
+    "x": 154,
+    "y": 0,
+    "w": 154,
+    "h": 137
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 154,
+    "h": 137
+   },
+   "sourceSize": {
+    "w": 154,
+    "h": 137
+   },
+   "pivot": {
+    "x": 0.487012987012987,
+    "y": 0.8467153284671532
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-hexer 2.png",
+   "frame": {
+    "x": 308,
+    "y": 0,
+    "w": 154,
+    "h": 137
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 154,
+    "h": 137
+   },
+   "sourceSize": {
+    "w": 154,
+    "h": 137
+   },
+   "pivot": {
+    "x": 0.487012987012987,
+    "y": 0.8467153284671532
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-hexer 3.png",
+   "frame": {
+    "x": 462,
+    "y": 0,
+    "w": 154,
+    "h": 137
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 154,
+    "h": 137
+   },
+   "sourceSize": {
+    "w": 154,
+    "h": 137
+   },
+   "pivot": {
+    "x": 0.487012987012987,
+    "y": 0.8467153284671532
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-hexer 4.png",
+   "frame": {
+    "x": 616,
+    "y": 0,
+    "w": 154,
+    "h": 137
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 154,
+    "h": 137
+   },
+   "sourceSize": {
+    "w": 154,
+    "h": 137
+   },
+   "pivot": {
+    "x": 0.487012987012987,
+    "y": 0.8467153284671532
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-hexer 5.png",
+   "frame": {
+    "x": 0,
+    "y": 137,
+    "w": 154,
+    "h": 137
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 154,
+    "h": 137
+   },
+   "sourceSize": {
+    "w": 154,
+    "h": 137
+   },
+   "pivot": {
+    "x": 0.487012987012987,
+    "y": 0.8467153284671532
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-hexer 6.png",
+   "frame": {
+    "x": 154,
+    "y": 137,
+    "w": 154,
+    "h": 137
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 154,
+    "h": 137
+   },
+   "sourceSize": {
+    "w": 154,
+    "h": 137
+   },
+   "pivot": {
+    "x": 0.487012987012987,
+    "y": 0.8467153284671532
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-hexer 7.png",
+   "frame": {
+    "x": 308,
+    "y": 137,
+    "w": 154,
+    "h": 137
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 154,
+    "h": 137
+   },
+   "sourceSize": {
+    "w": 154,
+    "h": 137
+   },
+   "pivot": {
+    "x": 0.487012987012987,
+    "y": 0.8467153284671532
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-hexer 8.png",
+   "frame": {
+    "x": 462,
+    "y": 137,
+    "w": 154,
+    "h": 137
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 154,
+    "h": 137
+   },
+   "sourceSize": {
+    "w": 154,
+    "h": 137
+   },
+   "pivot": {
+    "x": 0.487012987012987,
+    "y": 0.8467153284671532
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-hexer 9.png",
+   "frame": {
+    "x": 616,
+    "y": 137,
+    "w": 154,
+    "h": 137
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 154,
+    "h": 137
+   },
+   "sourceSize": {
+    "w": 154,
+    "h": 137
+   },
+   "pivot": {
+    "x": 0.487012987012987,
+    "y": 0.8467153284671532
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-hexer 10.png",
+   "frame": {
+    "x": 0,
+    "y": 274,
+    "w": 154,
+    "h": 137
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 154,
+    "h": 137
+   },
+   "sourceSize": {
+    "w": 154,
+    "h": 137
+   },
+   "pivot": {
+    "x": 0.487012987012987,
+    "y": 0.8467153284671532
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-hexer 11.png",
+   "frame": {
+    "x": 154,
+    "y": 274,
+    "w": 154,
+    "h": 137
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 154,
+    "h": 137
+   },
+   "sourceSize": {
+    "w": 154,
+    "h": 137
+   },
+   "pivot": {
+    "x": 0.487012987012987,
+    "y": 0.8467153284671532
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-hexer 12.png",
+   "frame": {
+    "x": 308,
+    "y": 274,
+    "w": 154,
+    "h": 137
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 154,
+    "h": 137
+   },
+   "sourceSize": {
+    "w": 154,
+    "h": 137
+   },
+   "pivot": {
+    "x": 0.487012987012987,
+    "y": 0.8467153284671532
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-hexer 13.png",
+   "frame": {
+    "x": 462,
+    "y": 274,
+    "w": 154,
+    "h": 137
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 154,
+    "h": 137
+   },
+   "sourceSize": {
+    "w": 154,
+    "h": 137
+   },
+   "pivot": {
+    "x": 0.487012987012987,
+    "y": 0.8467153284671532
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-hexer 14.png",
+   "frame": {
+    "x": 616,
+    "y": 274,
+    "w": 154,
+    "h": 137
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 154,
+    "h": 137
+   },
+   "sourceSize": {
+    "w": 154,
+    "h": 137
+   },
+   "pivot": {
+    "x": 0.487012987012987,
+    "y": 0.8467153284671532
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-hexer 15.png",
+   "frame": {
+    "x": 0,
+    "y": 411,
+    "w": 154,
+    "h": 137
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 154,
+    "h": 137
+   },
+   "sourceSize": {
+    "w": 154,
+    "h": 137
+   },
+   "pivot": {
+    "x": 0.487012987012987,
+    "y": 0.8467153284671532
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-hexer 16.png",
+   "frame": {
+    "x": 154,
+    "y": 411,
+    "w": 154,
+    "h": 137
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 154,
+    "h": 137
+   },
+   "sourceSize": {
+    "w": 154,
+    "h": 137
+   },
+   "pivot": {
+    "x": 0.487012987012987,
+    "y": 0.8467153284671532
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-hexer 17.png",
+   "frame": {
+    "x": 308,
+    "y": 411,
+    "w": 154,
+    "h": 137
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 154,
+    "h": 137
+   },
+   "sourceSize": {
+    "w": 154,
+    "h": 137
+   },
+   "pivot": {
+    "x": 0.487012987012987,
+    "y": 0.8467153284671532
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-hexer 18.png",
+   "frame": {
+    "x": 462,
+    "y": 411,
+    "w": 154,
+    "h": 137
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 154,
+    "h": 137
+   },
+   "sourceSize": {
+    "w": 154,
+    "h": 137
+   },
+   "pivot": {
+    "x": 0.487012987012987,
+    "y": 0.8467153284671532
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-hexer 19.png",
+   "frame": {
+    "x": 616,
+    "y": 411,
+    "w": 154,
+    "h": 137
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 154,
+    "h": 137
+   },
+   "sourceSize": {
+    "w": 154,
+    "h": 137
+   },
+   "pivot": {
+    "x": 0.487012987012987,
+    "y": 0.8467153284671532
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-hexer 20.png",
+   "frame": {
+    "x": 0,
+    "y": 548,
+    "w": 154,
+    "h": 137
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 154,
+    "h": 137
+   },
+   "sourceSize": {
+    "w": 154,
+    "h": 137
+   },
+   "pivot": {
+    "x": 0.487012987012987,
+    "y": 0.8467153284671532
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-hexer 21.png",
+   "frame": {
+    "x": 154,
+    "y": 548,
+    "w": 154,
+    "h": 137
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 154,
+    "h": 137
+   },
+   "sourceSize": {
+    "w": 154,
+    "h": 137
+   },
+   "pivot": {
+    "x": 0.487012987012987,
+    "y": 0.8467153284671532
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-hexer 22.png",
+   "frame": {
+    "x": 308,
+    "y": 548,
+    "w": 154,
+    "h": 137
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 154,
+    "h": 137
+   },
+   "sourceSize": {
+    "w": 154,
+    "h": 137
+   },
+   "pivot": {
+    "x": 0.487012987012987,
+    "y": 0.8467153284671532
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-hexer 23.png",
+   "frame": {
+    "x": 462,
+    "y": 548,
+    "w": 154,
+    "h": 137
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 154,
+    "h": 137
+   },
+   "sourceSize": {
+    "w": 154,
+    "h": 137
+   },
+   "pivot": {
+    "x": 0.487012987012987,
+    "y": 0.8467153284671532
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hollow-road-rune-hexer.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 770,
+   "h": 685
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 75,
+   "y": 116
+  },
+  "frameTags": [
+   {
+    "name": "hollow-road-rune-hexer",
+    "from": 0,
+    "to": 23,
+    "direction": "forward"
+   }
+  ]
+ }
+}

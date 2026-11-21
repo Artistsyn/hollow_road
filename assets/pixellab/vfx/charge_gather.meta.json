@@ -1,0 +1,32 @@
+{
+ "name": "charge_gather",
+ "for": "hero (wayfarer) charged heavy attack: loops while the heavy button is held at the top of the heavy wind-up (wayfarer_ne/heavy frame 006), up to 1 s",
+ "px_per_m": 64,
+ "anchor": "centre",
+ "anchor_px": [
+  44,
+  44
+ ],
+ "anchor_note": "anchor_px = the core; place it on the hero's hands/hilt at the top of the wind-up (in wayfarer_ne/heavy/006.png the hands are at about (110,52) of the 168x168 frame)",
+ "loop": true,
+ "travels": false,
+ "hit_band_m": null,
+ "pixellab_effect_id": "e01ded83-145a-48b3-b0c0-93692c16e9a2",
+ "fps": 12,
+ "frames": 10,
+ "frame_px": [
+  88,
+  88
+ ],
+ "light": {
+  "rgb": [
+   255,
+   214,
+   150
+  ],
+  "intensity": 0.6,
+  "radius": 3.0,
+  "y": 0.0
+ },
+ "notes": "Ten thin 1-px streaks of warm light pulled inward from all round (about 1.2 m across at 64 px/m), dim amber at the outer end brightening to white as they accelerate into the core, plus five 1-px sparks; a small hard white core with a short 4+4 ray cross that throbs twice per loop (0.83 s). Mostly open space, 7 colours, no outline, no dither. Hand-placed streak paths (shape layers), each cycling once per loop, so it loops seamlessly."
+}

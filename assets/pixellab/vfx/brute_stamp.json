@@ -1,0 +1,391 @@
+{
+ "frames": [
+  {
+   "filename": "hollow-road-brute-stamp-cracks-across-two-lanes 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 169,
+    "h": 35
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 169,
+    "h": 35
+   },
+   "sourceSize": {
+    "w": 169,
+    "h": 35
+   },
+   "pivot": {
+    "x": 0.11242603550295859,
+    "y": 0.6285714285714286
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-brute-stamp-cracks-across-two-lanes 1.png",
+   "frame": {
+    "x": 169,
+    "y": 0,
+    "w": 169,
+    "h": 35
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 169,
+    "h": 35
+   },
+   "sourceSize": {
+    "w": 169,
+    "h": 35
+   },
+   "pivot": {
+    "x": 0.11242603550295859,
+    "y": 0.6285714285714286
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-brute-stamp-cracks-across-two-lanes 2.png",
+   "frame": {
+    "x": 338,
+    "y": 0,
+    "w": 169,
+    "h": 35
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 169,
+    "h": 35
+   },
+   "sourceSize": {
+    "w": 169,
+    "h": 35
+   },
+   "pivot": {
+    "x": 0.11242603550295859,
+    "y": 0.6285714285714286
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-brute-stamp-cracks-across-two-lanes 3.png",
+   "frame": {
+    "x": 507,
+    "y": 0,
+    "w": 169,
+    "h": 35
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 169,
+    "h": 35
+   },
+   "sourceSize": {
+    "w": 169,
+    "h": 35
+   },
+   "pivot": {
+    "x": 0.11242603550295859,
+    "y": 0.6285714285714286
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-brute-stamp-cracks-across-two-lanes 4.png",
+   "frame": {
+    "x": 0,
+    "y": 35,
+    "w": 169,
+    "h": 35
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 169,
+    "h": 35
+   },
+   "sourceSize": {
+    "w": 169,
+    "h": 35
+   },
+   "pivot": {
+    "x": 0.11242603550295859,
+    "y": 0.6285714285714286
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-brute-stamp-cracks-across-two-lanes 5.png",
+   "frame": {
+    "x": 169,
+    "y": 35,
+    "w": 169,
+    "h": 35
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 169,
+    "h": 35
+   },
+   "sourceSize": {
+    "w": 169,
+    "h": 35
+   },
+   "pivot": {
+    "x": 0.11242603550295859,
+    "y": 0.6285714285714286
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-brute-stamp-cracks-across-two-lanes 6.png",
+   "frame": {
+    "x": 338,
+    "y": 35,
+    "w": 169,
+    "h": 35
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 169,
+    "h": 35
+   },
+   "sourceSize": {
+    "w": 169,
+    "h": 35
+   },
+   "pivot": {
+    "x": 0.11242603550295859,
+    "y": 0.6285714285714286
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-brute-stamp-cracks-across-two-lanes 7.png",
+   "frame": {
+    "x": 507,
+    "y": 35,
+    "w": 169,
+    "h": 35
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 169,
+    "h": 35
+   },
+   "sourceSize": {
+    "w": 169,
+    "h": 35
+   },
+   "pivot": {
+    "x": 0.11242603550295859,
+    "y": 0.6285714285714286
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-brute-stamp-cracks-across-two-lanes 8.png",
+   "frame": {
+    "x": 0,
+    "y": 70,
+    "w": 169,
+    "h": 35
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 169,
+    "h": 35
+   },
+   "sourceSize": {
+    "w": 169,
+    "h": 35
+   },
+   "pivot": {
+    "x": 0.11242603550295859,
+    "y": 0.6285714285714286
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-brute-stamp-cracks-across-two-lanes 9.png",
+   "frame": {
+    "x": 169,
+    "y": 70,
+    "w": 169,
+    "h": 35
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 169,
+    "h": 35
+   },
+   "sourceSize": {
+    "w": 169,
+    "h": 35
+   },
+   "pivot": {
+    "x": 0.11242603550295859,
+    "y": 0.6285714285714286
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-brute-stamp-cracks-across-two-lanes 10.png",
+   "frame": {
+    "x": 338,
+    "y": 70,
+    "w": 169,
+    "h": 35
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 169,
+    "h": 35
+   },
+   "sourceSize": {
+    "w": 169,
+    "h": 35
+   },
+   "pivot": {
+    "x": 0.11242603550295859,
+    "y": 0.6285714285714286
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-brute-stamp-cracks-across-two-lanes 11.png",
+   "frame": {
+    "x": 507,
+    "y": 70,
+    "w": 169,
+    "h": 35
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 169,
+    "h": 35
+   },
+   "sourceSize": {
+    "w": 169,
+    "h": 35
+   },
+   "pivot": {
+    "x": 0.11242603550295859,
+    "y": 0.6285714285714286
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-brute-stamp-cracks-across-two-lanes 12.png",
+   "frame": {
+    "x": 0,
+    "y": 105,
+    "w": 169,
+    "h": 35
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 169,
+    "h": 35
+   },
+   "sourceSize": {
+    "w": 169,
+    "h": 35
+   },
+   "pivot": {
+    "x": 0.11242603550295859,
+    "y": 0.6285714285714286
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-brute-stamp-cracks-across-two-lanes 13.png",
+   "frame": {
+    "x": 169,
+    "y": 105,
+    "w": 169,
+    "h": 35
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 169,
+    "h": 35
+   },
+   "sourceSize": {
+    "w": 169,
+    "h": 35
+   },
+   "pivot": {
+    "x": 0.11242603550295859,
+    "y": 0.6285714285714286
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hollow-road-brute-stamp-cracks-across-two-lanes.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 676,
+   "h": 140
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 19,
+   "y": 22
+  },
+  "frameTags": [
+   {
+    "name": "hollow-road-brute-stamp-cracks-across-two-lanes",
+    "from": 0,
+    "to": 13,
+    "direction": "forward"
+   }
+  ]
+ }
+}

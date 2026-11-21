@@ -1,0 +1,235 @@
+{
+ "frames": [
+  {
+   "filename": "hollow-road-screamer-rake-trail 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 94,
+    "h": 82
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 94,
+    "h": 82
+   },
+   "sourceSize": {
+    "w": 94,
+    "h": 82
+   },
+   "pivot": {
+    "x": 0.8297872340425532,
+    "y": 0.2804878048780488
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-screamer-rake-trail 1.png",
+   "frame": {
+    "x": 94,
+    "y": 0,
+    "w": 94,
+    "h": 82
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 94,
+    "h": 82
+   },
+   "sourceSize": {
+    "w": 94,
+    "h": 82
+   },
+   "pivot": {
+    "x": 0.8297872340425532,
+    "y": 0.2804878048780488
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-screamer-rake-trail 2.png",
+   "frame": {
+    "x": 188,
+    "y": 0,
+    "w": 94,
+    "h": 82
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 94,
+    "h": 82
+   },
+   "sourceSize": {
+    "w": 94,
+    "h": 82
+   },
+   "pivot": {
+    "x": 0.8297872340425532,
+    "y": 0.2804878048780488
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-screamer-rake-trail 3.png",
+   "frame": {
+    "x": 0,
+    "y": 82,
+    "w": 94,
+    "h": 82
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 94,
+    "h": 82
+   },
+   "sourceSize": {
+    "w": 94,
+    "h": 82
+   },
+   "pivot": {
+    "x": 0.8297872340425532,
+    "y": 0.2804878048780488
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-screamer-rake-trail 4.png",
+   "frame": {
+    "x": 94,
+    "y": 82,
+    "w": 94,
+    "h": 82
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 94,
+    "h": 82
+   },
+   "sourceSize": {
+    "w": 94,
+    "h": 82
+   },
+   "pivot": {
+    "x": 0.8297872340425532,
+    "y": 0.2804878048780488
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-screamer-rake-trail 5.png",
+   "frame": {
+    "x": 188,
+    "y": 82,
+    "w": 94,
+    "h": 82
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 94,
+    "h": 82
+   },
+   "sourceSize": {
+    "w": 94,
+    "h": 82
+   },
+   "pivot": {
+    "x": 0.8297872340425532,
+    "y": 0.2804878048780488
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-screamer-rake-trail 6.png",
+   "frame": {
+    "x": 0,
+    "y": 164,
+    "w": 94,
+    "h": 82
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 94,
+    "h": 82
+   },
+   "sourceSize": {
+    "w": 94,
+    "h": 82
+   },
+   "pivot": {
+    "x": 0.8297872340425532,
+    "y": 0.2804878048780488
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-screamer-rake-trail 7.png",
+   "frame": {
+    "x": 94,
+    "y": 164,
+    "w": 94,
+    "h": 82
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 94,
+    "h": 82
+   },
+   "sourceSize": {
+    "w": 94,
+    "h": 82
+   },
+   "pivot": {
+    "x": 0.8297872340425532,
+    "y": 0.2804878048780488
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hollow-road-screamer-rake-trail.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 282,
+   "h": 246
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 78,
+   "y": 23
+  },
+  "frameTags": [
+   {
+    "name": "hollow-road-screamer-rake-trail",
+    "from": 0,
+    "to": 7,
+    "direction": "forward"
+   }
+  ]
+ }
+}

@@ -1,0 +1,235 @@
+{
+ "frames": [
+  {
+   "filename": "hollow-road-lancer-spear-thrust-streak 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 160,
+    "h": 30
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 160,
+    "h": 30
+   },
+   "sourceSize": {
+    "w": 160,
+    "h": 30
+   },
+   "pivot": {
+    "x": 0.6625,
+    "y": 0.5666666666666667
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-lancer-spear-thrust-streak 1.png",
+   "frame": {
+    "x": 160,
+    "y": 0,
+    "w": 160,
+    "h": 30
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 160,
+    "h": 30
+   },
+   "sourceSize": {
+    "w": 160,
+    "h": 30
+   },
+   "pivot": {
+    "x": 0.6625,
+    "y": 0.5666666666666667
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-lancer-spear-thrust-streak 2.png",
+   "frame": {
+    "x": 320,
+    "y": 0,
+    "w": 160,
+    "h": 30
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 160,
+    "h": 30
+   },
+   "sourceSize": {
+    "w": 160,
+    "h": 30
+   },
+   "pivot": {
+    "x": 0.6625,
+    "y": 0.5666666666666667
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-lancer-spear-thrust-streak 3.png",
+   "frame": {
+    "x": 0,
+    "y": 30,
+    "w": 160,
+    "h": 30
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 160,
+    "h": 30
+   },
+   "sourceSize": {
+    "w": 160,
+    "h": 30
+   },
+   "pivot": {
+    "x": 0.6625,
+    "y": 0.5666666666666667
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-lancer-spear-thrust-streak 4.png",
+   "frame": {
+    "x": 160,
+    "y": 30,
+    "w": 160,
+    "h": 30
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 160,
+    "h": 30
+   },
+   "sourceSize": {
+    "w": 160,
+    "h": 30
+   },
+   "pivot": {
+    "x": 0.6625,
+    "y": 0.5666666666666667
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-lancer-spear-thrust-streak 5.png",
+   "frame": {
+    "x": 320,
+    "y": 30,
+    "w": 160,
+    "h": 30
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 160,
+    "h": 30
+   },
+   "sourceSize": {
+    "w": 160,
+    "h": 30
+   },
+   "pivot": {
+    "x": 0.6625,
+    "y": 0.5666666666666667
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-lancer-spear-thrust-streak 6.png",
+   "frame": {
+    "x": 0,
+    "y": 60,
+    "w": 160,
+    "h": 30
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 160,
+    "h": 30
+   },
+   "sourceSize": {
+    "w": 160,
+    "h": 30
+   },
+   "pivot": {
+    "x": 0.6625,
+    "y": 0.5666666666666667
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-lancer-spear-thrust-streak 7.png",
+   "frame": {
+    "x": 160,
+    "y": 60,
+    "w": 160,
+    "h": 30
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 160,
+    "h": 30
+   },
+   "sourceSize": {
+    "w": 160,
+    "h": 30
+   },
+   "pivot": {
+    "x": 0.6625,
+    "y": 0.5666666666666667
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hollow-road-lancer-spear-thrust-streak.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 480,
+   "h": 90
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 106,
+   "y": 17
+  },
+  "frameTags": [
+   {
+    "name": "hollow-road-lancer-spear-thrust-streak",
+    "from": 0,
+    "to": 7,
+    "direction": "forward"
+   }
+  ]
+ }
+}

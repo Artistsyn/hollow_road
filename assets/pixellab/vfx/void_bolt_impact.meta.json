@@ -1,0 +1,14 @@
+{
+ "name": "void_bolt_impact",
+ "for": "void_stalker void bolt: hit (hero or shield)",
+ "px_per_m": 68.8,
+ "anchor": "centre",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": [
+  0.4,
+  1.6
+ ],
+ "pixellab_effect_id": "0d7f6e13-bd66-4cc6-94f2-0822fbd9ef22",
+ "notes": "A collapse, not a burst: the hole swells while broken lens arcs and violet streaks are dragged spiralling into it (frames 1-5), it crushes to a white pinpoint (6), then space snaps back in three broken violet arcs, dark violet shards fly and fall and motes blink out. Anchor = hit point. 12 frames @12 fps; the damage reads best on frame 6-7."
+}

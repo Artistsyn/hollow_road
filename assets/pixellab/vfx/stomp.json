@@ -1,0 +1,339 @@
+{
+ "frames": [
+  {
+   "filename": "statue-archangel-stomp-front 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 65,
+    "h": 47
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 65,
+    "h": 47
+   },
+   "sourceSize": {
+    "w": 65,
+    "h": 47
+   },
+   "pivot": {
+    "x": 0.3230769230769231,
+    "y": 0.5106382978723404
+   },
+   "duration": 83
+  },
+  {
+   "filename": "statue-archangel-stomp-front 1.png",
+   "frame": {
+    "x": 65,
+    "y": 0,
+    "w": 65,
+    "h": 47
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 65,
+    "h": 47
+   },
+   "sourceSize": {
+    "w": 65,
+    "h": 47
+   },
+   "pivot": {
+    "x": 0.3230769230769231,
+    "y": 0.5106382978723404
+   },
+   "duration": 83
+  },
+  {
+   "filename": "statue-archangel-stomp-front 2.png",
+   "frame": {
+    "x": 130,
+    "y": 0,
+    "w": 65,
+    "h": 47
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 65,
+    "h": 47
+   },
+   "sourceSize": {
+    "w": 65,
+    "h": 47
+   },
+   "pivot": {
+    "x": 0.3230769230769231,
+    "y": 0.5106382978723404
+   },
+   "duration": 83
+  },
+  {
+   "filename": "statue-archangel-stomp-front 3.png",
+   "frame": {
+    "x": 195,
+    "y": 0,
+    "w": 65,
+    "h": 47
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 65,
+    "h": 47
+   },
+   "sourceSize": {
+    "w": 65,
+    "h": 47
+   },
+   "pivot": {
+    "x": 0.3230769230769231,
+    "y": 0.5106382978723404
+   },
+   "duration": 83
+  },
+  {
+   "filename": "statue-archangel-stomp-front 4.png",
+   "frame": {
+    "x": 0,
+    "y": 47,
+    "w": 65,
+    "h": 47
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 65,
+    "h": 47
+   },
+   "sourceSize": {
+    "w": 65,
+    "h": 47
+   },
+   "pivot": {
+    "x": 0.3230769230769231,
+    "y": 0.5106382978723404
+   },
+   "duration": 83
+  },
+  {
+   "filename": "statue-archangel-stomp-front 5.png",
+   "frame": {
+    "x": 65,
+    "y": 47,
+    "w": 65,
+    "h": 47
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 65,
+    "h": 47
+   },
+   "sourceSize": {
+    "w": 65,
+    "h": 47
+   },
+   "pivot": {
+    "x": 0.3230769230769231,
+    "y": 0.5106382978723404
+   },
+   "duration": 83
+  },
+  {
+   "filename": "statue-archangel-stomp-front 6.png",
+   "frame": {
+    "x": 130,
+    "y": 47,
+    "w": 65,
+    "h": 47
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 65,
+    "h": 47
+   },
+   "sourceSize": {
+    "w": 65,
+    "h": 47
+   },
+   "pivot": {
+    "x": 0.3230769230769231,
+    "y": 0.5106382978723404
+   },
+   "duration": 83
+  },
+  {
+   "filename": "statue-archangel-stomp-front 7.png",
+   "frame": {
+    "x": 195,
+    "y": 47,
+    "w": 65,
+    "h": 47
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 65,
+    "h": 47
+   },
+   "sourceSize": {
+    "w": 65,
+    "h": 47
+   },
+   "pivot": {
+    "x": 0.3230769230769231,
+    "y": 0.5106382978723404
+   },
+   "duration": 83
+  },
+  {
+   "filename": "statue-archangel-stomp-front 8.png",
+   "frame": {
+    "x": 0,
+    "y": 94,
+    "w": 65,
+    "h": 47
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 65,
+    "h": 47
+   },
+   "sourceSize": {
+    "w": 65,
+    "h": 47
+   },
+   "pivot": {
+    "x": 0.3230769230769231,
+    "y": 0.5106382978723404
+   },
+   "duration": 83
+  },
+  {
+   "filename": "statue-archangel-stomp-front 9.png",
+   "frame": {
+    "x": 65,
+    "y": 94,
+    "w": 65,
+    "h": 47
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 65,
+    "h": 47
+   },
+   "sourceSize": {
+    "w": 65,
+    "h": 47
+   },
+   "pivot": {
+    "x": 0.3230769230769231,
+    "y": 0.5106382978723404
+   },
+   "duration": 83
+  },
+  {
+   "filename": "statue-archangel-stomp-front 10.png",
+   "frame": {
+    "x": 130,
+    "y": 94,
+    "w": 65,
+    "h": 47
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 65,
+    "h": 47
+   },
+   "sourceSize": {
+    "w": 65,
+    "h": 47
+   },
+   "pivot": {
+    "x": 0.3230769230769231,
+    "y": 0.5106382978723404
+   },
+   "duration": 83
+  },
+  {
+   "filename": "statue-archangel-stomp-front 11.png",
+   "frame": {
+    "x": 195,
+    "y": 94,
+    "w": 65,
+    "h": 47
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 65,
+    "h": 47
+   },
+   "sourceSize": {
+    "w": 65,
+    "h": 47
+   },
+   "pivot": {
+    "x": 0.3230769230769231,
+    "y": 0.5106382978723404
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "statue-archangel-stomp-front.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 260,
+   "h": 141
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 21,
+   "y": 24
+  },
+  "frameTags": [
+   {
+    "name": "statue-archangel-stomp-front",
+    "from": 0,
+    "to": 11,
+    "direction": "forward"
+   }
+  ]
+ }
+}

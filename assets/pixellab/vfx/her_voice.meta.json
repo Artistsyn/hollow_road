@@ -1,0 +1,20 @@
+{
+ "name": "her_voice",
+ "for": "Mother of the Black Water: her voice",
+ "px_per_m": 33.6,
+ "anchor": "feet",
+ "loop": true,
+ "travels": true,
+ "hit_band_m": [
+  0.0,
+  2.4
+ ],
+ "pixellab_effect_id": "789e0bb9-1b4e-44af-8195-18df8c76c442",
+ "ground_y_px": 85,
+ "front_x_px": 58,
+ "notes": "A wet pale-green sound front 81 px tall carrying three small wailing drowned faces (the faces on her back, same pixel density) whose mouths open and close, each trailing a wavering ectoplasm tail; one echo, wisps streaming back, water dripping off the front and ringing on the floor, bubbles of drowned breath, a wash at its foot. Chest-high: roll through it. Distinct from the keen: drowned faces and water, not clean violet crescents. Facing +x, exported in place (12 frames @ 12 fps, seamless loop). Feet anchor: ground is canvas row 85; the front's leading edge is at canvas x 58; place that point on the ring's position.",
+ "anchor_px": [
+  58,
+  85
+ ]
+}

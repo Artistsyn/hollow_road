@@ -1,0 +1,339 @@
+{
+ "frames": [
+  {
+   "filename": "fog-horror-its-stare-front 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 102
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 102
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 102
+   },
+   "pivot": {
+    "x": 0.4,
+    "y": 0.4803921568627451
+   },
+   "duration": 83
+  },
+  {
+   "filename": "fog-horror-its-stare-front 1.png",
+   "frame": {
+    "x": 80,
+    "y": 0,
+    "w": 80,
+    "h": 102
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 102
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 102
+   },
+   "pivot": {
+    "x": 0.4,
+    "y": 0.4803921568627451
+   },
+   "duration": 83
+  },
+  {
+   "filename": "fog-horror-its-stare-front 2.png",
+   "frame": {
+    "x": 160,
+    "y": 0,
+    "w": 80,
+    "h": 102
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 102
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 102
+   },
+   "pivot": {
+    "x": 0.4,
+    "y": 0.4803921568627451
+   },
+   "duration": 83
+  },
+  {
+   "filename": "fog-horror-its-stare-front 3.png",
+   "frame": {
+    "x": 240,
+    "y": 0,
+    "w": 80,
+    "h": 102
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 102
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 102
+   },
+   "pivot": {
+    "x": 0.4,
+    "y": 0.4803921568627451
+   },
+   "duration": 83
+  },
+  {
+   "filename": "fog-horror-its-stare-front 4.png",
+   "frame": {
+    "x": 0,
+    "y": 102,
+    "w": 80,
+    "h": 102
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 102
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 102
+   },
+   "pivot": {
+    "x": 0.4,
+    "y": 0.4803921568627451
+   },
+   "duration": 83
+  },
+  {
+   "filename": "fog-horror-its-stare-front 5.png",
+   "frame": {
+    "x": 80,
+    "y": 102,
+    "w": 80,
+    "h": 102
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 102
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 102
+   },
+   "pivot": {
+    "x": 0.4,
+    "y": 0.4803921568627451
+   },
+   "duration": 83
+  },
+  {
+   "filename": "fog-horror-its-stare-front 6.png",
+   "frame": {
+    "x": 160,
+    "y": 102,
+    "w": 80,
+    "h": 102
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 102
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 102
+   },
+   "pivot": {
+    "x": 0.4,
+    "y": 0.4803921568627451
+   },
+   "duration": 83
+  },
+  {
+   "filename": "fog-horror-its-stare-front 7.png",
+   "frame": {
+    "x": 240,
+    "y": 102,
+    "w": 80,
+    "h": 102
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 102
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 102
+   },
+   "pivot": {
+    "x": 0.4,
+    "y": 0.4803921568627451
+   },
+   "duration": 83
+  },
+  {
+   "filename": "fog-horror-its-stare-front 8.png",
+   "frame": {
+    "x": 0,
+    "y": 204,
+    "w": 80,
+    "h": 102
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 102
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 102
+   },
+   "pivot": {
+    "x": 0.4,
+    "y": 0.4803921568627451
+   },
+   "duration": 83
+  },
+  {
+   "filename": "fog-horror-its-stare-front 9.png",
+   "frame": {
+    "x": 80,
+    "y": 204,
+    "w": 80,
+    "h": 102
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 102
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 102
+   },
+   "pivot": {
+    "x": 0.4,
+    "y": 0.4803921568627451
+   },
+   "duration": 83
+  },
+  {
+   "filename": "fog-horror-its-stare-front 10.png",
+   "frame": {
+    "x": 160,
+    "y": 204,
+    "w": 80,
+    "h": 102
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 102
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 102
+   },
+   "pivot": {
+    "x": 0.4,
+    "y": 0.4803921568627451
+   },
+   "duration": 83
+  },
+  {
+   "filename": "fog-horror-its-stare-front 11.png",
+   "frame": {
+    "x": 240,
+    "y": 204,
+    "w": 80,
+    "h": 102
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 102
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 102
+   },
+   "pivot": {
+    "x": 0.4,
+    "y": 0.4803921568627451
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "fog-horror-its-stare-front.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 320,
+   "h": 306
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 32,
+   "y": 49
+  },
+  "frameTags": [
+   {
+    "name": "fog-horror-its-stare-front",
+    "from": 0,
+    "to": 11,
+    "direction": "forward"
+   }
+  ]
+ }
+}

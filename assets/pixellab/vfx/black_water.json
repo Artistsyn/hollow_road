@@ -1,0 +1,339 @@
+{
+ "frames": [
+  {
+   "filename": "mother-of-the-black-water-black-water-wave 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 89,
+    "h": 33
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 89,
+    "h": 33
+   },
+   "sourceSize": {
+    "w": 89,
+    "h": 33
+   },
+   "pivot": {
+    "x": 0.5056179775280899,
+    "y": 0.5151515151515151
+   },
+   "duration": 83
+  },
+  {
+   "filename": "mother-of-the-black-water-black-water-wave 1.png",
+   "frame": {
+    "x": 89,
+    "y": 0,
+    "w": 89,
+    "h": 33
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 89,
+    "h": 33
+   },
+   "sourceSize": {
+    "w": 89,
+    "h": 33
+   },
+   "pivot": {
+    "x": 0.5056179775280899,
+    "y": 0.5151515151515151
+   },
+   "duration": 83
+  },
+  {
+   "filename": "mother-of-the-black-water-black-water-wave 2.png",
+   "frame": {
+    "x": 178,
+    "y": 0,
+    "w": 89,
+    "h": 33
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 89,
+    "h": 33
+   },
+   "sourceSize": {
+    "w": 89,
+    "h": 33
+   },
+   "pivot": {
+    "x": 0.5056179775280899,
+    "y": 0.5151515151515151
+   },
+   "duration": 83
+  },
+  {
+   "filename": "mother-of-the-black-water-black-water-wave 3.png",
+   "frame": {
+    "x": 267,
+    "y": 0,
+    "w": 89,
+    "h": 33
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 89,
+    "h": 33
+   },
+   "sourceSize": {
+    "w": 89,
+    "h": 33
+   },
+   "pivot": {
+    "x": 0.5056179775280899,
+    "y": 0.5151515151515151
+   },
+   "duration": 83
+  },
+  {
+   "filename": "mother-of-the-black-water-black-water-wave 4.png",
+   "frame": {
+    "x": 0,
+    "y": 33,
+    "w": 89,
+    "h": 33
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 89,
+    "h": 33
+   },
+   "sourceSize": {
+    "w": 89,
+    "h": 33
+   },
+   "pivot": {
+    "x": 0.5056179775280899,
+    "y": 0.5151515151515151
+   },
+   "duration": 83
+  },
+  {
+   "filename": "mother-of-the-black-water-black-water-wave 5.png",
+   "frame": {
+    "x": 89,
+    "y": 33,
+    "w": 89,
+    "h": 33
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 89,
+    "h": 33
+   },
+   "sourceSize": {
+    "w": 89,
+    "h": 33
+   },
+   "pivot": {
+    "x": 0.5056179775280899,
+    "y": 0.5151515151515151
+   },
+   "duration": 83
+  },
+  {
+   "filename": "mother-of-the-black-water-black-water-wave 6.png",
+   "frame": {
+    "x": 178,
+    "y": 33,
+    "w": 89,
+    "h": 33
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 89,
+    "h": 33
+   },
+   "sourceSize": {
+    "w": 89,
+    "h": 33
+   },
+   "pivot": {
+    "x": 0.5056179775280899,
+    "y": 0.5151515151515151
+   },
+   "duration": 83
+  },
+  {
+   "filename": "mother-of-the-black-water-black-water-wave 7.png",
+   "frame": {
+    "x": 267,
+    "y": 33,
+    "w": 89,
+    "h": 33
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 89,
+    "h": 33
+   },
+   "sourceSize": {
+    "w": 89,
+    "h": 33
+   },
+   "pivot": {
+    "x": 0.5056179775280899,
+    "y": 0.5151515151515151
+   },
+   "duration": 83
+  },
+  {
+   "filename": "mother-of-the-black-water-black-water-wave 8.png",
+   "frame": {
+    "x": 0,
+    "y": 66,
+    "w": 89,
+    "h": 33
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 89,
+    "h": 33
+   },
+   "sourceSize": {
+    "w": 89,
+    "h": 33
+   },
+   "pivot": {
+    "x": 0.5056179775280899,
+    "y": 0.5151515151515151
+   },
+   "duration": 83
+  },
+  {
+   "filename": "mother-of-the-black-water-black-water-wave 9.png",
+   "frame": {
+    "x": 89,
+    "y": 66,
+    "w": 89,
+    "h": 33
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 89,
+    "h": 33
+   },
+   "sourceSize": {
+    "w": 89,
+    "h": 33
+   },
+   "pivot": {
+    "x": 0.5056179775280899,
+    "y": 0.5151515151515151
+   },
+   "duration": 83
+  },
+  {
+   "filename": "mother-of-the-black-water-black-water-wave 10.png",
+   "frame": {
+    "x": 178,
+    "y": 66,
+    "w": 89,
+    "h": 33
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 89,
+    "h": 33
+   },
+   "sourceSize": {
+    "w": 89,
+    "h": 33
+   },
+   "pivot": {
+    "x": 0.5056179775280899,
+    "y": 0.5151515151515151
+   },
+   "duration": 83
+  },
+  {
+   "filename": "mother-of-the-black-water-black-water-wave 11.png",
+   "frame": {
+    "x": 267,
+    "y": 66,
+    "w": 89,
+    "h": 33
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 89,
+    "h": 33
+   },
+   "sourceSize": {
+    "w": 89,
+    "h": 33
+   },
+   "pivot": {
+    "x": 0.5056179775280899,
+    "y": 0.5151515151515151
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "mother-of-the-black-water-black-water-wave.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 356,
+   "h": 99
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 45,
+   "y": 17
+  },
+  "frameTags": [
+   {
+    "name": "mother-of-the-black-water-black-water-wave",
+    "from": 0,
+    "to": 11,
+    "direction": "forward"
+   }
+  ]
+ }
+}

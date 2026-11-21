@@ -1,0 +1,235 @@
+{
+ "frames": [
+  {
+   "filename": "hr-shots-bog-wail-launch 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 57,
+    "h": 71
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 57,
+    "h": 71
+   },
+   "sourceSize": {
+    "w": 57,
+    "h": 71
+   },
+   "pivot": {
+    "x": 0.12280701754385964,
+    "y": 0.2676056338028169
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-bog-wail-launch 1.png",
+   "frame": {
+    "x": 57,
+    "y": 0,
+    "w": 57,
+    "h": 71
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 57,
+    "h": 71
+   },
+   "sourceSize": {
+    "w": 57,
+    "h": 71
+   },
+   "pivot": {
+    "x": 0.12280701754385964,
+    "y": 0.2676056338028169
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-bog-wail-launch 2.png",
+   "frame": {
+    "x": 114,
+    "y": 0,
+    "w": 57,
+    "h": 71
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 57,
+    "h": 71
+   },
+   "sourceSize": {
+    "w": 57,
+    "h": 71
+   },
+   "pivot": {
+    "x": 0.12280701754385964,
+    "y": 0.2676056338028169
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-bog-wail-launch 3.png",
+   "frame": {
+    "x": 0,
+    "y": 71,
+    "w": 57,
+    "h": 71
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 57,
+    "h": 71
+   },
+   "sourceSize": {
+    "w": 57,
+    "h": 71
+   },
+   "pivot": {
+    "x": 0.12280701754385964,
+    "y": 0.2676056338028169
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-bog-wail-launch 4.png",
+   "frame": {
+    "x": 57,
+    "y": 71,
+    "w": 57,
+    "h": 71
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 57,
+    "h": 71
+   },
+   "sourceSize": {
+    "w": 57,
+    "h": 71
+   },
+   "pivot": {
+    "x": 0.12280701754385964,
+    "y": 0.2676056338028169
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-bog-wail-launch 5.png",
+   "frame": {
+    "x": 114,
+    "y": 71,
+    "w": 57,
+    "h": 71
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 57,
+    "h": 71
+   },
+   "sourceSize": {
+    "w": 57,
+    "h": 71
+   },
+   "pivot": {
+    "x": 0.12280701754385964,
+    "y": 0.2676056338028169
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-bog-wail-launch 6.png",
+   "frame": {
+    "x": 0,
+    "y": 142,
+    "w": 57,
+    "h": 71
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 57,
+    "h": 71
+   },
+   "sourceSize": {
+    "w": 57,
+    "h": 71
+   },
+   "pivot": {
+    "x": 0.12280701754385964,
+    "y": 0.2676056338028169
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-bog-wail-launch 7.png",
+   "frame": {
+    "x": 57,
+    "y": 142,
+    "w": 57,
+    "h": 71
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 57,
+    "h": 71
+   },
+   "sourceSize": {
+    "w": 57,
+    "h": 71
+   },
+   "pivot": {
+    "x": 0.12280701754385964,
+    "y": 0.2676056338028169
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hr-shots-bog-wail-launch.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 171,
+   "h": 213
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 7,
+   "y": 19
+  },
+  "frameTags": [
+   {
+    "name": "hr-shots-bog-wail-launch",
+    "from": 0,
+    "to": 7,
+    "direction": "forward"
+   }
+  ]
+ }
+}

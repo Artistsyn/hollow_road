@@ -1,0 +1,25 @@
+{
+ "name": "rune_gravecaller_grasp",
+ "for": "gravecaller 'grasp' (fight.rs GRAVECALLER, area attack, AREA_HALF 1.1 m)",
+ "px_per_m": 59,
+ "anchor": "feet",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": [
+  0.0,
+  0.6
+ ],
+ "pixellab_effect_id": "708b020a-b7b1-4efe-a499-86bb7fffe257",
+ "notes": "A patch of disturbed grave soil (~130 px = 2.2 m across, the hit patch) churns on the ground with pale grave-mist motes and twitching clods (frames 1-12, faint first), then frame 13 erupts: dirt and soul wisps burst up and five hand-pixelled dead hands claw up out of the soil (frames 14-17), clench (18-20) and sink back (21-23). Anchor = the patch centre on the ground. 24 frames @ 12 fps.",
+ "frame_size": [
+  150,
+  81
+ ],
+ "frames": 24,
+ "fps": 12,
+ "anchor_px": [
+  69,
+  61
+ ],
+ "hit_frame": 12
+}

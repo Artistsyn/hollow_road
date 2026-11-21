@@ -1,8 +1,11 @@
 HOLLOW ROAD - Android test build
 ================================
 
-Needs an Android phone or tablet on Android 13 or newer with a 64-bit (arm64) processor, which
+Needs an Android phone or tablet on Android 8 or newer with a 64-bit (arm64) processor, which
 is nearly every phone from the last several years. It plays in landscape. Nothing else to install.
+
+If an older Hollow Road test build is installed, uninstall it first: this build is signed with
+the game's own release key, and Android will not install it over one signed differently.
 
 1. Copy "Hollow Road.apk" to the phone (a cable, a cloud drive, or a message to yourself), and
    tap it in the Files app (or wherever it landed).
@@ -11,7 +14,7 @@ is nearly every phone from the last several years. It plays in landscape. Nothin
    the app you tapped it in may install apps. Choose Settings, turn on "Allow from this source",
    go back and tap Install. You can turn that setting off again afterwards.
    If Play Protect warns that it does not recognise the app, choose "More details" and
-   "Install anyway". It is a test build signed for testing, not a published one.
+   "Install anyway". It is a test build from outside the Play Store, not a published one.
 
 3. Open Hollow Road from the app drawer. Pick a pilgrimage slot, then a calling:
      Wayfarer     sword and buckler: rolls, parries, ripostes

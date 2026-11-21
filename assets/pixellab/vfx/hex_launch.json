@@ -1,0 +1,287 @@
+{
+ "frames": [
+  {
+   "filename": "hr-shots-hex-launch 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 40
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 40
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 40
+   },
+   "pivot": {
+    "x": 0.4583333333333333,
+    "y": 0.5
+   },
+   "duration": 100
+  },
+  {
+   "filename": "hr-shots-hex-launch 1.png",
+   "frame": {
+    "x": 48,
+    "y": 0,
+    "w": 48,
+    "h": 40
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 40
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 40
+   },
+   "pivot": {
+    "x": 0.4583333333333333,
+    "y": 0.5
+   },
+   "duration": 100
+  },
+  {
+   "filename": "hr-shots-hex-launch 2.png",
+   "frame": {
+    "x": 96,
+    "y": 0,
+    "w": 48,
+    "h": 40
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 40
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 40
+   },
+   "pivot": {
+    "x": 0.4583333333333333,
+    "y": 0.5
+   },
+   "duration": 100
+  },
+  {
+   "filename": "hr-shots-hex-launch 3.png",
+   "frame": {
+    "x": 144,
+    "y": 0,
+    "w": 48,
+    "h": 40
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 40
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 40
+   },
+   "pivot": {
+    "x": 0.4583333333333333,
+    "y": 0.5
+   },
+   "duration": 100
+  },
+  {
+   "filename": "hr-shots-hex-launch 4.png",
+   "frame": {
+    "x": 0,
+    "y": 40,
+    "w": 48,
+    "h": 40
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 40
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 40
+   },
+   "pivot": {
+    "x": 0.4583333333333333,
+    "y": 0.5
+   },
+   "duration": 100
+  },
+  {
+   "filename": "hr-shots-hex-launch 5.png",
+   "frame": {
+    "x": 48,
+    "y": 40,
+    "w": 48,
+    "h": 40
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 40
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 40
+   },
+   "pivot": {
+    "x": 0.4583333333333333,
+    "y": 0.5
+   },
+   "duration": 100
+  },
+  {
+   "filename": "hr-shots-hex-launch 6.png",
+   "frame": {
+    "x": 96,
+    "y": 40,
+    "w": 48,
+    "h": 40
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 40
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 40
+   },
+   "pivot": {
+    "x": 0.4583333333333333,
+    "y": 0.5
+   },
+   "duration": 100
+  },
+  {
+   "filename": "hr-shots-hex-launch 7.png",
+   "frame": {
+    "x": 144,
+    "y": 40,
+    "w": 48,
+    "h": 40
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 40
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 40
+   },
+   "pivot": {
+    "x": 0.4583333333333333,
+    "y": 0.5
+   },
+   "duration": 100
+  },
+  {
+   "filename": "hr-shots-hex-launch 8.png",
+   "frame": {
+    "x": 0,
+    "y": 80,
+    "w": 48,
+    "h": 40
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 40
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 40
+   },
+   "pivot": {
+    "x": 0.4583333333333333,
+    "y": 0.5
+   },
+   "duration": 100
+  },
+  {
+   "filename": "hr-shots-hex-launch 9.png",
+   "frame": {
+    "x": 48,
+    "y": 80,
+    "w": 48,
+    "h": 40
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 40
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 40
+   },
+   "pivot": {
+    "x": 0.4583333333333333,
+    "y": 0.5
+   },
+   "duration": 100
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hr-shots-hex-launch.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 192,
+   "h": 120
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 22,
+   "y": 20
+  },
+  "frameTags": [
+   {
+    "name": "hr-shots-hex-launch",
+    "from": 0,
+    "to": 9,
+    "direction": "forward"
+   }
+  ]
+ }
+}

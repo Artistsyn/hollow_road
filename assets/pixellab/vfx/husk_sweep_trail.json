@@ -1,0 +1,261 @@
+{
+ "frames": [
+  {
+   "filename": "hollow-road-husk-cleaver-low-sweep-trail 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 160,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 160,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 160,
+    "h": 48
+   },
+   "pivot": {
+    "x": 0.5875,
+    "y": -0.08333333333333333
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-husk-cleaver-low-sweep-trail 1.png",
+   "frame": {
+    "x": 160,
+    "y": 0,
+    "w": 160,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 160,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 160,
+    "h": 48
+   },
+   "pivot": {
+    "x": 0.5875,
+    "y": -0.08333333333333333
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-husk-cleaver-low-sweep-trail 2.png",
+   "frame": {
+    "x": 320,
+    "y": 0,
+    "w": 160,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 160,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 160,
+    "h": 48
+   },
+   "pivot": {
+    "x": 0.5875,
+    "y": -0.08333333333333333
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-husk-cleaver-low-sweep-trail 3.png",
+   "frame": {
+    "x": 0,
+    "y": 48,
+    "w": 160,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 160,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 160,
+    "h": 48
+   },
+   "pivot": {
+    "x": 0.5875,
+    "y": -0.08333333333333333
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-husk-cleaver-low-sweep-trail 4.png",
+   "frame": {
+    "x": 160,
+    "y": 48,
+    "w": 160,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 160,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 160,
+    "h": 48
+   },
+   "pivot": {
+    "x": 0.5875,
+    "y": -0.08333333333333333
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-husk-cleaver-low-sweep-trail 5.png",
+   "frame": {
+    "x": 320,
+    "y": 48,
+    "w": 160,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 160,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 160,
+    "h": 48
+   },
+   "pivot": {
+    "x": 0.5875,
+    "y": -0.08333333333333333
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-husk-cleaver-low-sweep-trail 6.png",
+   "frame": {
+    "x": 0,
+    "y": 96,
+    "w": 160,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 160,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 160,
+    "h": 48
+   },
+   "pivot": {
+    "x": 0.5875,
+    "y": -0.08333333333333333
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-husk-cleaver-low-sweep-trail 7.png",
+   "frame": {
+    "x": 160,
+    "y": 96,
+    "w": 160,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 160,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 160,
+    "h": 48
+   },
+   "pivot": {
+    "x": 0.5875,
+    "y": -0.08333333333333333
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-husk-cleaver-low-sweep-trail 8.png",
+   "frame": {
+    "x": 320,
+    "y": 96,
+    "w": 160,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 160,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 160,
+    "h": 48
+   },
+   "pivot": {
+    "x": 0.5875,
+    "y": -0.08333333333333333
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hollow-road-husk-cleaver-low-sweep-trail.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 480,
+   "h": 144
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 94,
+   "y": -4
+  },
+  "frameTags": [
+   {
+    "name": "hollow-road-husk-cleaver-low-sweep-trail",
+    "from": 0,
+    "to": 8,
+    "direction": "forward"
+   }
+  ]
+ }
+}

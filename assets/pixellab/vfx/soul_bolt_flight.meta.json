@@ -1,0 +1,14 @@
+{
+ "name": "soul_bolt_flight",
+ "for": "wraith_lord soul bolt / soul bolt again / low bolt (Motion::Shot 8/TPS)",
+ "px_per_m": 47.1,
+ "anchor": "centre",
+ "loop": true,
+ "travels": true,
+ "hit_band_m": [
+  0.8,
+  2.2
+ ],
+ "pixellab_effect_id": "c6f947cc-d6f9-47b2-a5a0-27e995e465b2",
+ "notes": "A wailing soul: a drawn bone-white skull (14x15 px) whose jaw chatters open and shut and whose eye sockets glint cold cyan, streaming five torn ectoplasm strands that ripple back like hair, with pale shreds peeling off; cyan ramp taken from the Wraith Lord's own soul flame. Anchor = skull centre. 8 frames @12 fps. Low bolt (0.0-0.6 m) uses the same clip at shin height; volleys play it up to 3 times staggered."
+}

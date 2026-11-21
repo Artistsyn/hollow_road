@@ -319,7 +319,7 @@
       "kind": "Stratus",
       "cover": 0.4,
       "count": 10,
-      "drift": 1.0,
+      "drift": 0.08,
       "scale": 1.0,
       "opacity": 0.3,
       "tint": [

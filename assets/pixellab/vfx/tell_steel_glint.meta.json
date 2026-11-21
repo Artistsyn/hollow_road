@@ -1,0 +1,24 @@
+{
+ "name": "tell_steel_glint",
+ "for": "tell for any steel blow (husk chop/late chop, lancer thrust, butcher cleave, statue stone blade, priest mace, wraith reap): at Blow.tell / Attack tell",
+ "px_per_m": 62,
+ "anchor": "centre",
+ "anchor_px": [
+  5,
+  7
+ ],
+ "anchor_note": "anchor_px = the hilt end of the edge; the edge runs +x to the tip at (47,7) where the star flares",
+ "faces": "right (+x along the blade, hilt to tip); rotate it to the blade angle on the live frame (the game already turns streak frames in fx.rs) and scale it to the blade length (42 px edge = 0.68 m at 62 px/m)",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": null,
+ "pixellab_effect_id": "a01822cd-38f9-4efc-9fbd-21a68d645ea0",
+ "fps": 12,
+ "notes": "A cold sheen runs hilt to tip along the edge (frames 1-4), then a hand-drawn 8-point glint star pops at the tip (23x9 px at its peak, white core, 1-px spikes fading to steel at the tips), holds a frame and shrinks out. Small but unmissable: the only white on the foe. Hand-drawn star frames (image layer), not a generated blur.",
+ "frames": 8,
+ "frame_px": [
+  62,
+  16
+ ],
+ "hit_frame": 4
+}

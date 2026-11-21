@@ -1,0 +1,287 @@
+{
+ "frames": [
+  {
+   "filename": "hr-shots-light-spear-launch 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 59,
+    "h": 33
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 59,
+    "h": 33
+   },
+   "sourceSize": {
+    "w": 59,
+    "h": 33
+   },
+   "pivot": {
+    "x": 0.3559322033898305,
+    "y": 0.5151515151515151
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-light-spear-launch 1.png",
+   "frame": {
+    "x": 59,
+    "y": 0,
+    "w": 59,
+    "h": 33
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 59,
+    "h": 33
+   },
+   "sourceSize": {
+    "w": 59,
+    "h": 33
+   },
+   "pivot": {
+    "x": 0.3559322033898305,
+    "y": 0.5151515151515151
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-light-spear-launch 2.png",
+   "frame": {
+    "x": 118,
+    "y": 0,
+    "w": 59,
+    "h": 33
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 59,
+    "h": 33
+   },
+   "sourceSize": {
+    "w": 59,
+    "h": 33
+   },
+   "pivot": {
+    "x": 0.3559322033898305,
+    "y": 0.5151515151515151
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-light-spear-launch 3.png",
+   "frame": {
+    "x": 177,
+    "y": 0,
+    "w": 59,
+    "h": 33
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 59,
+    "h": 33
+   },
+   "sourceSize": {
+    "w": 59,
+    "h": 33
+   },
+   "pivot": {
+    "x": 0.3559322033898305,
+    "y": 0.5151515151515151
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-light-spear-launch 4.png",
+   "frame": {
+    "x": 0,
+    "y": 33,
+    "w": 59,
+    "h": 33
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 59,
+    "h": 33
+   },
+   "sourceSize": {
+    "w": 59,
+    "h": 33
+   },
+   "pivot": {
+    "x": 0.3559322033898305,
+    "y": 0.5151515151515151
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-light-spear-launch 5.png",
+   "frame": {
+    "x": 59,
+    "y": 33,
+    "w": 59,
+    "h": 33
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 59,
+    "h": 33
+   },
+   "sourceSize": {
+    "w": 59,
+    "h": 33
+   },
+   "pivot": {
+    "x": 0.3559322033898305,
+    "y": 0.5151515151515151
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-light-spear-launch 6.png",
+   "frame": {
+    "x": 118,
+    "y": 33,
+    "w": 59,
+    "h": 33
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 59,
+    "h": 33
+   },
+   "sourceSize": {
+    "w": 59,
+    "h": 33
+   },
+   "pivot": {
+    "x": 0.3559322033898305,
+    "y": 0.5151515151515151
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-light-spear-launch 7.png",
+   "frame": {
+    "x": 177,
+    "y": 33,
+    "w": 59,
+    "h": 33
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 59,
+    "h": 33
+   },
+   "sourceSize": {
+    "w": 59,
+    "h": 33
+   },
+   "pivot": {
+    "x": 0.3559322033898305,
+    "y": 0.5151515151515151
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-light-spear-launch 8.png",
+   "frame": {
+    "x": 0,
+    "y": 66,
+    "w": 59,
+    "h": 33
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 59,
+    "h": 33
+   },
+   "sourceSize": {
+    "w": 59,
+    "h": 33
+   },
+   "pivot": {
+    "x": 0.3559322033898305,
+    "y": 0.5151515151515151
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-light-spear-launch 9.png",
+   "frame": {
+    "x": 59,
+    "y": 66,
+    "w": 59,
+    "h": 33
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 59,
+    "h": 33
+   },
+   "sourceSize": {
+    "w": 59,
+    "h": 33
+   },
+   "pivot": {
+    "x": 0.3559322033898305,
+    "y": 0.5151515151515151
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hr-shots-light-spear-launch.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 236,
+   "h": 99
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 21,
+   "y": 17
+  },
+  "frameTags": [
+   {
+    "name": "hr-shots-light-spear-launch",
+    "from": 0,
+    "to": 9,
+    "direction": "forward"
+   }
+  ]
+ }
+}

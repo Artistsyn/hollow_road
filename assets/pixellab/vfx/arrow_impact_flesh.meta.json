@@ -1,0 +1,11 @@
+{
+ "name": "arrow_impact_flesh",
+ "for": "archer / bounty_echo arrows hitting the hero (body hit)",
+ "px_per_m": 64.9,
+ "anchor": "centre",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": null,
+ "pixellab_effect_id": "797ea8f0-5b6a-4a63-b6f7-098f9853ec25",
+ "notes": "Arrowhead punching into flesh, drawn for an arrow travelling +x: a hard pale 4-point hit star and 1-frame hit-stop, then a spray of dark-red droplets driven on through (+x) and arcing down, a few flung back out of the wound, and 2-3 wood splinters off the shaft. Anchor = where the arrowhead struck. Mirror with the shot's direction."
+}

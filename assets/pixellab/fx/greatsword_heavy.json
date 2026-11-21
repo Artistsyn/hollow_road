@@ -1,7 +1,7 @@
 {
  "frames": [
   {
-   "filename": "hollow-road-greatsword-heavy 0.png",
+   "filename": "hollow-road-hero-greatsword-heavy-v2 0.png",
    "frame": {
     "x": 0,
     "y": 0,
@@ -27,7 +27,7 @@
    "duration": 50
   },
   {
-   "filename": "hollow-road-greatsword-heavy 1.png",
+   "filename": "hollow-road-hero-greatsword-heavy-v2 1.png",
    "frame": {
     "x": 240,
     "y": 0,
@@ -53,7 +53,7 @@
    "duration": 50
   },
   {
-   "filename": "hollow-road-greatsword-heavy 2.png",
+   "filename": "hollow-road-hero-greatsword-heavy-v2 2.png",
    "frame": {
     "x": 480,
     "y": 0,
@@ -79,7 +79,7 @@
    "duration": 50
   },
   {
-   "filename": "hollow-road-greatsword-heavy 3.png",
+   "filename": "hollow-road-hero-greatsword-heavy-v2 3.png",
    "frame": {
     "x": 0,
     "y": 136,
@@ -105,7 +105,7 @@
    "duration": 50
   },
   {
-   "filename": "hollow-road-greatsword-heavy 4.png",
+   "filename": "hollow-road-hero-greatsword-heavy-v2 4.png",
    "frame": {
     "x": 240,
     "y": 136,
@@ -131,7 +131,7 @@
    "duration": 50
   },
   {
-   "filename": "hollow-road-greatsword-heavy 5.png",
+   "filename": "hollow-road-hero-greatsword-heavy-v2 5.png",
    "frame": {
     "x": 480,
     "y": 136,
@@ -157,7 +157,7 @@
    "duration": 50
   },
   {
-   "filename": "hollow-road-greatsword-heavy 6.png",
+   "filename": "hollow-road-hero-greatsword-heavy-v2 6.png",
    "frame": {
     "x": 0,
     "y": 272,
@@ -183,7 +183,7 @@
    "duration": 50
   },
   {
-   "filename": "hollow-road-greatsword-heavy 7.png",
+   "filename": "hollow-road-hero-greatsword-heavy-v2 7.png",
    "frame": {
     "x": 240,
     "y": 272,
@@ -209,7 +209,7 @@
    "duration": 50
   },
   {
-   "filename": "hollow-road-greatsword-heavy 8.png",
+   "filename": "hollow-road-hero-greatsword-heavy-v2 8.png",
    "frame": {
     "x": 480,
     "y": 272,
@@ -237,7 +237,7 @@
  ],
  "meta": {
   "app": "PixelLab VFX Creator",
-  "image": "hollow-road-greatsword-heavy.png",
+  "image": "hollow-road-hero-greatsword-heavy-v2.png",
   "format": "RGBA8888",
   "size": {
    "w": 720,
@@ -251,7 +251,7 @@
   },
   "frameTags": [
    {
-    "name": "hollow-road-greatsword-heavy",
+    "name": "hollow-road-hero-greatsword-heavy-v2",
     "from": 0,
     "to": 8,
     "direction": "forward"

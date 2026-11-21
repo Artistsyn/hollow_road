@@ -1,0 +1,261 @@
+{
+ "frames": [
+  {
+   "filename": "hr-shots-hatchet-impact 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 36,
+    "h": 56
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 36,
+    "h": 56
+   },
+   "sourceSize": {
+    "w": 36,
+    "h": 56
+   },
+   "pivot": {
+    "x": 0.2777777777777778,
+    "y": 0.25
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-hatchet-impact 1.png",
+   "frame": {
+    "x": 36,
+    "y": 0,
+    "w": 36,
+    "h": 56
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 36,
+    "h": 56
+   },
+   "sourceSize": {
+    "w": 36,
+    "h": 56
+   },
+   "pivot": {
+    "x": 0.2777777777777778,
+    "y": 0.25
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-hatchet-impact 2.png",
+   "frame": {
+    "x": 72,
+    "y": 0,
+    "w": 36,
+    "h": 56
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 36,
+    "h": 56
+   },
+   "sourceSize": {
+    "w": 36,
+    "h": 56
+   },
+   "pivot": {
+    "x": 0.2777777777777778,
+    "y": 0.25
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-hatchet-impact 3.png",
+   "frame": {
+    "x": 0,
+    "y": 56,
+    "w": 36,
+    "h": 56
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 36,
+    "h": 56
+   },
+   "sourceSize": {
+    "w": 36,
+    "h": 56
+   },
+   "pivot": {
+    "x": 0.2777777777777778,
+    "y": 0.25
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-hatchet-impact 4.png",
+   "frame": {
+    "x": 36,
+    "y": 56,
+    "w": 36,
+    "h": 56
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 36,
+    "h": 56
+   },
+   "sourceSize": {
+    "w": 36,
+    "h": 56
+   },
+   "pivot": {
+    "x": 0.2777777777777778,
+    "y": 0.25
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-hatchet-impact 5.png",
+   "frame": {
+    "x": 72,
+    "y": 56,
+    "w": 36,
+    "h": 56
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 36,
+    "h": 56
+   },
+   "sourceSize": {
+    "w": 36,
+    "h": 56
+   },
+   "pivot": {
+    "x": 0.2777777777777778,
+    "y": 0.25
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-hatchet-impact 6.png",
+   "frame": {
+    "x": 0,
+    "y": 112,
+    "w": 36,
+    "h": 56
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 36,
+    "h": 56
+   },
+   "sourceSize": {
+    "w": 36,
+    "h": 56
+   },
+   "pivot": {
+    "x": 0.2777777777777778,
+    "y": 0.25
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-hatchet-impact 7.png",
+   "frame": {
+    "x": 36,
+    "y": 112,
+    "w": 36,
+    "h": 56
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 36,
+    "h": 56
+   },
+   "sourceSize": {
+    "w": 36,
+    "h": 56
+   },
+   "pivot": {
+    "x": 0.2777777777777778,
+    "y": 0.25
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-hatchet-impact 8.png",
+   "frame": {
+    "x": 72,
+    "y": 112,
+    "w": 36,
+    "h": 56
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 36,
+    "h": 56
+   },
+   "sourceSize": {
+    "w": 36,
+    "h": 56
+   },
+   "pivot": {
+    "x": 0.2777777777777778,
+    "y": 0.25
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hr-shots-hatchet-impact.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 108,
+   "h": 168
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 10,
+   "y": 14
+  },
+  "frameTags": [
+   {
+    "name": "hr-shots-hatchet-impact",
+    "from": 0,
+    "to": 8,
+    "direction": "forward"
+   }
+  ]
+ }
+}

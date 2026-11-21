@@ -1,0 +1,11 @@
+{
+ "name": "hatchet_impact",
+ "for": "bandit_chief hatchet (hit on the hero)",
+ "px_per_m": 55.2,
+ "anchor": "centre",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": null,
+ "pixellab_effect_id": "e13b24ba-e228-4aba-8e6d-a4346b69094c",
+ "notes": "Heavy thunk where the hatchet bites (arriving +x): a short vertical chop gash with a hard 4-ray X glint, a 1-frame hit-stop, steel sparks flicking up and cooling, blood droplets and wood chips spraying forward and falling, a thin pressure crescent after. Anchor = hit point (on the hero's body at the blow's height)."
+}

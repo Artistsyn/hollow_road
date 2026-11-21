@@ -1,0 +1,339 @@
+{
+ "frames": [
+  {
+   "filename": "hr-shots-arrow-impact-ground 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 41,
+    "h": 22
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 41,
+    "h": 22
+   },
+   "sourceSize": {
+    "w": 41,
+    "h": 22
+   },
+   "pivot": {
+    "x": 0.5853658536585366,
+    "y": 0.7727272727272727
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-arrow-impact-ground 1.png",
+   "frame": {
+    "x": 41,
+    "y": 0,
+    "w": 41,
+    "h": 22
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 41,
+    "h": 22
+   },
+   "sourceSize": {
+    "w": 41,
+    "h": 22
+   },
+   "pivot": {
+    "x": 0.5853658536585366,
+    "y": 0.7727272727272727
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-arrow-impact-ground 2.png",
+   "frame": {
+    "x": 82,
+    "y": 0,
+    "w": 41,
+    "h": 22
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 41,
+    "h": 22
+   },
+   "sourceSize": {
+    "w": 41,
+    "h": 22
+   },
+   "pivot": {
+    "x": 0.5853658536585366,
+    "y": 0.7727272727272727
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-arrow-impact-ground 3.png",
+   "frame": {
+    "x": 123,
+    "y": 0,
+    "w": 41,
+    "h": 22
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 41,
+    "h": 22
+   },
+   "sourceSize": {
+    "w": 41,
+    "h": 22
+   },
+   "pivot": {
+    "x": 0.5853658536585366,
+    "y": 0.7727272727272727
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-arrow-impact-ground 4.png",
+   "frame": {
+    "x": 0,
+    "y": 22,
+    "w": 41,
+    "h": 22
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 41,
+    "h": 22
+   },
+   "sourceSize": {
+    "w": 41,
+    "h": 22
+   },
+   "pivot": {
+    "x": 0.5853658536585366,
+    "y": 0.7727272727272727
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-arrow-impact-ground 5.png",
+   "frame": {
+    "x": 41,
+    "y": 22,
+    "w": 41,
+    "h": 22
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 41,
+    "h": 22
+   },
+   "sourceSize": {
+    "w": 41,
+    "h": 22
+   },
+   "pivot": {
+    "x": 0.5853658536585366,
+    "y": 0.7727272727272727
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-arrow-impact-ground 6.png",
+   "frame": {
+    "x": 82,
+    "y": 22,
+    "w": 41,
+    "h": 22
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 41,
+    "h": 22
+   },
+   "sourceSize": {
+    "w": 41,
+    "h": 22
+   },
+   "pivot": {
+    "x": 0.5853658536585366,
+    "y": 0.7727272727272727
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-arrow-impact-ground 7.png",
+   "frame": {
+    "x": 123,
+    "y": 22,
+    "w": 41,
+    "h": 22
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 41,
+    "h": 22
+   },
+   "sourceSize": {
+    "w": 41,
+    "h": 22
+   },
+   "pivot": {
+    "x": 0.5853658536585366,
+    "y": 0.7727272727272727
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-arrow-impact-ground 8.png",
+   "frame": {
+    "x": 0,
+    "y": 44,
+    "w": 41,
+    "h": 22
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 41,
+    "h": 22
+   },
+   "sourceSize": {
+    "w": 41,
+    "h": 22
+   },
+   "pivot": {
+    "x": 0.5853658536585366,
+    "y": 0.7727272727272727
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-arrow-impact-ground 9.png",
+   "frame": {
+    "x": 41,
+    "y": 44,
+    "w": 41,
+    "h": 22
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 41,
+    "h": 22
+   },
+   "sourceSize": {
+    "w": 41,
+    "h": 22
+   },
+   "pivot": {
+    "x": 0.5853658536585366,
+    "y": 0.7727272727272727
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-arrow-impact-ground 10.png",
+   "frame": {
+    "x": 82,
+    "y": 44,
+    "w": 41,
+    "h": 22
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 41,
+    "h": 22
+   },
+   "sourceSize": {
+    "w": 41,
+    "h": 22
+   },
+   "pivot": {
+    "x": 0.5853658536585366,
+    "y": 0.7727272727272727
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-arrow-impact-ground 11.png",
+   "frame": {
+    "x": 123,
+    "y": 44,
+    "w": 41,
+    "h": 22
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 41,
+    "h": 22
+   },
+   "sourceSize": {
+    "w": 41,
+    "h": 22
+   },
+   "pivot": {
+    "x": 0.5853658536585366,
+    "y": 0.7727272727272727
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hr-shots-arrow-impact-ground.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 164,
+   "h": 66
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 24,
+   "y": 17
+  },
+  "frameTags": [
+   {
+    "name": "hr-shots-arrow-impact-ground",
+    "from": 0,
+    "to": 11,
+    "direction": "forward"
+   }
+  ]
+ }
+}

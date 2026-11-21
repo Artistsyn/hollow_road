@@ -1,0 +1,235 @@
+{
+ "frames": [
+  {
+   "filename": "hr-shots-violet-breath-cone 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 132,
+    "h": 74
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 132,
+    "h": 74
+   },
+   "sourceSize": {
+    "w": 132,
+    "h": 74
+   },
+   "pivot": {
+    "x": 0.06818181818181818,
+    "y": 0.13513513513513514
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-violet-breath-cone 1.png",
+   "frame": {
+    "x": 132,
+    "y": 0,
+    "w": 132,
+    "h": 74
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 132,
+    "h": 74
+   },
+   "sourceSize": {
+    "w": 132,
+    "h": 74
+   },
+   "pivot": {
+    "x": 0.06818181818181818,
+    "y": 0.13513513513513514
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-violet-breath-cone 2.png",
+   "frame": {
+    "x": 264,
+    "y": 0,
+    "w": 132,
+    "h": 74
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 132,
+    "h": 74
+   },
+   "sourceSize": {
+    "w": 132,
+    "h": 74
+   },
+   "pivot": {
+    "x": 0.06818181818181818,
+    "y": 0.13513513513513514
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-violet-breath-cone 3.png",
+   "frame": {
+    "x": 0,
+    "y": 74,
+    "w": 132,
+    "h": 74
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 132,
+    "h": 74
+   },
+   "sourceSize": {
+    "w": 132,
+    "h": 74
+   },
+   "pivot": {
+    "x": 0.06818181818181818,
+    "y": 0.13513513513513514
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-violet-breath-cone 4.png",
+   "frame": {
+    "x": 132,
+    "y": 74,
+    "w": 132,
+    "h": 74
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 132,
+    "h": 74
+   },
+   "sourceSize": {
+    "w": 132,
+    "h": 74
+   },
+   "pivot": {
+    "x": 0.06818181818181818,
+    "y": 0.13513513513513514
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-violet-breath-cone 5.png",
+   "frame": {
+    "x": 264,
+    "y": 74,
+    "w": 132,
+    "h": 74
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 132,
+    "h": 74
+   },
+   "sourceSize": {
+    "w": 132,
+    "h": 74
+   },
+   "pivot": {
+    "x": 0.06818181818181818,
+    "y": 0.13513513513513514
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-violet-breath-cone 6.png",
+   "frame": {
+    "x": 0,
+    "y": 148,
+    "w": 132,
+    "h": 74
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 132,
+    "h": 74
+   },
+   "sourceSize": {
+    "w": 132,
+    "h": 74
+   },
+   "pivot": {
+    "x": 0.06818181818181818,
+    "y": 0.13513513513513514
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-violet-breath-cone 7.png",
+   "frame": {
+    "x": 132,
+    "y": 148,
+    "w": 132,
+    "h": 74
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 132,
+    "h": 74
+   },
+   "sourceSize": {
+    "w": 132,
+    "h": 74
+   },
+   "pivot": {
+    "x": 0.06818181818181818,
+    "y": 0.13513513513513514
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hr-shots-violet-breath-cone.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 396,
+   "h": 222
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 9,
+   "y": 10
+  },
+  "frameTags": [
+   {
+    "name": "hr-shots-violet-breath-cone",
+    "from": 0,
+    "to": 7,
+    "direction": "forward"
+   }
+  ]
+ }
+}

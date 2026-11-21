@@ -1,7 +1,7 @@
 {
  "frames": [
   {
-   "filename": "hollow-road-greatsword-light 0.png",
+   "filename": "hollow-road-hero-greatsword-light-v3-bows-toward-the-foe 0.png",
    "frame": {
     "x": 0,
     "y": 0,
@@ -27,7 +27,7 @@
    "duration": 50
   },
   {
-   "filename": "hollow-road-greatsword-light 1.png",
+   "filename": "hollow-road-hero-greatsword-light-v3-bows-toward-the-foe 1.png",
    "frame": {
     "x": 192,
     "y": 0,
@@ -53,7 +53,7 @@
    "duration": 50
   },
   {
-   "filename": "hollow-road-greatsword-light 2.png",
+   "filename": "hollow-road-hero-greatsword-light-v3-bows-toward-the-foe 2.png",
    "frame": {
     "x": 384,
     "y": 0,
@@ -79,7 +79,7 @@
    "duration": 50
   },
   {
-   "filename": "hollow-road-greatsword-light 3.png",
+   "filename": "hollow-road-hero-greatsword-light-v3-bows-toward-the-foe 3.png",
    "frame": {
     "x": 0,
     "y": 136,
@@ -105,7 +105,7 @@
    "duration": 50
   },
   {
-   "filename": "hollow-road-greatsword-light 4.png",
+   "filename": "hollow-road-hero-greatsword-light-v3-bows-toward-the-foe 4.png",
    "frame": {
     "x": 192,
     "y": 136,
@@ -131,7 +131,7 @@
    "duration": 50
   },
   {
-   "filename": "hollow-road-greatsword-light 5.png",
+   "filename": "hollow-road-hero-greatsword-light-v3-bows-toward-the-foe 5.png",
    "frame": {
     "x": 384,
     "y": 136,
@@ -157,7 +157,7 @@
    "duration": 50
   },
   {
-   "filename": "hollow-road-greatsword-light 6.png",
+   "filename": "hollow-road-hero-greatsword-light-v3-bows-toward-the-foe 6.png",
    "frame": {
     "x": 0,
     "y": 272,
@@ -183,7 +183,7 @@
    "duration": 50
   },
   {
-   "filename": "hollow-road-greatsword-light 7.png",
+   "filename": "hollow-road-hero-greatsword-light-v3-bows-toward-the-foe 7.png",
    "frame": {
     "x": 192,
     "y": 272,
@@ -211,7 +211,7 @@
  ],
  "meta": {
   "app": "PixelLab VFX Creator",
-  "image": "hollow-road-greatsword-light.png",
+  "image": "hollow-road-hero-greatsword-light-v3-bows-toward-the-foe.png",
   "format": "RGBA8888",
   "size": {
    "w": 576,
@@ -225,7 +225,7 @@
   },
   "frameTags": [
    {
-    "name": "hollow-road-greatsword-light",
+    "name": "hollow-road-hero-greatsword-light-v3-bows-toward-the-foe",
     "from": 0,
     "to": 7,
     "direction": "forward"

@@ -1,0 +1,339 @@
+{
+ "frames": [
+  {
+   "filename": "keening-cage-keen-front-v2 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 94,
+    "h": 109
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 94,
+    "h": 109
+   },
+   "sourceSize": {
+    "w": 94,
+    "h": 109
+   },
+   "pivot": {
+    "x": 0.09574468085106383,
+    "y": 0.14678899082568808
+   },
+   "duration": 83
+  },
+  {
+   "filename": "keening-cage-keen-front-v2 1.png",
+   "frame": {
+    "x": 94,
+    "y": 0,
+    "w": 94,
+    "h": 109
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 94,
+    "h": 109
+   },
+   "sourceSize": {
+    "w": 94,
+    "h": 109
+   },
+   "pivot": {
+    "x": 0.09574468085106383,
+    "y": 0.14678899082568808
+   },
+   "duration": 83
+  },
+  {
+   "filename": "keening-cage-keen-front-v2 2.png",
+   "frame": {
+    "x": 188,
+    "y": 0,
+    "w": 94,
+    "h": 109
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 94,
+    "h": 109
+   },
+   "sourceSize": {
+    "w": 94,
+    "h": 109
+   },
+   "pivot": {
+    "x": 0.09574468085106383,
+    "y": 0.14678899082568808
+   },
+   "duration": 83
+  },
+  {
+   "filename": "keening-cage-keen-front-v2 3.png",
+   "frame": {
+    "x": 282,
+    "y": 0,
+    "w": 94,
+    "h": 109
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 94,
+    "h": 109
+   },
+   "sourceSize": {
+    "w": 94,
+    "h": 109
+   },
+   "pivot": {
+    "x": 0.09574468085106383,
+    "y": 0.14678899082568808
+   },
+   "duration": 83
+  },
+  {
+   "filename": "keening-cage-keen-front-v2 4.png",
+   "frame": {
+    "x": 0,
+    "y": 109,
+    "w": 94,
+    "h": 109
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 94,
+    "h": 109
+   },
+   "sourceSize": {
+    "w": 94,
+    "h": 109
+   },
+   "pivot": {
+    "x": 0.09574468085106383,
+    "y": 0.14678899082568808
+   },
+   "duration": 83
+  },
+  {
+   "filename": "keening-cage-keen-front-v2 5.png",
+   "frame": {
+    "x": 94,
+    "y": 109,
+    "w": 94,
+    "h": 109
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 94,
+    "h": 109
+   },
+   "sourceSize": {
+    "w": 94,
+    "h": 109
+   },
+   "pivot": {
+    "x": 0.09574468085106383,
+    "y": 0.14678899082568808
+   },
+   "duration": 83
+  },
+  {
+   "filename": "keening-cage-keen-front-v2 6.png",
+   "frame": {
+    "x": 188,
+    "y": 109,
+    "w": 94,
+    "h": 109
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 94,
+    "h": 109
+   },
+   "sourceSize": {
+    "w": 94,
+    "h": 109
+   },
+   "pivot": {
+    "x": 0.09574468085106383,
+    "y": 0.14678899082568808
+   },
+   "duration": 83
+  },
+  {
+   "filename": "keening-cage-keen-front-v2 7.png",
+   "frame": {
+    "x": 282,
+    "y": 109,
+    "w": 94,
+    "h": 109
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 94,
+    "h": 109
+   },
+   "sourceSize": {
+    "w": 94,
+    "h": 109
+   },
+   "pivot": {
+    "x": 0.09574468085106383,
+    "y": 0.14678899082568808
+   },
+   "duration": 83
+  },
+  {
+   "filename": "keening-cage-keen-front-v2 8.png",
+   "frame": {
+    "x": 0,
+    "y": 218,
+    "w": 94,
+    "h": 109
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 94,
+    "h": 109
+   },
+   "sourceSize": {
+    "w": 94,
+    "h": 109
+   },
+   "pivot": {
+    "x": 0.09574468085106383,
+    "y": 0.14678899082568808
+   },
+   "duration": 83
+  },
+  {
+   "filename": "keening-cage-keen-front-v2 9.png",
+   "frame": {
+    "x": 94,
+    "y": 218,
+    "w": 94,
+    "h": 109
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 94,
+    "h": 109
+   },
+   "sourceSize": {
+    "w": 94,
+    "h": 109
+   },
+   "pivot": {
+    "x": 0.09574468085106383,
+    "y": 0.14678899082568808
+   },
+   "duration": 83
+  },
+  {
+   "filename": "keening-cage-keen-front-v2 10.png",
+   "frame": {
+    "x": 188,
+    "y": 218,
+    "w": 94,
+    "h": 109
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 94,
+    "h": 109
+   },
+   "sourceSize": {
+    "w": 94,
+    "h": 109
+   },
+   "pivot": {
+    "x": 0.09574468085106383,
+    "y": 0.14678899082568808
+   },
+   "duration": 83
+  },
+  {
+   "filename": "keening-cage-keen-front-v2 11.png",
+   "frame": {
+    "x": 282,
+    "y": 218,
+    "w": 94,
+    "h": 109
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 94,
+    "h": 109
+   },
+   "sourceSize": {
+    "w": 94,
+    "h": 109
+   },
+   "pivot": {
+    "x": 0.09574468085106383,
+    "y": 0.14678899082568808
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "keening-cage-keen-front-v2.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 376,
+   "h": 327
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 9,
+   "y": 16
+  },
+  "frameTags": [
+   {
+    "name": "keening-cage-keen-front-v2",
+    "from": 0,
+    "to": 11,
+    "direction": "forward"
+   }
+  ]
+ }
+}

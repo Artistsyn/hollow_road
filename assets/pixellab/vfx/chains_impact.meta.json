@@ -1,0 +1,14 @@
+{
+ "name": "chains_impact",
+ "for": "hollow_magistrate chains (hit at the hero's feet)",
+ "px_per_m": 50.8,
+ "anchor": "feet",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": [
+  0.0,
+  0.6
+ ],
+ "pixellab_effect_id": "77d51d10-25b3-427a-98e1-3ee7bba9b505",
+ "notes": "The manacle arrives along the floor (+x), snaps shut on the shin with a hard clank (4-ray glint, 1-frame hit-stop, sparks, grit and a dust burst), the chain whips round into a loop about the ankle (back links darker), the slack falls and settles on the ground, then the whole chain crumbles away in blocks on the last frames. Anchor = ground under the ankle (feet)."
+}

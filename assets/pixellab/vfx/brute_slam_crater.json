@@ -1,0 +1,417 @@
+{
+ "frames": [
+  {
+   "filename": "hollow-road-brute-slam-impact-crater 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 168,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 168,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 168,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.47619047619047616,
+    "y": 0.7076923076923077
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-brute-slam-impact-crater 1.png",
+   "frame": {
+    "x": 168,
+    "y": 0,
+    "w": 168,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 168,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 168,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.47619047619047616,
+    "y": 0.7076923076923077
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-brute-slam-impact-crater 2.png",
+   "frame": {
+    "x": 336,
+    "y": 0,
+    "w": 168,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 168,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 168,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.47619047619047616,
+    "y": 0.7076923076923077
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-brute-slam-impact-crater 3.png",
+   "frame": {
+    "x": 504,
+    "y": 0,
+    "w": 168,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 168,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 168,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.47619047619047616,
+    "y": 0.7076923076923077
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-brute-slam-impact-crater 4.png",
+   "frame": {
+    "x": 0,
+    "y": 65,
+    "w": 168,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 168,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 168,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.47619047619047616,
+    "y": 0.7076923076923077
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-brute-slam-impact-crater 5.png",
+   "frame": {
+    "x": 168,
+    "y": 65,
+    "w": 168,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 168,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 168,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.47619047619047616,
+    "y": 0.7076923076923077
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-brute-slam-impact-crater 6.png",
+   "frame": {
+    "x": 336,
+    "y": 65,
+    "w": 168,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 168,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 168,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.47619047619047616,
+    "y": 0.7076923076923077
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-brute-slam-impact-crater 7.png",
+   "frame": {
+    "x": 504,
+    "y": 65,
+    "w": 168,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 168,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 168,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.47619047619047616,
+    "y": 0.7076923076923077
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-brute-slam-impact-crater 8.png",
+   "frame": {
+    "x": 0,
+    "y": 130,
+    "w": 168,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 168,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 168,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.47619047619047616,
+    "y": 0.7076923076923077
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-brute-slam-impact-crater 9.png",
+   "frame": {
+    "x": 168,
+    "y": 130,
+    "w": 168,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 168,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 168,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.47619047619047616,
+    "y": 0.7076923076923077
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-brute-slam-impact-crater 10.png",
+   "frame": {
+    "x": 336,
+    "y": 130,
+    "w": 168,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 168,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 168,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.47619047619047616,
+    "y": 0.7076923076923077
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-brute-slam-impact-crater 11.png",
+   "frame": {
+    "x": 504,
+    "y": 130,
+    "w": 168,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 168,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 168,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.47619047619047616,
+    "y": 0.7076923076923077
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-brute-slam-impact-crater 12.png",
+   "frame": {
+    "x": 0,
+    "y": 195,
+    "w": 168,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 168,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 168,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.47619047619047616,
+    "y": 0.7076923076923077
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-brute-slam-impact-crater 13.png",
+   "frame": {
+    "x": 168,
+    "y": 195,
+    "w": 168,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 168,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 168,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.47619047619047616,
+    "y": 0.7076923076923077
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-brute-slam-impact-crater 14.png",
+   "frame": {
+    "x": 336,
+    "y": 195,
+    "w": 168,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 168,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 168,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.47619047619047616,
+    "y": 0.7076923076923077
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hollow-road-brute-slam-impact-crater.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 672,
+   "h": 260
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 80,
+   "y": 46
+  },
+  "frameTags": [
+   {
+    "name": "hollow-road-brute-slam-impact-crater",
+    "from": 0,
+    "to": 14,
+    "direction": "forward"
+   }
+  ]
+ }
+}

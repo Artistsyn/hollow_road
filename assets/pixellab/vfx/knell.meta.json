@@ -1,0 +1,20 @@
+{
+ "name": "knell",
+ "for": "Bell Warden: knell",
+ "px_per_m": 53.2,
+ "anchor": "feet",
+ "loop": true,
+ "travels": true,
+ "hit_band_m": [
+  0.0,
+  0.55
+ ],
+ "pixellab_effect_id": "7f8ab578-d602-429f-ae11-426187828e2d",
+ "ground_y_px": 36,
+ "front_x_px": 56,
+ "notes": "The bell's toll along the stones, 29 px tall: a polished-bronze crescent front shivering a pixel each frame, ringing bronze crests marching into it, streaks back, a glint, stone chips hopping off the floor and settling, low dust. Low: jump it. Facing +x, exported in place (12 frames @ 12 fps, seamless loop). Feet anchor: ground is canvas row 36; the front's leading edge is at canvas x 56; place that point on the ring's position.",
+ "anchor_px": [
+  56,
+  36
+ ]
+}

@@ -1,0 +1,131 @@
+{
+ "frames": [
+  {
+   "filename": "hr-shots-arrow-flight-echo-of-bounty 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 46,
+    "h": 16
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 46,
+    "h": 16
+   },
+   "sourceSize": {
+    "w": 46,
+    "h": 16
+   },
+   "pivot": {
+    "x": 0.6521739130434783,
+    "y": 0.375
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-arrow-flight-echo-of-bounty 1.png",
+   "frame": {
+    "x": 46,
+    "y": 0,
+    "w": 46,
+    "h": 16
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 46,
+    "h": 16
+   },
+   "sourceSize": {
+    "w": 46,
+    "h": 16
+   },
+   "pivot": {
+    "x": 0.6521739130434783,
+    "y": 0.375
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-arrow-flight-echo-of-bounty 2.png",
+   "frame": {
+    "x": 0,
+    "y": 16,
+    "w": 46,
+    "h": 16
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 46,
+    "h": 16
+   },
+   "sourceSize": {
+    "w": 46,
+    "h": 16
+   },
+   "pivot": {
+    "x": 0.6521739130434783,
+    "y": 0.375
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-arrow-flight-echo-of-bounty 3.png",
+   "frame": {
+    "x": 46,
+    "y": 16,
+    "w": 46,
+    "h": 16
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 46,
+    "h": 16
+   },
+   "sourceSize": {
+    "w": 46,
+    "h": 16
+   },
+   "pivot": {
+    "x": 0.6521739130434783,
+    "y": 0.375
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hr-shots-arrow-flight-echo-of-bounty.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 92,
+   "h": 32
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 30,
+   "y": 6
+  },
+  "frameTags": [
+   {
+    "name": "hr-shots-arrow-flight-echo-of-bounty",
+    "from": 0,
+    "to": 3,
+    "direction": "forward"
+   }
+  ]
+ }
+}

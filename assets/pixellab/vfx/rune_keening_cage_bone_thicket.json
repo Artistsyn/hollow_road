@@ -1,0 +1,651 @@
+{
+ "frames": [
+  {
+   "filename": "hollow-road-rune-keening-cage-bone-thicket 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 102,
+    "h": 103
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 102,
+    "h": 103
+   },
+   "sourceSize": {
+    "w": 102,
+    "h": 103
+   },
+   "pivot": {
+    "x": 0.4803921568627451,
+    "y": 0.8640776699029126
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-keening-cage-bone-thicket 1.png",
+   "frame": {
+    "x": 102,
+    "y": 0,
+    "w": 102,
+    "h": 103
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 102,
+    "h": 103
+   },
+   "sourceSize": {
+    "w": 102,
+    "h": 103
+   },
+   "pivot": {
+    "x": 0.4803921568627451,
+    "y": 0.8640776699029126
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-keening-cage-bone-thicket 2.png",
+   "frame": {
+    "x": 204,
+    "y": 0,
+    "w": 102,
+    "h": 103
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 102,
+    "h": 103
+   },
+   "sourceSize": {
+    "w": 102,
+    "h": 103
+   },
+   "pivot": {
+    "x": 0.4803921568627451,
+    "y": 0.8640776699029126
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-keening-cage-bone-thicket 3.png",
+   "frame": {
+    "x": 306,
+    "y": 0,
+    "w": 102,
+    "h": 103
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 102,
+    "h": 103
+   },
+   "sourceSize": {
+    "w": 102,
+    "h": 103
+   },
+   "pivot": {
+    "x": 0.4803921568627451,
+    "y": 0.8640776699029126
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-keening-cage-bone-thicket 4.png",
+   "frame": {
+    "x": 408,
+    "y": 0,
+    "w": 102,
+    "h": 103
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 102,
+    "h": 103
+   },
+   "sourceSize": {
+    "w": 102,
+    "h": 103
+   },
+   "pivot": {
+    "x": 0.4803921568627451,
+    "y": 0.8640776699029126
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-keening-cage-bone-thicket 5.png",
+   "frame": {
+    "x": 0,
+    "y": 103,
+    "w": 102,
+    "h": 103
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 102,
+    "h": 103
+   },
+   "sourceSize": {
+    "w": 102,
+    "h": 103
+   },
+   "pivot": {
+    "x": 0.4803921568627451,
+    "y": 0.8640776699029126
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-keening-cage-bone-thicket 6.png",
+   "frame": {
+    "x": 102,
+    "y": 103,
+    "w": 102,
+    "h": 103
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 102,
+    "h": 103
+   },
+   "sourceSize": {
+    "w": 102,
+    "h": 103
+   },
+   "pivot": {
+    "x": 0.4803921568627451,
+    "y": 0.8640776699029126
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-keening-cage-bone-thicket 7.png",
+   "frame": {
+    "x": 204,
+    "y": 103,
+    "w": 102,
+    "h": 103
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 102,
+    "h": 103
+   },
+   "sourceSize": {
+    "w": 102,
+    "h": 103
+   },
+   "pivot": {
+    "x": 0.4803921568627451,
+    "y": 0.8640776699029126
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-keening-cage-bone-thicket 8.png",
+   "frame": {
+    "x": 306,
+    "y": 103,
+    "w": 102,
+    "h": 103
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 102,
+    "h": 103
+   },
+   "sourceSize": {
+    "w": 102,
+    "h": 103
+   },
+   "pivot": {
+    "x": 0.4803921568627451,
+    "y": 0.8640776699029126
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-keening-cage-bone-thicket 9.png",
+   "frame": {
+    "x": 408,
+    "y": 103,
+    "w": 102,
+    "h": 103
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 102,
+    "h": 103
+   },
+   "sourceSize": {
+    "w": 102,
+    "h": 103
+   },
+   "pivot": {
+    "x": 0.4803921568627451,
+    "y": 0.8640776699029126
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-keening-cage-bone-thicket 10.png",
+   "frame": {
+    "x": 0,
+    "y": 206,
+    "w": 102,
+    "h": 103
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 102,
+    "h": 103
+   },
+   "sourceSize": {
+    "w": 102,
+    "h": 103
+   },
+   "pivot": {
+    "x": 0.4803921568627451,
+    "y": 0.8640776699029126
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-keening-cage-bone-thicket 11.png",
+   "frame": {
+    "x": 102,
+    "y": 206,
+    "w": 102,
+    "h": 103
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 102,
+    "h": 103
+   },
+   "sourceSize": {
+    "w": 102,
+    "h": 103
+   },
+   "pivot": {
+    "x": 0.4803921568627451,
+    "y": 0.8640776699029126
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-keening-cage-bone-thicket 12.png",
+   "frame": {
+    "x": 204,
+    "y": 206,
+    "w": 102,
+    "h": 103
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 102,
+    "h": 103
+   },
+   "sourceSize": {
+    "w": 102,
+    "h": 103
+   },
+   "pivot": {
+    "x": 0.4803921568627451,
+    "y": 0.8640776699029126
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-keening-cage-bone-thicket 13.png",
+   "frame": {
+    "x": 306,
+    "y": 206,
+    "w": 102,
+    "h": 103
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 102,
+    "h": 103
+   },
+   "sourceSize": {
+    "w": 102,
+    "h": 103
+   },
+   "pivot": {
+    "x": 0.4803921568627451,
+    "y": 0.8640776699029126
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-keening-cage-bone-thicket 14.png",
+   "frame": {
+    "x": 408,
+    "y": 206,
+    "w": 102,
+    "h": 103
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 102,
+    "h": 103
+   },
+   "sourceSize": {
+    "w": 102,
+    "h": 103
+   },
+   "pivot": {
+    "x": 0.4803921568627451,
+    "y": 0.8640776699029126
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-keening-cage-bone-thicket 15.png",
+   "frame": {
+    "x": 0,
+    "y": 309,
+    "w": 102,
+    "h": 103
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 102,
+    "h": 103
+   },
+   "sourceSize": {
+    "w": 102,
+    "h": 103
+   },
+   "pivot": {
+    "x": 0.4803921568627451,
+    "y": 0.8640776699029126
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-keening-cage-bone-thicket 16.png",
+   "frame": {
+    "x": 102,
+    "y": 309,
+    "w": 102,
+    "h": 103
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 102,
+    "h": 103
+   },
+   "sourceSize": {
+    "w": 102,
+    "h": 103
+   },
+   "pivot": {
+    "x": 0.4803921568627451,
+    "y": 0.8640776699029126
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-keening-cage-bone-thicket 17.png",
+   "frame": {
+    "x": 204,
+    "y": 309,
+    "w": 102,
+    "h": 103
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 102,
+    "h": 103
+   },
+   "sourceSize": {
+    "w": 102,
+    "h": 103
+   },
+   "pivot": {
+    "x": 0.4803921568627451,
+    "y": 0.8640776699029126
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-keening-cage-bone-thicket 18.png",
+   "frame": {
+    "x": 306,
+    "y": 309,
+    "w": 102,
+    "h": 103
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 102,
+    "h": 103
+   },
+   "sourceSize": {
+    "w": 102,
+    "h": 103
+   },
+   "pivot": {
+    "x": 0.4803921568627451,
+    "y": 0.8640776699029126
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-keening-cage-bone-thicket 19.png",
+   "frame": {
+    "x": 408,
+    "y": 309,
+    "w": 102,
+    "h": 103
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 102,
+    "h": 103
+   },
+   "sourceSize": {
+    "w": 102,
+    "h": 103
+   },
+   "pivot": {
+    "x": 0.4803921568627451,
+    "y": 0.8640776699029126
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-keening-cage-bone-thicket 20.png",
+   "frame": {
+    "x": 0,
+    "y": 412,
+    "w": 102,
+    "h": 103
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 102,
+    "h": 103
+   },
+   "sourceSize": {
+    "w": 102,
+    "h": 103
+   },
+   "pivot": {
+    "x": 0.4803921568627451,
+    "y": 0.8640776699029126
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-keening-cage-bone-thicket 21.png",
+   "frame": {
+    "x": 102,
+    "y": 412,
+    "w": 102,
+    "h": 103
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 102,
+    "h": 103
+   },
+   "sourceSize": {
+    "w": 102,
+    "h": 103
+   },
+   "pivot": {
+    "x": 0.4803921568627451,
+    "y": 0.8640776699029126
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-keening-cage-bone-thicket 22.png",
+   "frame": {
+    "x": 204,
+    "y": 412,
+    "w": 102,
+    "h": 103
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 102,
+    "h": 103
+   },
+   "sourceSize": {
+    "w": 102,
+    "h": 103
+   },
+   "pivot": {
+    "x": 0.4803921568627451,
+    "y": 0.8640776699029126
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-keening-cage-bone-thicket 23.png",
+   "frame": {
+    "x": 306,
+    "y": 412,
+    "w": 102,
+    "h": 103
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 102,
+    "h": 103
+   },
+   "sourceSize": {
+    "w": 102,
+    "h": 103
+   },
+   "pivot": {
+    "x": 0.4803921568627451,
+    "y": 0.8640776699029126
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hollow-road-rune-keening-cage-bone-thicket.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 510,
+   "h": 515
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 49,
+   "y": 89
+  },
+  "frameTags": [
+   {
+    "name": "hollow-road-rune-keening-cage-bone-thicket",
+    "from": 0,
+    "to": 23,
+    "direction": "forward"
+   }
+  ]
+ }
+}

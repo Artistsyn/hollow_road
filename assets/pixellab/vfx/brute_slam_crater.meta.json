@@ -1,0 +1,21 @@
+{
+ "name": "brute_slam_crater",
+ "for": "brute 'slam' / 'late slam' (fight.rs BRUTE, reach 3.0 m)",
+ "px_per_m": 49,
+ "anchor": "feet",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": null,
+ "pixellab_effect_id": "2a65f7da-9225-4596-9000-89711eda24e2",
+ "notes": "Where the maul lands: a pale grit flash with a 2-frame hit-stop, then a dark crater pit with a broken rubble rim (~1.4 m), four cracks racing out from it, a big dust burst and dust rolling out to both sides (~3 m), heavy rocks flung up that bounce and settle, grit. The crater fades out in blocks at the end. Anchor = the crater centre on the ground. 15 frames @ 12 fps.",
+ "frame_size": [
+  168,
+  65
+ ],
+ "frames": 15,
+ "fps": 12,
+ "anchor_px": [
+  80,
+  46
+ ]
+}

@@ -1,0 +1,339 @@
+{
+ "frames": [
+  {
+   "filename": "hollow-magistrate-sentence-front 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 46,
+    "h": 37
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 46,
+    "h": 37
+   },
+   "sourceSize": {
+    "w": 46,
+    "h": 37
+   },
+   "pivot": {
+    "x": 0.30434782608695654,
+    "y": 0.4594594594594595
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-magistrate-sentence-front 1.png",
+   "frame": {
+    "x": 46,
+    "y": 0,
+    "w": 46,
+    "h": 37
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 46,
+    "h": 37
+   },
+   "sourceSize": {
+    "w": 46,
+    "h": 37
+   },
+   "pivot": {
+    "x": 0.30434782608695654,
+    "y": 0.4594594594594595
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-magistrate-sentence-front 2.png",
+   "frame": {
+    "x": 92,
+    "y": 0,
+    "w": 46,
+    "h": 37
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 46,
+    "h": 37
+   },
+   "sourceSize": {
+    "w": 46,
+    "h": 37
+   },
+   "pivot": {
+    "x": 0.30434782608695654,
+    "y": 0.4594594594594595
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-magistrate-sentence-front 3.png",
+   "frame": {
+    "x": 138,
+    "y": 0,
+    "w": 46,
+    "h": 37
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 46,
+    "h": 37
+   },
+   "sourceSize": {
+    "w": 46,
+    "h": 37
+   },
+   "pivot": {
+    "x": 0.30434782608695654,
+    "y": 0.4594594594594595
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-magistrate-sentence-front 4.png",
+   "frame": {
+    "x": 0,
+    "y": 37,
+    "w": 46,
+    "h": 37
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 46,
+    "h": 37
+   },
+   "sourceSize": {
+    "w": 46,
+    "h": 37
+   },
+   "pivot": {
+    "x": 0.30434782608695654,
+    "y": 0.4594594594594595
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-magistrate-sentence-front 5.png",
+   "frame": {
+    "x": 46,
+    "y": 37,
+    "w": 46,
+    "h": 37
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 46,
+    "h": 37
+   },
+   "sourceSize": {
+    "w": 46,
+    "h": 37
+   },
+   "pivot": {
+    "x": 0.30434782608695654,
+    "y": 0.4594594594594595
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-magistrate-sentence-front 6.png",
+   "frame": {
+    "x": 92,
+    "y": 37,
+    "w": 46,
+    "h": 37
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 46,
+    "h": 37
+   },
+   "sourceSize": {
+    "w": 46,
+    "h": 37
+   },
+   "pivot": {
+    "x": 0.30434782608695654,
+    "y": 0.4594594594594595
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-magistrate-sentence-front 7.png",
+   "frame": {
+    "x": 138,
+    "y": 37,
+    "w": 46,
+    "h": 37
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 46,
+    "h": 37
+   },
+   "sourceSize": {
+    "w": 46,
+    "h": 37
+   },
+   "pivot": {
+    "x": 0.30434782608695654,
+    "y": 0.4594594594594595
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-magistrate-sentence-front 8.png",
+   "frame": {
+    "x": 0,
+    "y": 74,
+    "w": 46,
+    "h": 37
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 46,
+    "h": 37
+   },
+   "sourceSize": {
+    "w": 46,
+    "h": 37
+   },
+   "pivot": {
+    "x": 0.30434782608695654,
+    "y": 0.4594594594594595
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-magistrate-sentence-front 9.png",
+   "frame": {
+    "x": 46,
+    "y": 74,
+    "w": 46,
+    "h": 37
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 46,
+    "h": 37
+   },
+   "sourceSize": {
+    "w": 46,
+    "h": 37
+   },
+   "pivot": {
+    "x": 0.30434782608695654,
+    "y": 0.4594594594594595
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-magistrate-sentence-front 10.png",
+   "frame": {
+    "x": 92,
+    "y": 74,
+    "w": 46,
+    "h": 37
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 46,
+    "h": 37
+   },
+   "sourceSize": {
+    "w": 46,
+    "h": 37
+   },
+   "pivot": {
+    "x": 0.30434782608695654,
+    "y": 0.4594594594594595
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-magistrate-sentence-front 11.png",
+   "frame": {
+    "x": 138,
+    "y": 74,
+    "w": 46,
+    "h": 37
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 46,
+    "h": 37
+   },
+   "sourceSize": {
+    "w": 46,
+    "h": 37
+   },
+   "pivot": {
+    "x": 0.30434782608695654,
+    "y": 0.4594594594594595
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hollow-magistrate-sentence-front.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 184,
+   "h": 111
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 14,
+   "y": 17
+  },
+  "frameTags": [
+   {
+    "name": "hollow-magistrate-sentence-front",
+    "from": 0,
+    "to": 11,
+    "direction": "forward"
+   }
+  ]
+ }
+}

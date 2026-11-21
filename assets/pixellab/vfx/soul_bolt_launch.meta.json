@@ -1,0 +1,11 @@
+{
+ "name": "soul_bolt_launch",
+ "for": "wraith_lord soul bolt: release at the throwing hand",
+ "px_per_m": 47.1,
+ "anchor": "centre",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": null,
+ "pixellab_effect_id": "88b08b6e-9fe1-477f-a765-6a631fd6de11",
+ "notes": "The soul flame in the Wraith Lord's hand swells and leans forward (frames 1-3), then tears loose on frame 4: a cold white flash, a crescent of cold air snapping open toward +x, torn ectoplasm streaks flung forward and motes rising. Anchor = the hand. 8 frames @12 fps; launch soul_bolt_flight on frame 4. Short enough to replay for each bolt of a volley."
+}

@@ -1,0 +1,313 @@
+{
+ "frames": [
+  {
+   "filename": "hollow-road-statue-stone-blade-trail 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 185,
+    "h": 186
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 185,
+    "h": 186
+   },
+   "sourceSize": {
+    "w": 185,
+    "h": 186
+   },
+   "pivot": {
+    "x": 0.6054054054054054,
+    "y": 0.43548387096774194
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-statue-stone-blade-trail 1.png",
+   "frame": {
+    "x": 185,
+    "y": 0,
+    "w": 185,
+    "h": 186
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 185,
+    "h": 186
+   },
+   "sourceSize": {
+    "w": 185,
+    "h": 186
+   },
+   "pivot": {
+    "x": 0.6054054054054054,
+    "y": 0.43548387096774194
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-statue-stone-blade-trail 2.png",
+   "frame": {
+    "x": 370,
+    "y": 0,
+    "w": 185,
+    "h": 186
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 185,
+    "h": 186
+   },
+   "sourceSize": {
+    "w": 185,
+    "h": 186
+   },
+   "pivot": {
+    "x": 0.6054054054054054,
+    "y": 0.43548387096774194
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-statue-stone-blade-trail 3.png",
+   "frame": {
+    "x": 555,
+    "y": 0,
+    "w": 185,
+    "h": 186
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 185,
+    "h": 186
+   },
+   "sourceSize": {
+    "w": 185,
+    "h": 186
+   },
+   "pivot": {
+    "x": 0.6054054054054054,
+    "y": 0.43548387096774194
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-statue-stone-blade-trail 4.png",
+   "frame": {
+    "x": 0,
+    "y": 186,
+    "w": 185,
+    "h": 186
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 185,
+    "h": 186
+   },
+   "sourceSize": {
+    "w": 185,
+    "h": 186
+   },
+   "pivot": {
+    "x": 0.6054054054054054,
+    "y": 0.43548387096774194
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-statue-stone-blade-trail 5.png",
+   "frame": {
+    "x": 185,
+    "y": 186,
+    "w": 185,
+    "h": 186
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 185,
+    "h": 186
+   },
+   "sourceSize": {
+    "w": 185,
+    "h": 186
+   },
+   "pivot": {
+    "x": 0.6054054054054054,
+    "y": 0.43548387096774194
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-statue-stone-blade-trail 6.png",
+   "frame": {
+    "x": 370,
+    "y": 186,
+    "w": 185,
+    "h": 186
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 185,
+    "h": 186
+   },
+   "sourceSize": {
+    "w": 185,
+    "h": 186
+   },
+   "pivot": {
+    "x": 0.6054054054054054,
+    "y": 0.43548387096774194
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-statue-stone-blade-trail 7.png",
+   "frame": {
+    "x": 555,
+    "y": 186,
+    "w": 185,
+    "h": 186
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 185,
+    "h": 186
+   },
+   "sourceSize": {
+    "w": 185,
+    "h": 186
+   },
+   "pivot": {
+    "x": 0.6054054054054054,
+    "y": 0.43548387096774194
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-statue-stone-blade-trail 8.png",
+   "frame": {
+    "x": 0,
+    "y": 372,
+    "w": 185,
+    "h": 186
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 185,
+    "h": 186
+   },
+   "sourceSize": {
+    "w": 185,
+    "h": 186
+   },
+   "pivot": {
+    "x": 0.6054054054054054,
+    "y": 0.43548387096774194
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-statue-stone-blade-trail 9.png",
+   "frame": {
+    "x": 185,
+    "y": 372,
+    "w": 185,
+    "h": 186
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 185,
+    "h": 186
+   },
+   "sourceSize": {
+    "w": 185,
+    "h": 186
+   },
+   "pivot": {
+    "x": 0.6054054054054054,
+    "y": 0.43548387096774194
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-statue-stone-blade-trail 10.png",
+   "frame": {
+    "x": 370,
+    "y": 372,
+    "w": 185,
+    "h": 186
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 185,
+    "h": 186
+   },
+   "sourceSize": {
+    "w": 185,
+    "h": 186
+   },
+   "pivot": {
+    "x": 0.6054054054054054,
+    "y": 0.43548387096774194
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hollow-road-statue-stone-blade-trail.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 740,
+   "h": 558
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 112,
+   "y": 81
+  },
+  "frameTags": [
+   {
+    "name": "hollow-road-statue-stone-blade-trail",
+    "from": 0,
+    "to": 10,
+    "direction": "forward"
+   }
+  ]
+ }
+}

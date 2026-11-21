@@ -1,0 +1,21 @@
+{
+ "name": "leap_land_light",
+ "for": "hound / wretch pounce landing",
+ "px_per_m": 86,
+ "anchor": "feet",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": null,
+ "pixellab_effect_id": "0c08540b-eac7-439c-8b61-ae3807bbc372",
+ "notes": "On touch-down: a dust burst at the feet, two dust clouds rolling out flat to both sides and thinning, thin dark cracks running out on the ground plane, small debris thrown up that bounces and settles, and fine grit. About 1.1 m across. 12 frames @ 12 fps.",
+ "frame_size": [
+  110,
+  38
+ ],
+ "frames": 12,
+ "fps": 12,
+ "anchor_px": [
+  49,
+  27
+ ]
+}

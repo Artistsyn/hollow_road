@@ -1,0 +1,23 @@
+{
+ "name": "tell_breath_in",
+ "for": "tell before a shout/ring blow: Hollowmere Screamer scream / second scream, Keening Cage keen / double keen, Mother her voice / many voices, Horror its stare (Motion::Ring), at Blow.tell",
+ "px_per_m": 28.3,
+ "anchor": "centre",
+ "anchor_px": [
+  63,
+  58
+ ],
+ "anchor_note": "anchor_px = the mouth (screamer knell frame 2 mouth); the screamer feet sat at (107,128), just below the canvas",
+ "faces": "left (air drawn in from in front of the mouth; mirror with the sprite)",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": null,
+ "pixellab_effect_id": "69b07fe0-d5c7-4d15-bea3-30903b826dbb",
+ "fps": 12,
+ "notes": "The inverse of the approved keen front: three thin pressure crescents in front of the mouth shrink into it one after another while air streaks and a few grit chunks are pulled in from all round. Neutral pale air colour so it fits any shouter; drawn at screamer scale (28.3 px/m) - scale x1.33 for the Keening Cage / Horror (37.5-38.1 px/m).",
+ "frames": 12,
+ "frame_px": [
+  127,
+  126
+ ]
+}

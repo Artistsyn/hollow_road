@@ -1,0 +1,11 @@
+{
+ "name": "arrow_impact_ground",
+ "for": "archer / bounty_echo arrows that miss or the low arrow striking the floor",
+ "px_per_m": 64.9,
+ "anchor": "feet",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": null,
+ "pixellab_effect_id": "555fd920-b4d5-4c4f-af8a-ed66770fcc4b",
+ "notes": "The arrow driven into the ground at a shallow angle (head buried, nock up-left, so it came from the left: mirror for shots going -x): it quivers for 5 frames (the nock end shakes 1 px), a lip of dirt round the entry, grit chunks thrown up that bounce and settle, a dust puff rising; the arrow then sits and breaks away at the end (1 s). Anchor = the point on the ground where it went in."
+}

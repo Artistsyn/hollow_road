@@ -1,0 +1,11 @@
+{
+ "name": "arrow_launch",
+ "for": "archer loose / low arrow, bounty_echo arrow / long draw / low arrow: release at the bow hand",
+ "px_per_m": 64.9,
+ "anchor": "centre",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": null,
+ "pixellab_effect_id": "c86d785d-e525-488a-a7c1-2a2798c6e45f",
+ "notes": "Bowstring release at the arrow rest, drawn for +x: the string snaps through in a thin pale crescent (frame 1) with a hard 4-point glint, air streaks shoot forward along the shot (frame 2), a faint see-through wisp and a few wood/fletch fibres drift down. Anchor = the bow hand / arrow rest. Play on the loose frame; start arrow_flight on frame 2."
+}

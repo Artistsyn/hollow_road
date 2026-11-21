@@ -1,0 +1,20 @@
+{
+ "name": "radiance_construct",
+ "for": "Radiant Construct: radiance",
+ "px_per_m": 38.9,
+ "anchor": "feet",
+ "loop": true,
+ "travels": true,
+ "hit_band_m": [
+  0.0,
+  2.2
+ ],
+ "pixellab_effect_id": "b7706f32-8bb0-4290-ae29-b167b3a9d3ff",
+ "ground_y_px": 90,
+ "front_x_px": 59,
+ "notes": "Hard holy light in the Construct's starlight: a near-upright white blade 86 px tall edged in its cyan, an afterimage edge, hard 1 px star rays flickering on twos at three heights, long light shafts streaming back, star glints, a faint glare line on the floor. No blur. Chest-high: roll through it. Facing +x, exported in place (12 frames @ 12 fps, seamless loop). Feet anchor: ground is canvas row 90; the front's leading edge is at canvas x 59; place that point on the ring's position.",
+ "anchor_px": [
+  59,
+  90
+ ]
+}

@@ -1,0 +1,20 @@
+{
+ "name": "radiance_priest",
+ "for": "Angel Priest: radiance",
+ "px_per_m": 50.8,
+ "anchor": "feet",
+ "loop": true,
+ "travels": true,
+ "hit_band_m": [
+  0.0,
+  1.6
+ ],
+ "pixellab_effect_id": "39ecc625-6e0c-4bd5-bad8-792c2c363570",
+ "ground_y_px": 86,
+ "front_x_px": 59,
+ "notes": "The Priest's sun as a front: a white-gold blade 81 px tall edged hot red-orange, three triangular sun-spikes (like the points on its halo-sun) pulsing on twos, hard star rays, shafts streaming back, cinders off the floor, a glare line. Chest-high: roll through it. Facing +x, exported in place (12 frames @ 12 fps, seamless loop). Feet anchor: ground is canvas row 86; the front's leading edge is at canvas x 59; place that point on the ring's position.",
+ "anchor_px": [
+  59,
+  86
+ ]
+}

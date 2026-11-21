@@ -1,0 +1,235 @@
+{
+ "frames": [
+  {
+   "filename": "hr-shots-light-spear-flight-archangel 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 94,
+    "h": 20
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 94,
+    "h": 20
+   },
+   "sourceSize": {
+    "w": 94,
+    "h": 20
+   },
+   "pivot": {
+    "x": 0.6063829787234043,
+    "y": 0.5
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-light-spear-flight-archangel 1.png",
+   "frame": {
+    "x": 94,
+    "y": 0,
+    "w": 94,
+    "h": 20
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 94,
+    "h": 20
+   },
+   "sourceSize": {
+    "w": 94,
+    "h": 20
+   },
+   "pivot": {
+    "x": 0.6063829787234043,
+    "y": 0.5
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-light-spear-flight-archangel 2.png",
+   "frame": {
+    "x": 188,
+    "y": 0,
+    "w": 94,
+    "h": 20
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 94,
+    "h": 20
+   },
+   "sourceSize": {
+    "w": 94,
+    "h": 20
+   },
+   "pivot": {
+    "x": 0.6063829787234043,
+    "y": 0.5
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-light-spear-flight-archangel 3.png",
+   "frame": {
+    "x": 0,
+    "y": 20,
+    "w": 94,
+    "h": 20
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 94,
+    "h": 20
+   },
+   "sourceSize": {
+    "w": 94,
+    "h": 20
+   },
+   "pivot": {
+    "x": 0.6063829787234043,
+    "y": 0.5
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-light-spear-flight-archangel 4.png",
+   "frame": {
+    "x": 94,
+    "y": 20,
+    "w": 94,
+    "h": 20
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 94,
+    "h": 20
+   },
+   "sourceSize": {
+    "w": 94,
+    "h": 20
+   },
+   "pivot": {
+    "x": 0.6063829787234043,
+    "y": 0.5
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-light-spear-flight-archangel 5.png",
+   "frame": {
+    "x": 188,
+    "y": 20,
+    "w": 94,
+    "h": 20
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 94,
+    "h": 20
+   },
+   "sourceSize": {
+    "w": 94,
+    "h": 20
+   },
+   "pivot": {
+    "x": 0.6063829787234043,
+    "y": 0.5
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-light-spear-flight-archangel 6.png",
+   "frame": {
+    "x": 0,
+    "y": 40,
+    "w": 94,
+    "h": 20
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 94,
+    "h": 20
+   },
+   "sourceSize": {
+    "w": 94,
+    "h": 20
+   },
+   "pivot": {
+    "x": 0.6063829787234043,
+    "y": 0.5
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-light-spear-flight-archangel 7.png",
+   "frame": {
+    "x": 94,
+    "y": 40,
+    "w": 94,
+    "h": 20
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 94,
+    "h": 20
+   },
+   "sourceSize": {
+    "w": 94,
+    "h": 20
+   },
+   "pivot": {
+    "x": 0.6063829787234043,
+    "y": 0.5
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hr-shots-light-spear-flight-archangel.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 282,
+   "h": 60
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 57,
+   "y": 10
+  },
+  "frameTags": [
+   {
+    "name": "hr-shots-light-spear-flight-archangel",
+    "from": 0,
+    "to": 7,
+    "direction": "forward"
+   }
+  ]
+ }
+}

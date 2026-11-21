@@ -1,0 +1,20 @@
+{
+ "name": "sentence",
+ "for": "Hollow Magistrate: sentence",
+ "px_per_m": 51.4,
+ "anchor": "feet",
+ "loop": true,
+ "travels": true,
+ "hit_band_m": [
+  0.0,
+  0.55
+ ],
+ "pixellab_effect_id": "940a378f-3746-4cdb-8cae-1203a5a76914",
+ "ground_y_px": 32,
+ "front_x_px": 42,
+ "notes": "His chain ring rolling out low (the chain he holds in a ring in his knell pose): six hand-drawn iron links in a bowed hoop 28 px tall, alternating face-on/edge-on and swapping every two frames with a 1 px rattle, thin black-crimson doom crescents behind it (his robe and cuffs), iron-on-stone sparks raked back from its foot, low dust. Low: jump it. Facing +x, exported in place (12 frames @ 12 fps, seamless loop). Feet anchor: ground is canvas row 32; the front's leading edge is at canvas x 42; place that point on the ring's position.",
+ "anchor_px": [
+  42,
+  32
+ ]
+}

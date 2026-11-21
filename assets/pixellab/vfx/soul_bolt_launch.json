@@ -1,0 +1,235 @@
+{
+ "frames": [
+  {
+   "filename": "hr-shots-soul-bolt-launch 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 42,
+    "h": 35
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 42,
+    "h": 35
+   },
+   "sourceSize": {
+    "w": 42,
+    "h": 35
+   },
+   "pivot": {
+    "x": 0.19047619047619047,
+    "y": 0.42857142857142855
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-soul-bolt-launch 1.png",
+   "frame": {
+    "x": 42,
+    "y": 0,
+    "w": 42,
+    "h": 35
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 42,
+    "h": 35
+   },
+   "sourceSize": {
+    "w": 42,
+    "h": 35
+   },
+   "pivot": {
+    "x": 0.19047619047619047,
+    "y": 0.42857142857142855
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-soul-bolt-launch 2.png",
+   "frame": {
+    "x": 84,
+    "y": 0,
+    "w": 42,
+    "h": 35
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 42,
+    "h": 35
+   },
+   "sourceSize": {
+    "w": 42,
+    "h": 35
+   },
+   "pivot": {
+    "x": 0.19047619047619047,
+    "y": 0.42857142857142855
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-soul-bolt-launch 3.png",
+   "frame": {
+    "x": 0,
+    "y": 35,
+    "w": 42,
+    "h": 35
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 42,
+    "h": 35
+   },
+   "sourceSize": {
+    "w": 42,
+    "h": 35
+   },
+   "pivot": {
+    "x": 0.19047619047619047,
+    "y": 0.42857142857142855
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-soul-bolt-launch 4.png",
+   "frame": {
+    "x": 42,
+    "y": 35,
+    "w": 42,
+    "h": 35
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 42,
+    "h": 35
+   },
+   "sourceSize": {
+    "w": 42,
+    "h": 35
+   },
+   "pivot": {
+    "x": 0.19047619047619047,
+    "y": 0.42857142857142855
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-soul-bolt-launch 5.png",
+   "frame": {
+    "x": 84,
+    "y": 35,
+    "w": 42,
+    "h": 35
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 42,
+    "h": 35
+   },
+   "sourceSize": {
+    "w": 42,
+    "h": 35
+   },
+   "pivot": {
+    "x": 0.19047619047619047,
+    "y": 0.42857142857142855
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-soul-bolt-launch 6.png",
+   "frame": {
+    "x": 0,
+    "y": 70,
+    "w": 42,
+    "h": 35
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 42,
+    "h": 35
+   },
+   "sourceSize": {
+    "w": 42,
+    "h": 35
+   },
+   "pivot": {
+    "x": 0.19047619047619047,
+    "y": 0.42857142857142855
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-soul-bolt-launch 7.png",
+   "frame": {
+    "x": 42,
+    "y": 70,
+    "w": 42,
+    "h": 35
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 42,
+    "h": 35
+   },
+   "sourceSize": {
+    "w": 42,
+    "h": 35
+   },
+   "pivot": {
+    "x": 0.19047619047619047,
+    "y": 0.42857142857142855
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hr-shots-soul-bolt-launch.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 126,
+   "h": 105
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 8,
+   "y": 15
+  },
+  "frameTags": [
+   {
+    "name": "hr-shots-soul-bolt-launch",
+    "from": 0,
+    "to": 7,
+    "direction": "forward"
+   }
+  ]
+ }
+}

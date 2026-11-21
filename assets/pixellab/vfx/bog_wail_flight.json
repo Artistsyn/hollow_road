@@ -1,0 +1,235 @@
+{
+ "frames": [
+  {
+   "filename": "hr-shots-bog-wail-flight 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 68,
+    "h": 52
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 68,
+    "h": 52
+   },
+   "sourceSize": {
+    "w": 68,
+    "h": 52
+   },
+   "pivot": {
+    "x": 0.6029411764705882,
+    "y": 0.46153846153846156
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-bog-wail-flight 1.png",
+   "frame": {
+    "x": 68,
+    "y": 0,
+    "w": 68,
+    "h": 52
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 68,
+    "h": 52
+   },
+   "sourceSize": {
+    "w": 68,
+    "h": 52
+   },
+   "pivot": {
+    "x": 0.6029411764705882,
+    "y": 0.46153846153846156
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-bog-wail-flight 2.png",
+   "frame": {
+    "x": 136,
+    "y": 0,
+    "w": 68,
+    "h": 52
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 68,
+    "h": 52
+   },
+   "sourceSize": {
+    "w": 68,
+    "h": 52
+   },
+   "pivot": {
+    "x": 0.6029411764705882,
+    "y": 0.46153846153846156
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-bog-wail-flight 3.png",
+   "frame": {
+    "x": 0,
+    "y": 52,
+    "w": 68,
+    "h": 52
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 68,
+    "h": 52
+   },
+   "sourceSize": {
+    "w": 68,
+    "h": 52
+   },
+   "pivot": {
+    "x": 0.6029411764705882,
+    "y": 0.46153846153846156
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-bog-wail-flight 4.png",
+   "frame": {
+    "x": 68,
+    "y": 52,
+    "w": 68,
+    "h": 52
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 68,
+    "h": 52
+   },
+   "sourceSize": {
+    "w": 68,
+    "h": 52
+   },
+   "pivot": {
+    "x": 0.6029411764705882,
+    "y": 0.46153846153846156
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-bog-wail-flight 5.png",
+   "frame": {
+    "x": 136,
+    "y": 52,
+    "w": 68,
+    "h": 52
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 68,
+    "h": 52
+   },
+   "sourceSize": {
+    "w": 68,
+    "h": 52
+   },
+   "pivot": {
+    "x": 0.6029411764705882,
+    "y": 0.46153846153846156
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-bog-wail-flight 6.png",
+   "frame": {
+    "x": 0,
+    "y": 104,
+    "w": 68,
+    "h": 52
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 68,
+    "h": 52
+   },
+   "sourceSize": {
+    "w": 68,
+    "h": 52
+   },
+   "pivot": {
+    "x": 0.6029411764705882,
+    "y": 0.46153846153846156
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-bog-wail-flight 7.png",
+   "frame": {
+    "x": 68,
+    "y": 104,
+    "w": 68,
+    "h": 52
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 68,
+    "h": 52
+   },
+   "sourceSize": {
+    "w": 68,
+    "h": 52
+   },
+   "pivot": {
+    "x": 0.6029411764705882,
+    "y": 0.46153846153846156
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hr-shots-bog-wail-flight.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 204,
+   "h": 156
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 41,
+   "y": 24
+  },
+  "frameTags": [
+   {
+    "name": "hr-shots-bog-wail-flight",
+    "from": 0,
+    "to": 7,
+    "direction": "forward"
+   }
+  ]
+ }
+}

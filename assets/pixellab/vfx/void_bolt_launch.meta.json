@@ -1,0 +1,11 @@
+{
+ "name": "void_bolt_launch",
+ "for": "void_stalker void bolt: cast between the cupped hands",
+ "px_per_m": 68.8,
+ "anchor": "centre",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": null,
+ "pixellab_effect_id": "3c7dddba-ac84-4f9d-8be4-c34fad3d6ded",
+ "notes": "Space tears open between the hands: a black slit with a violet lip opens like an eye (frames 1-3) while motes are dragged into it, swells and rounds into the hole (4-5), then seals to a point as it is flung +x (6), leaving violet streaks and drifting motes. Anchor = between the hands. 10 frames @12 fps; start void_bolt_flight on frame 6."
+}

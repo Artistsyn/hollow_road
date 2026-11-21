@@ -1,0 +1,21 @@
+{
+ "name": "leap_takeoff_light",
+ "for": "hound pounce / wretch pounce take-off (fight.rs HOUND/WRETCH 'pounce')",
+ "px_per_m": 86,
+ "anchor": "feet",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": null,
+ "pixellab_effect_id": "c84be2a5-ef4b-4cb3-a37e-1d34f39b6847",
+ "notes": "Dust kicked back off the ground (toward -x, behind a beast leaping +x): a rolling clot of dust and a low skid puff that drift back and thin, pebbles that fly back and settle, a spray of fine grit. Anchor = the hind feet on the ground. Built at the hound pounce sprite's density (107 px / 1.25 m); the wretch is about 79 px/m, so scale by px_per_m. Mirror x when leaping left. 10 frames @ 12 fps.",
+ "frame_size": [
+  71,
+  32
+ ],
+ "frames": 10,
+ "fps": 12,
+ "anchor_px": [
+  67,
+  26
+ ]
+}

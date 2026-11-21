@@ -1,0 +1,235 @@
+{
+ "frames": [
+  {
+   "filename": "hr-shots-hatchet-flight 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 40
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 40
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 40
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.475
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-hatchet-flight 1.png",
+   "frame": {
+    "x": 48,
+    "y": 0,
+    "w": 48,
+    "h": 40
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 40
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 40
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.475
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-hatchet-flight 2.png",
+   "frame": {
+    "x": 96,
+    "y": 0,
+    "w": 48,
+    "h": 40
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 40
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 40
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.475
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-hatchet-flight 3.png",
+   "frame": {
+    "x": 0,
+    "y": 40,
+    "w": 48,
+    "h": 40
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 40
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 40
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.475
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-hatchet-flight 4.png",
+   "frame": {
+    "x": 48,
+    "y": 40,
+    "w": 48,
+    "h": 40
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 40
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 40
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.475
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-hatchet-flight 5.png",
+   "frame": {
+    "x": 96,
+    "y": 40,
+    "w": 48,
+    "h": 40
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 40
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 40
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.475
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-hatchet-flight 6.png",
+   "frame": {
+    "x": 0,
+    "y": 80,
+    "w": 48,
+    "h": 40
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 40
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 40
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.475
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-hatchet-flight 7.png",
+   "frame": {
+    "x": 48,
+    "y": 80,
+    "w": 48,
+    "h": 40
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 40
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 40
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.475
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hr-shots-hatchet-flight.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 144,
+   "h": 120
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 24,
+   "y": 19
+  },
+  "frameTags": [
+   {
+    "name": "hr-shots-hatchet-flight",
+    "from": 0,
+    "to": 7,
+    "direction": "forward"
+   }
+  ]
+ }
+}

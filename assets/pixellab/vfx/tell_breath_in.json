@@ -1,0 +1,339 @@
+{
+ "frames": [
+  {
+   "filename": "hollow-road-tell-breath-in-before-a-shout 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 127,
+    "h": 126
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 127,
+    "h": 126
+   },
+   "sourceSize": {
+    "w": 127,
+    "h": 126
+   },
+   "pivot": {
+    "x": 0.7480314960629921,
+    "y": 0.5634920634920635
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-tell-breath-in-before-a-shout 1.png",
+   "frame": {
+    "x": 127,
+    "y": 0,
+    "w": 127,
+    "h": 126
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 127,
+    "h": 126
+   },
+   "sourceSize": {
+    "w": 127,
+    "h": 126
+   },
+   "pivot": {
+    "x": 0.7480314960629921,
+    "y": 0.5634920634920635
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-tell-breath-in-before-a-shout 2.png",
+   "frame": {
+    "x": 254,
+    "y": 0,
+    "w": 127,
+    "h": 126
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 127,
+    "h": 126
+   },
+   "sourceSize": {
+    "w": 127,
+    "h": 126
+   },
+   "pivot": {
+    "x": 0.7480314960629921,
+    "y": 0.5634920634920635
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-tell-breath-in-before-a-shout 3.png",
+   "frame": {
+    "x": 381,
+    "y": 0,
+    "w": 127,
+    "h": 126
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 127,
+    "h": 126
+   },
+   "sourceSize": {
+    "w": 127,
+    "h": 126
+   },
+   "pivot": {
+    "x": 0.7480314960629921,
+    "y": 0.5634920634920635
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-tell-breath-in-before-a-shout 4.png",
+   "frame": {
+    "x": 0,
+    "y": 126,
+    "w": 127,
+    "h": 126
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 127,
+    "h": 126
+   },
+   "sourceSize": {
+    "w": 127,
+    "h": 126
+   },
+   "pivot": {
+    "x": 0.7480314960629921,
+    "y": 0.5634920634920635
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-tell-breath-in-before-a-shout 5.png",
+   "frame": {
+    "x": 127,
+    "y": 126,
+    "w": 127,
+    "h": 126
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 127,
+    "h": 126
+   },
+   "sourceSize": {
+    "w": 127,
+    "h": 126
+   },
+   "pivot": {
+    "x": 0.7480314960629921,
+    "y": 0.5634920634920635
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-tell-breath-in-before-a-shout 6.png",
+   "frame": {
+    "x": 254,
+    "y": 126,
+    "w": 127,
+    "h": 126
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 127,
+    "h": 126
+   },
+   "sourceSize": {
+    "w": 127,
+    "h": 126
+   },
+   "pivot": {
+    "x": 0.7480314960629921,
+    "y": 0.5634920634920635
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-tell-breath-in-before-a-shout 7.png",
+   "frame": {
+    "x": 381,
+    "y": 126,
+    "w": 127,
+    "h": 126
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 127,
+    "h": 126
+   },
+   "sourceSize": {
+    "w": 127,
+    "h": 126
+   },
+   "pivot": {
+    "x": 0.7480314960629921,
+    "y": 0.5634920634920635
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-tell-breath-in-before-a-shout 8.png",
+   "frame": {
+    "x": 0,
+    "y": 252,
+    "w": 127,
+    "h": 126
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 127,
+    "h": 126
+   },
+   "sourceSize": {
+    "w": 127,
+    "h": 126
+   },
+   "pivot": {
+    "x": 0.7480314960629921,
+    "y": 0.5634920634920635
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-tell-breath-in-before-a-shout 9.png",
+   "frame": {
+    "x": 127,
+    "y": 252,
+    "w": 127,
+    "h": 126
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 127,
+    "h": 126
+   },
+   "sourceSize": {
+    "w": 127,
+    "h": 126
+   },
+   "pivot": {
+    "x": 0.7480314960629921,
+    "y": 0.5634920634920635
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-tell-breath-in-before-a-shout 10.png",
+   "frame": {
+    "x": 254,
+    "y": 252,
+    "w": 127,
+    "h": 126
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 127,
+    "h": 126
+   },
+   "sourceSize": {
+    "w": 127,
+    "h": 126
+   },
+   "pivot": {
+    "x": 0.7480314960629921,
+    "y": 0.5634920634920635
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-tell-breath-in-before-a-shout 11.png",
+   "frame": {
+    "x": 381,
+    "y": 252,
+    "w": 127,
+    "h": 126
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 127,
+    "h": 126
+   },
+   "sourceSize": {
+    "w": 127,
+    "h": 126
+   },
+   "pivot": {
+    "x": 0.7480314960629921,
+    "y": 0.5634920634920635
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hollow-road-tell-breath-in-before-a-shout.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 508,
+   "h": 378
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 95,
+   "y": 71
+  },
+  "frameTags": [
+   {
+    "name": "hollow-road-tell-breath-in-before-a-shout",
+    "from": 0,
+    "to": 11,
+    "direction": "forward"
+   }
+  ]
+ }
+}

@@ -1,0 +1,14 @@
+{
+ "name": "hex_impact",
+ "for": "hexer hex: hit on the hero (or on a raised shield)",
+ "px_per_m": 62.6,
+ "anchor": "centre",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": [
+  0.6,
+  1.8
+ ],
+ "pixellab_effect_id": "21638c17-d697-4ce6-b99a-2c0394d6a750",
+ "notes": "The curse clamps on: a pale flash, seven uneven violet tendrils lash out from the hit point, then hook their tips and clench back into a knot (grasping fingers), a ring of five runes settles over it and crumbles away in blocks; motes scatter and fall. Anchor = hit point. 10 frames @10 fps."
+}

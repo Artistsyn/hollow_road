@@ -37,6 +37,12 @@ ARMS = {
         "jolt": ((0.05, -0.95, 0.30), (0.85, 0.45, -0.10), (0.55, 0.80, -0.20)),
         # Smashed open: the arm thrown up and out to the side.
         "flung": ((-0.35, -0.40, 0.85), (-0.25, 0.60, 0.75), (-0.30, 0.90, 0.30)),
+        # A blow taken on the blade: knocked back over the right shoulder, so it shows from behind
+        # too (`jolt` drives it straight back at the camera, where it hardly moves on screen).
+        "knocked": ((-0.05, -0.90, 0.45), (0.55, 0.75, 0.35), (0.15, 0.90, 0.40)),
+        # The weapon's own parry: the blade beaten up from the guard to stand before the face,
+        # the fist at the chest, out ahead.
+        "beat": ((0.45, -0.55, 0.10), (0.70, 0.70, -0.10), (0.20, 0.98, -0.05)),
         # A flinch: the arm out to the side, the blade trailing.
         "flinch": ((-0.15, -0.90, 0.40), (0.40, -0.30, 0.85), (0.80, 0.20, 0.55)),
     },
@@ -46,6 +52,10 @@ ARMS = {
         "guard": ((0.30, -0.90, -0.15), (0.85, 0.05, -0.50), (0.70, 0.65, -0.20)),
         "jolt": ((0.15, -0.95, -0.10), (0.80, 0.30, -0.50), (0.45, 0.85, -0.25)),
         "flung": ((-0.20, 0.10, 0.97), (0.10, 0.85, -0.50), (-0.50, 0.85, 0.10)),
+        "knocked": ((0.05, -0.85, 0.35), (0.55, 0.65, -0.25), (0.10, 0.90, 0.40)),
+        # The parry: the weapon swept up into a high diagonal across the front, the fists before
+        # the face, the point up and out to the left.
+        "parry": ((0.55, 0.25, 0.20), (0.80, 0.55, -0.20), (0.35, 0.55, -0.75)),
         "flinch": ((-0.10, -0.95, 0.20), (0.60, -0.20, -0.75), (0.70, 0.60, -0.35)),
     },
 }
@@ -56,6 +66,8 @@ OFF = {"one": None, "two": 0.035}
 LEFT = {
     "hang": (0.03, -0.26, -0.02),
     "guard": (0.16, -0.12, 0.10),
+    # The guard's fist (or the shield on it) driven back in toward the chest by a blow.
+    "braced": (0.10, -0.06, 0.06),
     "mouth": (0.10, 0.08, 0.10),
     "out": (-0.05, -0.12, -0.22),
     # The buckler's parry: pulled in to the chest, then punched straight out ahead and up past the
@@ -64,11 +76,15 @@ LEFT = {
     "punch": (0.27, 0.03, -0.06),
     "punched": (0.26, 0.05, -0.07),
     "back": (0.17, -0.07, 0.0),
+    # A flask raised from behind: brought up out at the side, then tipped to the mouth with the fist
+    # beside the hood (at the mouth itself, the head hides it from straight behind).
+    "flask_low": (0.10, -0.06, -0.08),
+    "flask_up": (0.05, 0.11, -0.05),
 }
 
-# A clip: frames per view, keyframes [(t, pose)], whether the walk's gait runs, whether it is held
-# one-handed in both families. A pose: arm (a key of ARMS), left (a key of LEFT, ignored on two
-# hands), and any of lean, step, drop, twist, lift.
+# A clip: frames per view, keyframes [(t, pose)] (a family's own under `family_keys`), whether the
+# walk's gait runs, whether it is held one-handed in both families. A pose: arm (a key of ARMS),
+# left (a key of LEFT, ignored on two hands), and any of lean, step, drop, twist, lift.
 def k(t, arm, left="hang", **body):
     return (t, dict(arm=arm, left=left, **body))
 
@@ -80,7 +96,11 @@ CLIPS = {
     # The one-handed parry straight behind (bodies.py poses the others): the free fist punched out
     # ahead with the buckler, the chest turned into it, the weapon kept low for the riposte. The
     # game's live frames are 3-5; a fumble shows 0.62 and the flourish runs 0.45-0.95.
-    "parry": dict(frames={"north": 7}, families=["one"], keys=[
+    # Two-handed, the weapon swept up across the front (`family_keys`).
+    "parry": dict(frames={"north": 7}, families=["one", "two"], family_keys={"two": [
+        k(0, "guard", lean=4, step=0.03, drop=0.01, twist=-10), k(0.33, "parry", lean=2, step=0.02, drop=0.01, twist=-14),
+        k(0.5, "parry", lean=4, step=0.03, drop=0.015, twist=-18), k(0.83, "parry", lean=4, step=0.03, drop=0.015, twist=-16),
+        k(1, "guard", lean=4, step=0.03, drop=0.01, twist=-10)]}, keys=[
         k(0, "carry"), k(0.17, "carry", "tuck", lean=2, twist=-6),
         k(0.33, "carry", "punch", lean=5, step=0.02, twist=-16), k(0.5, "carry", "punched", lean=6, step=0.03, drop=0.01, twist=-18),
         k(0.67, "carry", "punched", lean=6, step=0.03, drop=0.01, twist=-18), k(0.83, "carry", "punched", lean=5, step=0.03, drop=0.008, twist=-16),
@@ -89,13 +109,17 @@ CLIPS = {
     "guard": dict(frames={"north-east": 5, "east": 5}, keys=[
         k(0, "carry"), k(1, "guard", "guard", lean=4, step=0.03, drop=0.01, twist=-10)]),
     # Standing ready side-on, breathing.
-    "idle": dict(frames={"east": 4}, loop=True, keys=[
+    "idle": dict(frames={"east": 4, "north": 6}, loop=True, view_keys={"north": [
+        # Straight behind, at ease with the weapon carried low, breathing and shifting its weight.
+        k(0, "carry", lean=3), k(0.5, "carry", lean=6, drop=0.016, twist=-6), k(1, "carry", lean=3)]}, keys=[
         k(0, "guard", "guard", lean=3, step=0.03, drop=0.008, twist=-8), k(0.5, "guard", "guard", lean=3, step=0.03, drop=0.016, twist=-8),
         k(1, "guard", "guard", lean=3, step=0.03, drop=0.008, twist=-8)]),
-    # A blow met on the guard: knocked back (the game plays 3-5), then set again.
-    "block_hit": dict(frames={"north-east": 7}, keys=[
+    # A blow met on the guard: the weapon knocked back over the shoulder and the body rocked back
+    # (the game plays 4, 5, 5, 4, 3), then set again; the free fist, or the shield on it, braced.
+    "block_hit": dict(frames={"north-east": 7, "east": 7}, keys=[
         k(0, "guard", "guard", lean=4, step=0.03, drop=0.01, twist=-10), k(0.3, "guard", "guard", lean=4, step=0.03, drop=0.01, twist=-10),
-        k(0.6, "jolt", "guard", lean=-14, step=-0.02, drop=0.02, twist=5), k(1, "guard", "guard", lean=2, step=0.02, drop=0.012, twist=-8)]),
+        k(0.6, "knocked", "braced", lean=-16, step=-0.03, drop=0.02, twist=-24), k(0.8, "knocked", "braced", lean=-12, step=-0.03, drop=0.02, twist=-20),
+        k(1, "guard", "guard", lean=2, step=0.02, drop=0.012, twist=-8)]),
     # Struck: the head and chest snap back and turn, the arms go out, then come back.
     "hurt": dict(frames={"north-east": 7, "east": 7}, keys=[
         k(0, "carry"), k(0.3, "flinch", "out", lean=-20, step=-0.04, drop=0.015, twist=25),
@@ -106,10 +130,16 @@ CLIPS = {
         k(0.4, "flinch", "out", lean=-20, step=-0.07, drop=0.04, twist=12), k(0.6, "flinch", "out", lean=-28, step=-0.07, drop=0.03, twist=26),
         k(1, "carry", lean=-2, drop=0.01)]),
     # The guard smashed open: the weapon thrown up and out (the game plays 3-8), the body rocked.
-    "guard_break": dict(frames={"north-east": 9}, keys=[
+    "guard_break": dict(frames={"north-east": 9, "east": 9}, keys=[
         k(0, "guard", "guard", lean=4, step=0.03, drop=0.01, twist=-10), k(0.25, "jolt", "guard", lean=-6, step=0.0, drop=0.02),
         k(0.5, "flung", "out", lean=-24, step=-0.06, drop=0.025, twist=28), k(0.8, "flung", "out", lean=-20, step=-0.06, drop=0.035, twist=20),
         k(1, "flinch", "out", lean=-8, step=-0.04, drop=0.03, twist=10)]),
+    # The weapon's own parry side-on (no shield): the blade beaten up from the guard to stand before
+    # the face, held through the live frames, and back.
+    "parry_weapon": dict(frames={"east": 7}, families=["one"], keys=[
+        k(0, "guard", "guard", lean=4, step=0.03, drop=0.01, twist=-10), k(0.33, "beat", "guard", lean=5, step=0.03, drop=0.01, twist=-14),
+        k(0.5, "beat", "guard", lean=6, step=0.04, drop=0.015, twist=-16), k(0.83, "beat", "guard", lean=5, step=0.04, drop=0.015, twist=-14),
+        k(1, "guard", "guard", lean=4, step=0.03, drop=0.01, twist=-10)]),
     # A hop back out of reach: crouch, off the ground, land, settle into the guard.
     "backstep": dict(frames={"north-east": 9}, keys=[
         k(0, "guard", "guard", lean=4, step=0.03, drop=0.01), k(0.2, "guard", "guard", lean=6, step=0.02, drop=0.03),
@@ -117,7 +147,9 @@ CLIPS = {
         k(1, "guard", "guard", lean=4, step=0.03, drop=0.01)]),
     # The flask to the mouth with the free hand, the head tipping back, and down again.
     "drink": dict(frames={"north-east": 9}, shared=True, keys=[
-        k(0, "carry"), k(0.3, "carry", "mouth", lean=-2), k(0.6, "carry", "mouth", lean=-8, twist=5), k(1, "carry", lean=0)]),
+        k(0, "carry"), k(0.3, "carry", "mouth", lean=-2), k(0.6, "carry", "mouth", lean=-8, twist=5), k(1, "carry", lean=0)],
+        view_keys={"north": [k(0, "carry"), k(0.25, "carry", "flask_low", lean=1, twist=6), k(0.45, "carry", "flask_up", lean=-6, twist=8),
+                             k(0.75, "carry", "flask_up", lean=-12, twist=8), k(1, "carry", lean=0)]}),
 }
 
 # The road's straight-behind view has every clip the north-east one has, frame for frame.
@@ -220,9 +252,9 @@ def blend(p, q, t):
     return out
 
 
-def frames(clip, n, family):
+def frames(clip, n, family, view=None):
     keys = []
-    for t, p in clip["keys"]:
+    for t, p in clip.get("family_keys", {}).get(family) or clip.get("view_keys", {}).get(view, clip["keys"]):
         p = dict(p)
         p["armv"] = ARMS["one" if clip.get("shared") else family][p["arm"]]
         p["leftv"] = LEFT[p["left"]]
@@ -320,14 +352,14 @@ def main():
             n = clip["frames"].get(view)
             if n is None: continue
             for family in (["one"] if clip.get("shared") else clip.get("families", ["one", "two"])):
-                skel, track = zip(*(pose(base, view, f, family, clip.get("shared")) for f in frames(clip, n, family)))
+                skel, track = zip(*(pose(base, view, f, family, clip.get("shared")) for f in frames(clip, n, family, view)))
                 stem = f"{family}_{name}_{view}"
                 json.dump(list(skel), open(os.path.join(out, stem + ".json"), "w"))
                 json.dump(list(track), open(os.path.join(out, stem + ".weapon.json"), "w"), indent=1)
                 # The elbow (which has the game fit the grip to the fist as drawn, anim.rs
                 # `fit_hold`) only for a forearm raised clear of the body: by the hip, the farthest
                 # drawn pixel along the forearm is the cloak or a leg, not the fist.
-                raised = [f["arm"][1][1] > -0.3 for f in frames(clip, n, family)]
+                raised = [f["arm"][1][1] > -0.3 for f in frames(clip, n, family, view)]
                 with open(os.path.join(out, stem + ".hold.txt"), "w") as fh:
                     for t, up in zip(track, raised):
                         elbow = f" {t['elbow'][0]} {t['elbow'][1]}" if up else ""

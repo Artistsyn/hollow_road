@@ -1,0 +1,14 @@
+{
+ "name": "starglass_flight",
+ "for": "radiant_construct starglass (Motion::Shot 13/TPS)",
+ "px_per_m": 38.4,
+ "anchor": "centre",
+ "loop": true,
+ "travels": true,
+ "hit_band_m": [
+  1.0,
+  1.9
+ ],
+ "pixellab_effect_id": "e978edef-4134-4a8e-adfd-079c13a4f6a4",
+ "notes": "A faceted star-glass splinter (34x11 px, ~0.9 m) spinning about its long axis (facets catch the light in turn), a lit needle tip, hard 4-point glints flicking off the top facets on alternate beats, a thin trail of blinking glass glitter. Construct palette (cyan/white glass, navy edge). Anchor = shard centre."
+}

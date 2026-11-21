@@ -1,0 +1,25 @@
+{
+ "name": "rune_mother_drowned_hands",
+ "for": "Mother of the Black Water 'drowned hands' / 'more hands' (side.rs MOTHER_BLOWS, Motion::Rune, reach -0.8..0.8 m, height 0..2.0 m)",
+ "px_per_m": 34,
+ "anchor": "feet",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": [
+  0.0,
+  2.0
+ ],
+ "pixellab_effect_id": "46e73c64-4f8c-4b61-a544-42013a8b0757",
+ "notes": "A pool of black water (~1.8 m) spreads on the ground with slow ripples and cold glints (frames 1-12), then frame 13 the water bursts up in a crown of black droplets and pale spray reaching ~1.8 m, and four drowned arms of black water (hand-pixelled, 1.35 m) rise, claw open, clench and sink back with drips (frames 14-23). Built at Mother density (121 px / 3.6 m). 24 frames @ 12 fps.",
+ "frame_size": [
+  91,
+  71
+ ],
+ "frames": 24,
+ "fps": 12,
+ "anchor_px": [
+  50,
+  60
+ ],
+ "hit_frame": 12
+}

@@ -1,0 +1,339 @@
+{
+ "frames": [
+  {
+   "filename": "radiant-construct-radiance-front 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.2375,
+    "y": 0.47368421052631576
+   },
+   "duration": 83
+  },
+  {
+   "filename": "radiant-construct-radiance-front 1.png",
+   "frame": {
+    "x": 80,
+    "y": 0,
+    "w": 80,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.2375,
+    "y": 0.47368421052631576
+   },
+   "duration": 83
+  },
+  {
+   "filename": "radiant-construct-radiance-front 2.png",
+   "frame": {
+    "x": 160,
+    "y": 0,
+    "w": 80,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.2375,
+    "y": 0.47368421052631576
+   },
+   "duration": 83
+  },
+  {
+   "filename": "radiant-construct-radiance-front 3.png",
+   "frame": {
+    "x": 240,
+    "y": 0,
+    "w": 80,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.2375,
+    "y": 0.47368421052631576
+   },
+   "duration": 83
+  },
+  {
+   "filename": "radiant-construct-radiance-front 4.png",
+   "frame": {
+    "x": 0,
+    "y": 95,
+    "w": 80,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.2375,
+    "y": 0.47368421052631576
+   },
+   "duration": 83
+  },
+  {
+   "filename": "radiant-construct-radiance-front 5.png",
+   "frame": {
+    "x": 80,
+    "y": 95,
+    "w": 80,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.2375,
+    "y": 0.47368421052631576
+   },
+   "duration": 83
+  },
+  {
+   "filename": "radiant-construct-radiance-front 6.png",
+   "frame": {
+    "x": 160,
+    "y": 95,
+    "w": 80,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.2375,
+    "y": 0.47368421052631576
+   },
+   "duration": 83
+  },
+  {
+   "filename": "radiant-construct-radiance-front 7.png",
+   "frame": {
+    "x": 240,
+    "y": 95,
+    "w": 80,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.2375,
+    "y": 0.47368421052631576
+   },
+   "duration": 83
+  },
+  {
+   "filename": "radiant-construct-radiance-front 8.png",
+   "frame": {
+    "x": 0,
+    "y": 190,
+    "w": 80,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.2375,
+    "y": 0.47368421052631576
+   },
+   "duration": 83
+  },
+  {
+   "filename": "radiant-construct-radiance-front 9.png",
+   "frame": {
+    "x": 80,
+    "y": 190,
+    "w": 80,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.2375,
+    "y": 0.47368421052631576
+   },
+   "duration": 83
+  },
+  {
+   "filename": "radiant-construct-radiance-front 10.png",
+   "frame": {
+    "x": 160,
+    "y": 190,
+    "w": 80,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.2375,
+    "y": 0.47368421052631576
+   },
+   "duration": 83
+  },
+  {
+   "filename": "radiant-construct-radiance-front 11.png",
+   "frame": {
+    "x": 240,
+    "y": 190,
+    "w": 80,
+    "h": 95
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 80,
+    "h": 95
+   },
+   "sourceSize": {
+    "w": 80,
+    "h": 95
+   },
+   "pivot": {
+    "x": 0.2375,
+    "y": 0.47368421052631576
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "radiant-construct-radiance-front.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 320,
+   "h": 285
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 19,
+   "y": 45
+  },
+  "frameTags": [
+   {
+    "name": "radiant-construct-radiance-front",
+    "from": 0,
+    "to": 11,
+    "direction": "forward"
+   }
+  ]
+ }
+}

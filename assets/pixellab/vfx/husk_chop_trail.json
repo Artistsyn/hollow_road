@@ -1,0 +1,261 @@
+{
+ "frames": [
+  {
+   "filename": "hollow-road-husk-cleaver-chop-trail 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 146,
+    "h": 155
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 146,
+    "h": 155
+   },
+   "sourceSize": {
+    "w": 146,
+    "h": 155
+   },
+   "pivot": {
+    "x": 0.5068493150684932,
+    "y": 0.4645161290322581
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-husk-cleaver-chop-trail 1.png",
+   "frame": {
+    "x": 146,
+    "y": 0,
+    "w": 146,
+    "h": 155
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 146,
+    "h": 155
+   },
+   "sourceSize": {
+    "w": 146,
+    "h": 155
+   },
+   "pivot": {
+    "x": 0.5068493150684932,
+    "y": 0.4645161290322581
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-husk-cleaver-chop-trail 2.png",
+   "frame": {
+    "x": 292,
+    "y": 0,
+    "w": 146,
+    "h": 155
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 146,
+    "h": 155
+   },
+   "sourceSize": {
+    "w": 146,
+    "h": 155
+   },
+   "pivot": {
+    "x": 0.5068493150684932,
+    "y": 0.4645161290322581
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-husk-cleaver-chop-trail 3.png",
+   "frame": {
+    "x": 0,
+    "y": 155,
+    "w": 146,
+    "h": 155
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 146,
+    "h": 155
+   },
+   "sourceSize": {
+    "w": 146,
+    "h": 155
+   },
+   "pivot": {
+    "x": 0.5068493150684932,
+    "y": 0.4645161290322581
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-husk-cleaver-chop-trail 4.png",
+   "frame": {
+    "x": 146,
+    "y": 155,
+    "w": 146,
+    "h": 155
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 146,
+    "h": 155
+   },
+   "sourceSize": {
+    "w": 146,
+    "h": 155
+   },
+   "pivot": {
+    "x": 0.5068493150684932,
+    "y": 0.4645161290322581
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-husk-cleaver-chop-trail 5.png",
+   "frame": {
+    "x": 292,
+    "y": 155,
+    "w": 146,
+    "h": 155
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 146,
+    "h": 155
+   },
+   "sourceSize": {
+    "w": 146,
+    "h": 155
+   },
+   "pivot": {
+    "x": 0.5068493150684932,
+    "y": 0.4645161290322581
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-husk-cleaver-chop-trail 6.png",
+   "frame": {
+    "x": 0,
+    "y": 310,
+    "w": 146,
+    "h": 155
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 146,
+    "h": 155
+   },
+   "sourceSize": {
+    "w": 146,
+    "h": 155
+   },
+   "pivot": {
+    "x": 0.5068493150684932,
+    "y": 0.4645161290322581
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-husk-cleaver-chop-trail 7.png",
+   "frame": {
+    "x": 146,
+    "y": 310,
+    "w": 146,
+    "h": 155
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 146,
+    "h": 155
+   },
+   "sourceSize": {
+    "w": 146,
+    "h": 155
+   },
+   "pivot": {
+    "x": 0.5068493150684932,
+    "y": 0.4645161290322581
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-husk-cleaver-chop-trail 8.png",
+   "frame": {
+    "x": 292,
+    "y": 310,
+    "w": 146,
+    "h": 155
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 146,
+    "h": 155
+   },
+   "sourceSize": {
+    "w": 146,
+    "h": 155
+   },
+   "pivot": {
+    "x": 0.5068493150684932,
+    "y": 0.4645161290322581
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hollow-road-husk-cleaver-chop-trail.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 438,
+   "h": 465
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 74,
+   "y": 72
+  },
+  "frameTags": [
+   {
+    "name": "hollow-road-husk-cleaver-chop-trail",
+    "from": 0,
+    "to": 8,
+    "direction": "forward"
+   }
+  ]
+ }
+}

@@ -137,8 +137,9 @@ pub struct Place {
     pub foes: &'static [(Archetype, f32, i32)],
     /// Metres walked from arriving before the road goes on (once every enemy is down).
     pub length: f32,
-    /// A shrine this many metres in, if the place has one.
+    /// A shrine this many metres in, if the place has one, and what it is like.
     pub shrine: Option<f32>,
+    pub shrine_look: ShrineLook,
     /// The wandering smith waits by the road this many metres in, until met.
     pub smith: Option<f32>,
     /// A boss (or mini-boss) bars the way this many metres in, once the place's other enemies are
@@ -191,7 +192,23 @@ pub enum Hold {
 
 const fn place(id: &'static str, title: &'static str, region: usize, map: (f32, f32), from: &'static str, scene: &'static str,
                length: f32, foes: &'static [(Archetype, f32, i32)]) -> Place {
-    Place { id, title, region, map, from, scene, foes, length, shrine: None, smith: None, boss: None, explore: None, cache: None, relic: None, loot: None, ambushes: &[], hold: Hold::Free }
+    Place { id, title, region, map, from, scene, foes, length, shrine: None, shrine_look: ShrineLook::Wood, smith: None, boss: None, explore: None, cache: None, relic: None, loot: None, ambushes: &[], hold: Hold::Free }
+}
+
+/// What a place's shrine is made of and how weathered, so it looks as if it belongs there.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ShrineLook { Wood, Marsh, Stone, Crypt }
+
+impl ShrineLook {
+    /// Its definition in the hollowmere kit (`assets/kits/hollowmere/kit.json`), from a scene's folder.
+    pub fn def(self) -> &'static str {
+        match self {
+            ShrineLook::Wood => "../kits/hollowmere#shrine_wood",
+            ShrineLook::Marsh => "../kits/hollowmere#shrine_marsh",
+            ShrineLook::Stone => "../kits/hollowmere#shrine_stone",
+            ShrineLook::Crypt => "../kits/hollowmere#shrine_crypt",
+        }
+    }
 }
 
 /// How the road between two places is walked across: straight on, a blend over some metres,
@@ -221,7 +238,7 @@ const fn road(a: &'static str, b: &'static str) -> Edge { Edge { a, b, gate: Gat
 /// gate mixes them; the regions past it ask for everything at once, harder the farther they lie.
 pub const PLACES: &[Place] = &[
     // ── The Ashen Warrens: the slum the pilgrimage leaves from, behind the road ─────────────
-    Place { shrine: Some(3.0), explore: Some("broken_spire"), ..place("warrens", "The Ashen Warrens", 0, (8.0, 46.0), "warrens_lane", "warrens.json", 40.0, &[(Husk, 22.0, 0)]) },
+    Place { shrine: Some(3.0), shrine_look: ShrineLook::Stone, explore: Some("broken_spire"), ..place("warrens", "The Ashen Warrens", 0, (8.0, 46.0), "warrens_lane", "warrens.json", 40.0, &[(Husk, 22.0, 0)]) },
     // The Collector's chest stands behind him: his Tally, once he is down.
     Place { boss: Some((22.0, &DEBT_COLLECTOR)), cache: Some(27.0), loot: Some("The Collector's Tally"), ..place("guild_hall", "The Guild Hall", 0, (3.0, 55.0), "warrens", "guild_hall.json", 30.0, &[(Husk, 12.0, -1)]) },
     place("warrens_lane", "Stilt Lane", 0, (14.0, 40.0), "road", "warrens_lane.json", 36.0, &[(Wretch, 14.0, 1), (Husk, 26.0, -1)]),
@@ -241,7 +258,7 @@ pub const PLACES: &[Place] = &[
     Place { explore: Some("hollow"), ambushes: &[Ambush { at: 38.0, foes: &[(Lancer, -3.6), (Husk, 3.2)], chest: false }],
         ..place("chapel", "Chapel Road", 1, (34.0, 40.0), "chapel_edge", "chapel_road.json", 58.0,
         &[(Shieldbearer, 12.0, 0), (Lancer, 22.0, 1), (Husk, 32.0, -1), (Shieldbearer, 44.0, 0), (Lancer, 47.0, -1)]) },
-    Place { shrine: Some(2.0), boss: Some((40.0, &BELL_WARDEN)), ..place("gate", "Hollowmere Gate", 1, (39.0, 30.0), "vale", "hollowmere_gate.json", 46.0,
+    Place { shrine: Some(2.0), shrine_look: ShrineLook::Marsh, boss: Some((40.0, &BELL_WARDEN)), ..place("gate", "Hollowmere Gate", 1, (39.0, 30.0), "vale", "hollowmere_gate.json", 46.0,
         &[(Lancer, 14.0, 1), (Shieldbearer, 18.0, -1), (Wretch, 30.0, 0), (Husk, 36.0, 1)]) },
     // Down a side path off Chapel Road: a dead end among the graves, with something left there,
     // and the chest is a trap.
@@ -269,7 +286,7 @@ pub const PLACES: &[Place] = &[
         &[(Shieldbearer, 12.0, 0), (Lancer, 20.0, 1), (Shieldbearer, 32.0, -1), (Brute, 40.0, 0)]),
     place("lower_stairs", "The Lower Stairs", 3, (61.0, 31.0), "stone_gate", "lower_stairs.json", 40.0, &[(Husk, 12.0, 0), (Lancer, 22.0, -1), (Wretch, 30.0, 1)]),
     // A lantern-seller's last lamp, left on the stall: the Hollowed Shrine needs its light.
-    Place { shrine: Some(3.0), cache: Some(30.0), relic: Some(Key::Lantern), ..place("stone_market", "The Lantern Market", 3, (68.0, 35.0), "lower_stairs", "stone_market.json", 36.0, &[(Husk, 20.0, 1)]) },
+    Place { shrine: Some(3.0), shrine_look: ShrineLook::Stone, cache: Some(30.0), relic: Some(Key::Lantern), ..place("stone_market", "The Lantern Market", 3, (68.0, 35.0), "lower_stairs", "stone_market.json", 36.0, &[(Husk, 20.0, 1)]) },
     // Under the city to the Warrens: a grate that lifts only from below.
     // The last husk keeps the passage out.
     Place { hold: Hold::Keepers(&[3]), ..place("sewers", "The Old Sewers", 3, (50.0, 40.0), "lower_stairs", "sewers.json", 60.0, &[(Wretch, 14.0, 0), (Husk, 26.0, -1), (Wretch, 40.0, 1), (Husk, 48.0, 0), (Brute, 55.0, 0)]) },
@@ -285,7 +302,7 @@ pub const PLACES: &[Place] = &[
     // with a gravecaller behind it.
     Place { ambushes: &[Ambush { at: 27.0, foes: &[(Bloater, -3.0), (Gravecaller, 4.4)], chest: false }],
         ..place("sunken_steps", "The Sunken Steps", 4, (60.0, 49.0), "bridge_ward", "sunken_steps.json", 42.0, &[(Husk, 12.0, 0), (Bloater, 17.0, -1), (Wretch, 22.0, 1), (Hexer, 34.0, -1)]) },
-    Place { shrine: Some(3.0), ..place("vine_halls", "The Vine Halls", 4, (52.0, 52.0), "sunken_steps", "vine_halls.json", 40.0, &[(Wretch, 16.0, -1), (Lancer, 26.0, 1), (Gravecaller, 34.0, 0)]) },
+    Place { shrine: Some(3.0), shrine_look: ShrineLook::Crypt, ..place("vine_halls", "The Vine Halls", 4, (52.0, 52.0), "sunken_steps", "vine_halls.json", 40.0, &[(Wretch, 16.0, -1), (Lancer, 26.0, 1), (Gravecaller, 34.0, 0)]) },
     Place { boss: Some((30.0, &WRAITH_LORD)), ..place("wraith_sanctum", "The Wraith Sanctum", 4, (58.0, 58.0), "vine_halls", "wraith_sanctum.json", 36.0, &[(Husk, 12.0, 0)]) },
     // Out of the vault, a catacomb stair up to Chapel Road, its door barred from this side. The
     // Sentinel kept watch over a slab of a sword no one living could lift.
@@ -295,7 +312,7 @@ pub const PLACES: &[Place] = &[
     // Husks shamble in front while a hexer works from behind them; a brute and more wait in the yard.
     Place { ambushes: &[Ambush { at: 30.0, foes: &[(Brute, -3.2), (Husk, 3.0), (Hexer, 4.6)], chest: false }], hold: Hold::Clear,
         ..place("violet_road", "The Violet Road", 5, (86.0, 37.0), "magistrate", "violet_road.json", 50.0, &[(Husk, 12.0, 0), (Husk, 14.0, 1), (Hexer, 22.0, 0), (Wretch, 28.0, -1), (Husk, 38.0, 0), (Brute, 46.0, 0)]) },
-    Place { shrine: Some(3.0), ..place("varnholt", "Varnholt", 5, (90.0, 45.0), "violet_road", "varnholt.json", 40.0, &[(Husk, 20.0, -1), (Husk, 24.0, 1)]) },
+    Place { shrine: Some(3.0), shrine_look: ShrineLook::Stone, ..place("varnholt", "Varnholt", 5, (90.0, 45.0), "violet_road", "varnholt.json", 40.0, &[(Husk, 20.0, -1), (Husk, 24.0, 1)]) },
     // The pens back onto the Bridge Ward: a gate chained on the town side.
     Place { boss: Some((34.0, &THE_BUTCHER)), ..place("husk_pens", "The Husk Pens", 5, (78.0, 48.0), "varnholt", "husk_pens.json", 44.0,
         &[(Husk, 10.0, 0), (Husk, 12.0, -1), (Husk, 14.0, 1), (Bloater, 19.0, 0), (Shieldbearer, 26.0, 0)]) },
@@ -315,7 +332,7 @@ pub const PLACES: &[Place] = &[
         &[(Shieldbearer, 12.0, 0), (Lancer, 20.0, -1), (Lancer, 22.0, 1)]) },
     // ── The Celestial Spire: north, "where starlight meets stone" (`spire_road`) ─────────────
     // The pilgrims' road across a glassy plain under stars too close, kept by the angels' construct.
-    Place { shrine: Some(3.0), boss: Some((46.0, &RADIANT_CONSTRUCT)),
+    Place { shrine: Some(3.0), shrine_look: ShrineLook::Stone, boss: Some((46.0, &RADIANT_CONSTRUCT)),
         ..place("starlit_wastes", "The Starlit Wastes", 7, (96.0, 15.0), "statue_court", "starlit_wastes.json", 54.0,
         &[(Lancer, 12.0, 0), (Archer, 22.0, 1), (Hexer, 30.0, -1), (Shieldbearer, 38.0, 0)]) },
     // A pass under the broken sky, where a drake nests in the tear; the Order took Olekeen here.
@@ -324,13 +341,13 @@ pub const PLACES: &[Place] = &[
         &[(Hound, 12.0, -1), (Hound, 13.5, 1), (Brute, 24.0, 0), (Hexer, 34.0, 1), (Archer, 40.0, -1)]) },
     place("spire_stair", "The Spire Stair", 7, (101.0, 4.0), "sky_peaks", "spire_stair.json", 56.0,
         &[(Shieldbearer, 12.0, 0), (Lancer, 22.0, -1), (Archer, 32.0, 1), (Brute, 40.0, 0), (Hexer, 50.0, 0)]),
-    Place { shrine: Some(3.0), ..place("sealed_slab", "The Sealed Slab", 7, (96.0, 6.0), "spire_stair", "sealed_slab.json", 30.0, &[]) },
+    Place { shrine: Some(3.0), shrine_look: ShrineLook::Crypt, ..place("sealed_slab", "The Sealed Slab", 7, (96.0, 6.0), "spire_stair", "sealed_slab.json", 30.0, &[]) },
     Place { boss: Some((30.0, &THE_ARCHANGEL)), ..place("spire_summit", "The Summit", 7, (98.0, 1.0), "sealed_slab", "spire_summit.json", 36.0, &[]) },
     // ── The Order's stronghold: down the Spire's far side, where the Eye was carried (`finale`) ──
     place("crimson_stair", "The Crimson Stair", 8, (91.0, 2.0), "spire_summit", "crimson_stair.json", 52.0,
         &[(Lancer, 12.0, 0), (Archer, 20.0, 1), (Lancer, 28.0, -1), (Hexer, 36.0, 0), (Shieldbearer, 44.0, 0)]),
     // Its gatehouse lets a rope bridge down across to the Sealed Slab, from the gate's side only.
-    Place { shrine: Some(3.0), boss: Some((36.0, &CRIMSON_CAPTAIN)), ..place("radiant_gate", "The Radiant Gate", 8, (85.0, 4.0), "crimson_stair", "radiant_gate.json", 44.0,
+    Place { shrine: Some(3.0), shrine_look: ShrineLook::Stone, boss: Some((36.0, &CRIMSON_CAPTAIN)), ..place("radiant_gate", "The Radiant Gate", 8, (85.0, 4.0), "crimson_stair", "radiant_gate.json", 44.0,
         &[(Shieldbearer, 14.0, 0), (Lancer, 22.0, -1), (Archer, 24.0, 1)]) },
     // The cells hold Olekeen until every gaoler is down; past them, the foundry one way, the Eye the other.
     Place { hold: Hold::Clear, ..place("penitent_cells", "The Penitents' Cells", 8, (79.0, 3.0), "radiant_gate", "penitent_cells.json", 46.0,

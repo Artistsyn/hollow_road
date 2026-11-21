@@ -158,6 +158,15 @@ pub(crate) const RUN_COST: f32 = 12.0 / 60.0;
 const COMMIT: f32 = 0.7;
 /// Ticks an enemy takes to shift one lane while it aims.
 const SHIFT: u32 = 16;
+/// The spring of a lunge: its last ticks of windup, and how far short of the hero it lands, metres.
+const LUNGE_T: u32 = 8;
+const LUNGE_STOP: f32 = 1.3;
+/// Foes take turns: at most this many wind up at once, and no blow (or missile) lands within
+/// `BLOW_SPACING` ticks of another, so there is always an answer. One kept waiting tries again
+/// after `TURN_WAIT` ticks.
+const MOST_WINDING: usize = 2;
+const BLOW_SPACING: u32 = 18;
+const TURN_WAIT: u32 = 10;
 /// How long a broken stance leaves an enemy open, ticks.
 const STAGGER: u32 = 150;
 /// The hero's poise: what hits wear down (1.3 a point of damage) before one staggers them. It
@@ -228,10 +237,15 @@ pub struct Input {
     pub backstep: bool,
     pub light: bool,
     pub heavy: bool,
+    /// The heavy's button still held: at the top of its wind-up the swing waits, gathering
+    /// strength (`Charge`), until it is let go or full.
+    pub heavy_held: bool,
     pub parry: bool,
     pub flask: bool,
     /// A ranged attack: an arrow or a bolt from what the other hand holds.
     pub loose: bool,
+    /// The loose button still held: a bow at full draw waits there, gathering (`Charge`).
+    pub loose_held: bool,
     /// A spell cast through the catalyst the other hand holds.
     pub cast: bool,
     /// The weapon's art (`arts`), if it has one and the meter holds its cost.
@@ -317,6 +331,19 @@ pub struct Spec {
 /// How much longer a weapon made for both hands takes to swing and to recover held in one.
 pub const ONE_HAND_SLOW: f32 = 1.15;
 
+/// A light's windup against the weapon's table (`Move::spec_for`): quick enough to be worth
+/// throwing between a foe's blows, not only the odd jab at a boss. Its recovery stays nearly
+/// whole (`LIGHT_REST`), so a light thrown into a blow is still paid for.
+pub const LIGHT_QUICK: f32 = 0.85;
+pub const LIGHT_REST: f32 = 0.95;
+/// A light's damage and stance damage against the table: as much less as it is quicker, so a
+/// stream of lights deals what it did; what is gained is the safety of a short swing.
+pub const LIGHT_HARM: f32 = 0.85;
+/// Lights in a string (`Spec::chained`): each pressed in the one before's recovery cuts it short.
+pub const CHAIN: u8 = 3;
+/// Ticks into a light's recovery before the next of a string may cut it short (half of it).
+pub const CHAIN_FROM: u32 = 7;
+
 impl Spec {
     /// The same strike swung one-handed with a weapon made for both: windup and recovery
     /// `ONE_HAND_SLOW` longer, the live frames as they were.
@@ -324,6 +351,22 @@ impl Spec {
         let slow = |t: u32| (t as f32 * ONE_HAND_SLOW).ceil() as u32;
         Spec { frames: (slow(self.frames.0), self.frames.1, slow(self.frames.2)), ..self }
     }
+
+    /// The `link`th light of a string (0, the first, as it is): the middle ones wind up in 90%
+    /// of the time; the last is a finisher, a little slower and 30% harder on stance, with 30%
+    /// more recovery, so ending a string leaves the hero open.
+    pub fn chained(self, link: u8) -> Spec {
+        let times = |t: u32, k: f32| ((t as f32 * k).round() as u32).max(1);
+        let (wind, live, rest) = self.frames;
+        match link {
+            0 => self,
+            l if l + 1 < CHAIN => Spec { frames: (times(wind, 0.9), live, rest), ..self },
+            _ => Spec { frames: (times(wind, 0.9), live, times(rest, 1.3)), stance: self.stance * 1.3, ..self },
+        }
+    }
+
+    /// Whether a light under way at tick `t` may be cut short by the next of its string.
+    pub fn chains_at(self, t: u32) -> bool { t >= self.frames.0 + self.frames.1 + CHAIN_FROM }
 }
 
 impl Move {
@@ -350,6 +393,14 @@ impl Move {
     /// As swung with a weapon of `class` and `off` in the other hand: the light and heavy are the
     /// weapon's own, the parry the offhand's; the rest are the body's.
     pub fn spec_for(self, class: crate::gear::Class, off: Option<crate::gear::Guard>) -> Spec {
+        let s = self.table_spec(class, off);
+        if self != Move::Light { return s; }
+        let times = |t: u32, k: f32| ((t as f32 * k).round() as u32).max(1);
+        Spec { frames: (times(s.frames.0, LIGHT_QUICK), s.frames.1, times(s.frames.2, LIGHT_REST)), damage: s.damage * LIGHT_HARM, stance: s.stance * LIGHT_HARM, ..s }
+    }
+
+    /// `spec_for` as each weapon's table has it, before a light is quickened.
+    fn table_spec(self, class: crate::gear::Class, off: Option<crate::gear::Guard>) -> Spec {
         use crate::gear::{Class, Guard};
         let s = |frames, stamina, iframes, reach, damage, stance| Spec { frames, stamina, iframes, reach, damage, stance, wide: 0, armour: 0 };
         match (self, class) {
@@ -428,9 +479,9 @@ impl Move {
         let s = |frames, stamina, damage, stance| Spec { frames, stamina, iframes: None, reach: BOLT_RANGE, damage, stance, wide: 0, armour: 0 };
         match r {
             Ranged::Bow => s((36, 2, 20), 14.0, 10.0, 3.0),
-            Ranged::BloodBow => s((34, 2, 20), 10.0, 11.0, 3.0),
+            Ranged::BloodBow => s((34, 2, 22), 10.0, 11.0, 3.0),
             // Quick to aim, long to wind again: a heavy bolt, a few of a light's damage a second.
-            Ranged::BloodCrossbow => s((28, 2, 52), 8.0, 16.0, 6.0),
+            Ranged::BloodCrossbow => s((28, 2, 55), 8.0, 16.0, 6.0),
             // A long draw for a heavy arrow: half again a shortbow's, for a little more stamina.
             Ranged::Longbow => s((44, 2, 22), 16.0, 15.0, 5.0),
             Ranged::Frost => s((34, 3, 20), 8.0, 20.0, 24.0),
@@ -463,6 +514,42 @@ pub struct Act {
     /// place across the road then (a roll travels from it).
     pub from_lane: i32,
     pub from_x: f32,
+    /// Which light of a string it is (`Spec::chained`; 0 for anything else).
+    pub link: u8,
+    /// A heavy's strength gathered at the top of its wind-up, or a bow's at full draw.
+    pub charge: Charge,
+    /// What it is in its string (`combo::Route`).
+    pub route: crate::combo::Route,
+}
+
+/// Ticks a heavy holds at the top of its wind-up to gather its full strength.
+pub const CHARGE_FULL: u32 = 60;
+/// What a fully gathered heavy deals, in its plain heavy's damage and stance.
+pub const CHARGE_MOST: f32 = 2.0;
+
+/// A heavy held at the top of its wind-up: how long it has gathered, and whether it is waiting
+/// there this tick (its swing not yet let go).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Charge { pub ticks: u32, pub holding: bool }
+
+impl Charge {
+    /// How full it is, 0 (a quick heavy) to 1.
+    pub fn level(self) -> f32 { (self.ticks as f32 / CHARGE_FULL as f32).min(1.0) }
+    pub fn is_full(self) -> bool { self.ticks >= CHARGE_FULL }
+    /// `spec` as the gathered strength swings it: damage and stance up to `CHARGE_MOST` times.
+    pub fn apply(self, spec: Spec) -> Spec {
+        let k = 1.0 + (CHARGE_MOST - 1.0) * self.level();
+        Spec { damage: spec.damage * k, stance: spec.stance * k, ..spec }
+    }
+    /// One tick at `t` of a wind-up `windup` ticks long of a move that `holds` (`combo::Route::holds`),
+    /// its button `held`: whether it waits at the top of the wind-up gathering, and the event when
+    /// the charge comes full.
+    pub fn tick(&mut self, holds: bool, (t, windup): (u32, u32), held: bool) -> Option<Event> {
+        self.holding = holds && held && t + 1 == windup && !self.is_full();
+        if !self.holding { return None; }
+        self.ticks += 1;
+        self.is_full().then_some(Event::ChargeFull)
+    }
 }
 
 impl Act {
@@ -502,16 +589,19 @@ pub struct Attack {
     pub follow: bool,
     /// The clip it is drawn with (its own name, or one it borrows).
     pub art: &'static str,
-    /// How far through its windup it flashes its warning, and how far it follows the hero's lane.
-    /// A delayed blow flashes early and goes on following: a roll at the flash is a roll too soon.
+    /// How far through its windup it flashes its warning: it follows the hero's lane (and a
+    /// rune the hero's ground) until then, never after. A delayed blow flashes early and hangs:
+    /// a roll in place at the flash is over before it falls.
     pub tell: f32,
-    pub lock: f32,
     /// Loosed rather than swung: it flies down the lane it was aimed at (`Missile`) and strikes
     /// whoever stands there when it arrives.
     pub shot: Option<Flight>,
     /// Lands on the ground where the hero stood when it locked on, not in front of the enemy: a
     /// rune or a burst, its patch marked on the road all through the windup.
     pub area: bool,
+    /// It springs at the hero over the end of its windup (`LUNGE_T`), its body carrying the blow,
+    /// and lands just short of them (`LUNGE_STOP`): close, and open, while it recovers.
+    pub travel: bool,
 }
 
 /// How something loosed flies: metres a second, whether it follows the hero's lane until it is
@@ -594,17 +684,18 @@ pub const AREA_HALF: f32 = 1.1;
 
 /// An attack with no follow-up, warning and locking on at the usual point.
 const fn att(name: &'static str, frames: (u32, u32, u32), reach: f32, wide: i32, damage: f32, guard: f32, kind: Kind, parry: bool) -> Attack {
-    Attack { name, frames, reach, wide, damage, guard, kind, parry, then: None, follow: false, art: name, tell: COMMIT, lock: COMMIT, shot: None, area: false }
+    Attack { name, frames, reach, wide, damage, guard, kind, parry, then: None, follow: false, art: name, tell: COMMIT, shot: None, area: false, travel: false }
 }
 
 impl Attack {
     const fn art(self, art: &'static str) -> Attack { Attack { art, ..self } }
-    /// Warns at `tell` and follows the hero's lane until `lock` (fractions of its windup).
-    const fn delayed(self, tell: f32, lock: f32) -> Attack { Attack { tell, lock, ..self } }
+    /// Warns, and stops following the hero, at `tell` (a fraction of its windup).
+    const fn delayed(self, tell: f32) -> Attack { Attack { tell, ..self } }
     const fn then(self, next: usize) -> Attack { Attack { then: Some(next), ..self } }
     const fn follow_up(self) -> Attack { Attack { follow: true, ..self } }
     const fn shot(self, speed: f32, homing: bool, look: Look) -> Attack { Attack { shot: Some(Flight { speed, homing, look }), ..self } }
     const fn area(self) -> Attack { Attack { area: true, ..self } }
+    const fn lunges(self) -> Attack { Attack { travel: true, ..self } }
 }
 
 /// The shieldbearer's bash back when its shield turns a light strike (its attack of that index).
@@ -649,8 +740,8 @@ pub enum Archetype {
     /// it falls), a sweep across two lanes, and a stamp that cracks the ground nothing stops.
     /// Teaches rolling through and punishing its long recoveries.
     Brute,
-    /// Quick and frail, in packs: a bite, a double snap, and a pounce from afar that follows the
-    /// hero's lane until late. Teaches keeping several in view and rolling late.
+    /// Quick and frail, in packs: a bite, a double snap, and a pounce from afar onto the lane it
+    /// marked. Teaches keeping several in view and leaving a marked lane.
     Hound,
     /// Swollen with plague: a gout of bile across two lanes and a belly slam, and felled it swells
     /// and bursts over its lane and both beside it (`BURST`). Teaches backing off what you kill.
@@ -688,14 +779,14 @@ impl Archetype {
         const HUSK: [Attack; 3] = [
             att("chop", (42, 6, 40), 2.9, 0, 28.0, 30.0, Kind::Physical, true),
             att("sweep", (50, 8, 44), 2.8, 1, 20.0, 45.0, Kind::GuardBreak, false),
-            // The cleaver held up, and held: it flashes early and follows the hero's lane almost
-            // to the end. Roll late, or parry late.
-            att("late chop", (74, 6, 42), 2.9, 0, 32.0, 34.0, Kind::Physical, true).art("chop").delayed(0.38, 0.9),
+            // The cleaver held up, and held: it flashes early, fixed on its lane, and hangs. Leave
+            // the lane, or roll or parry late.
+            att("late chop", (74, 6, 42), 2.9, 0, 32.0, 34.0, Kind::Physical, true).art("chop").delayed(0.38),
         ];
         // From well outside the hero's reach (a light reaches 2.6 m): step aside or close in.
         const LANCER: [Attack; 4] = [
             att("thrust", (34, 5, 36), 4.2, 0, 24.0, 28.0, Kind::Physical, true),
-            att("lunge", (46, 6, 44), 5.0, 0, 30.0, 40.0, Kind::GuardBreak, false),
+            att("lunge", (46, 6, 44), 5.0, 0, 30.0, 40.0, Kind::GuardBreak, false).lunges(),
             // Looks like the thrust; a second comes straight after.
             att("thrust", (34, 5, 10), 4.2, 0, 24.0, 28.0, Kind::Physical, true).then(3),
             att("thrust again", (16, 5, 38), 4.2, 0, 22.0, 26.0, Kind::Physical, true).art("thrust").follow_up(),
@@ -703,9 +794,9 @@ impl Archetype {
         const SHIELDBEARER: [Attack; 4] = [
             att("bash", (30, 5, 34), 2.6, 0, 16.0, 25.0, Kind::Physical, true),
             att("smash", (52, 7, 46), 3.0, 0, 34.0, 50.0, Kind::GuardBreak, false),
-            // Behind the shield at a run: it follows the hero's lane nearly to the end, and no
-            // block holds it for long.
-            att("shield rush", (44, 8, 46), 3.6, 0, 26.0, 55.0, Kind::GuardBreak, false).art("bash").delayed(0.6, 0.92),
+            // Behind the shield at a run: it shows its lane early and hangs, and no block holds it
+            // for long.
+            att("shield rush", (44, 8, 46), 3.6, 0, 26.0, 55.0, Kind::GuardBreak, false).art("bash").delayed(0.6).lunges(),
             // Its shield turned a light strike: the bash back, quick (`SHIELD_COUNTER`).
             att("counter bash", (16, 5, 34), 2.6, 0, 18.0, 25.0, Kind::Physical, true).art("bash").follow_up(),
         ];
@@ -715,43 +806,44 @@ impl Archetype {
             att("frenzy", (18, 4, 8), 2.4, 0, 10.0, 12.0, Kind::Physical, true).then(2),
             att("frenzy", (12, 4, 8), 2.4, 0, 10.0, 12.0, Kind::Physical, true).then(3).follow_up(),
             att("frenzy", (16, 5, 30), 2.6, 0, 16.0, 20.0, Kind::Physical, true).follow_up(),
-            // From afar, onto the hero: it follows their lane until late. Roll late; a block pays.
-            att("pounce", (40, 6, 36), 4.6, 0, 18.0, 30.0, Kind::GuardBreak, false).art("rake").delayed(0.5, 0.88),
+            // From afar, onto where the hero stood at its warning. Leave the lane or roll late; a
+            // block pays.
+            att("pounce", (40, 6, 36), 4.6, 0, 18.0, 30.0, Kind::GuardBreak, false).art("rake").delayed(0.5).lunges(),
         ];
-        // The bow drawn, aimed down the hero's lane until late, and loosed: step out of the lane
-        // as it looses; a shield turns an arrow cheaply, a parry cannot. The long draw glints
-        // early and holds: roll late. Close, a kick, and it backs off.
+        // The bow drawn, aimed down the hero's lane until it glints, and loosed: step out of the
+        // lane before it looses; a shield turns an arrow cheaply, a parry cannot. The long draw
+        // glints early and holds. Close, a kick, and it backs off.
         const ARCHER: [Attack; 5] = [
-            att("loose", (52, 3, 30), 14.0, 0, 18.0, 16.0, Kind::Physical, false).delayed(0.6, 0.85).shot(16.0, false, Look::Arrow),
-            att("aimed shot", (92, 3, 40), 16.0, 0, 32.0, 34.0, Kind::GuardBreak, false).art("loose").delayed(0.4, 0.93).shot(24.0, false, Look::Arrow),
-            att("loose", (40, 3, 8), 14.0, 0, 16.0, 16.0, Kind::Physical, false).delayed(0.6, 0.85).shot(16.0, false, Look::Arrow).then(3),
-            att("second arrow", (22, 3, 30), 14.0, 0, 16.0, 16.0, Kind::Physical, false).art("loose").delayed(0.6, 0.8).shot(16.0, false, Look::Arrow).follow_up(),
+            att("loose", (52, 3, 30), 14.0, 0, 18.0, 16.0, Kind::Physical, false).delayed(0.6).shot(16.0, false, Look::Arrow),
+            att("aimed shot", (92, 3, 40), 16.0, 0, 32.0, 34.0, Kind::GuardBreak, false).art("loose").delayed(0.4).shot(24.0, false, Look::Arrow),
+            att("loose", (40, 3, 8), 14.0, 0, 16.0, 16.0, Kind::Physical, false).delayed(0.6).shot(16.0, false, Look::Arrow).then(3),
+            att("second arrow", (22, 3, 30), 14.0, 0, 16.0, 16.0, Kind::Physical, false).art("loose").delayed(0.6).shot(16.0, false, Look::Arrow).follow_up(),
             att("kick", (24, 5, 30), 2.4, 0, 12.0, 14.0, Kind::Physical, true),
         ];
         // A hex that follows the hero's lane until it is nearly on them (roll at the last
         // moment; a shield pays dearly for it); a rune that opens under the hero's feet (its
         // ground glows the whole time: get off it); close, a burst that throws them back.
         const HEXER: [Attack; 3] = [
-            att("hex", (60, 3, 40), 13.0, 0, 22.0, 34.0, Kind::GuardBreak, false).delayed(0.55, 0.8).shot(7.5, true, Look::Hex),
-            att("rune", (78, 8, 44), 12.0, 0, 30.0, 0.0, Kind::Unblockable, false).delayed(0.35, 0.7).area(),
+            att("hex", (60, 3, 40), 13.0, 0, 22.0, 34.0, Kind::GuardBreak, false).delayed(0.55).shot(7.5, true, Look::Hex),
+            att("rune", (78, 8, 44), 12.0, 0, 30.0, 0.0, Kind::Unblockable, false).delayed(0.35).area(),
             att("repel", (30, 6, 40), 2.6, 1, 16.0, 30.0, Kind::GuardBreak, false),
         ];
         // The slam breaks any guard and recovers long (roll through, then punish); held aloft it
-        // flashes early and follows the hero's lane almost to the end. The sweep crosses two lanes
+        // flashes early, fixed on its lane, and hangs. The sweep crosses two lanes
         // and can be parried; the stamp cracks the ground across them, and nothing stops it.
         const BRUTE: [Attack; 4] = [
             att("slam", (64, 8, 62), 3.0, 0, 42.0, 70.0, Kind::GuardBreak, false),
             att("sweep", (54, 8, 46), 3.0, 1, 28.0, 40.0, Kind::Physical, true),
-            att("late slam", (96, 8, 62), 3.0, 0, 46.0, 70.0, Kind::GuardBreak, false).art("slam").delayed(0.35, 0.9),
+            att("late slam", (96, 8, 62), 3.0, 0, 46.0, 70.0, Kind::GuardBreak, false).art("slam").delayed(0.35),
             att("stamp", (46, 6, 44), 2.6, 1, 22.0, 0.0, Kind::Unblockable, false),
         ];
-        // A bite, or two snaps back to back (parry either); from afar a pounce that follows the
-        // hero's lane until late.
+        // A bite, or two snaps back to back (parry either); from afar a pounce onto the lane it
+        // marked.
         const HOUND: [Attack; 4] = [
             att("bite", (20, 4, 22), 2.2, 0, 11.0, 12.0, Kind::Physical, true),
             att("bite", (16, 4, 8), 2.2, 0, 9.0, 10.0, Kind::Physical, true).then(2),
             att("snap", (12, 4, 24), 2.2, 0, 11.0, 12.0, Kind::Physical, true).art("bite").follow_up(),
-            att("pounce", (40, 6, 34), 4.8, 0, 16.0, 26.0, Kind::GuardBreak, false).delayed(0.5, 0.88),
+            att("pounce", (40, 6, 34), 4.8, 0, 16.0, 26.0, Kind::GuardBreak, false).delayed(0.5).lunges(),
         ];
         // The bile breaks guards across two lanes; the slam can be parried. Its burst is `BURST`.
         const BLOATER: [Attack; 2] = [
@@ -762,7 +854,7 @@ impl Archetype {
         // swipe is for whoever closes.
         const GRAVECALLER: [Attack; 3] = [
             att("raise", (70, 10, 40), 14.0, 0, 0.0, 0.0, Kind::Physical, false),
-            att("grasp", (66, 8, 40), 11.0, 0, 26.0, 0.0, Kind::Unblockable, false).delayed(0.4, 0.75).area(),
+            att("grasp", (66, 8, 40), 11.0, 0, 26.0, 0.0, Kind::Unblockable, false).delayed(0.4).area(),
             att("swipe", (30, 6, 38), 2.6, 1, 16.0, 24.0, Kind::GuardBreak, false),
         ];
         match self {
@@ -822,6 +914,9 @@ pub struct Enemy {
     /// Ticks it has stood beside the hero's lane, alert and near (it steps across at `CROSS_EVERY`).
     pub cross: u32,
     pub grave: Grave,
+    /// Whether it last moved along the road on its own feet (closing in, chasing, keeping its
+    /// gap): what plays its walk.
+    pub stepping: bool,
 }
 
 /// What death means to an enemy: ticks since a bloater fell (it bursts at `BURST_AT`), whether a
@@ -867,7 +962,7 @@ const CROSS_EVERY: u32 = 40;
 
 impl Enemy {
     pub fn new(kind: Archetype, s: f64, lane: i32) -> Enemy {
-        Enemy { kind, s, lane, hp: kind.hp(), stance: kind.stance(), stance_wait: 0, ai: Ai::Wait(30), hurt: 0, top: kind.hp(), power: 1.0, chill: 0, burn: Burn::default(), variant: Variant::Plain, idle: None, drift: 0.0, cross: 0,
+        Enemy { kind, s, lane, hp: kind.hp(), stance: kind.stance(), stance_wait: 0, ai: Ai::Wait(30), hurt: 0, top: kind.hp(), power: 1.0, chill: 0, burn: Burn::default(), variant: Variant::Plain, idle: None, drift: 0.0, cross: 0, stepping: false,
                 grave: Grave { raises: if kind == Archetype::Gravecaller { RAISES } else { 0 }, ..Grave::default() } }
     }
 
@@ -916,6 +1011,33 @@ impl Enemy {
             }
             _ => None,
         }
+    }
+    /// Where the attack under way is in its timing: the attack, how far through its windup (0..1)
+    /// and the ticks since it went live (None: still winding up).
+    pub fn cue(&self) -> Option<(Attack, f32, Option<u32>)> {
+        let Ai::Attack { i, t, .. } = self.ai else { return None };
+        let a = self.kind.attacks()[i];
+        Some((a, (t as f32 / a.frames.0.max(1) as f32).min(1.0), t.checked_sub(a.frames.0)))
+    }
+
+    /// The way the attack under way reaches across the road (-1 toward the left lanes, 1 toward
+    /// the right, 0 its own lane only).
+    pub fn way(&self) -> i32 { if let Ai::Attack { wide, .. } = self.ai { wide.signum() } else { 0 } }
+
+    /// A swung blow from its first live tick on, through its recovery: the attack and the ticks
+    /// since it went live (what its drawn swing is timed by).
+    pub fn struck(&self) -> Option<(Attack, u32)> {
+        let Ai::Attack { i, t, .. } = self.ai else { return None };
+        let a = self.kind.attacks()[i];
+        (t >= a.frames.0 && !a.area && a.shot.is_none()).then(|| (a, t - a.frames.0))
+    }
+    /// A swung blow while it is live: how far through its live ticks (0..1), and the way it
+    /// sweeps across the road (-1 toward the left lanes, 1 toward the right, 0 straight down).
+    pub fn live(&self) -> Option<(f32, i32)> {
+        let Ai::Attack { i, t, wide, .. } = self.ai else { return None };
+        let a = self.kind.attacks()[i];
+        let k = t.checked_sub(a.frames.0).filter(|&k| k < a.frames.1 && !a.area && a.shot.is_none())?;
+        Some(((k as f32 + 0.5) / a.frames.1.max(1) as f32, wide.signum()))
     }
     /// The lanes its attack under way covers.
     pub fn lanes(&self) -> (i32, i32) {
@@ -1027,6 +1149,12 @@ pub fn guard_blow(stats: &Stats, stamina: f32, bulwark: &mut Bulwark, guard: f32
 pub enum Event {
     /// The hero began a move.
     Began(Move),
+    /// A heavy held at the top of its wind-up has gathered its full strength.
+    ChargeFull,
+    /// A gathered heavy landed on enemy `enemy` (`full`: at its whole strength, and it stumbles).
+    ChargedBlow { enemy: usize, full: bool },
+    /// A finisher gathered to the full landed the weapon's finishing blow.
+    Finished(crate::combo::Finish),
     /// Enemy `enemy` loosed an arrow or a hex.
     Loosed { enemy: usize },
     /// The hero loosed an arrow or cast a bolt.
@@ -1247,6 +1375,10 @@ pub struct Hero {
     /// waiting on it being drawn or put away (`Move::readied`).
     pub drawn: bool,
     pub follow: Option<Move>,
+    /// The link the next light takes, once one cut the last short (`Spec::chained`).
+    pub next_link: u8,
+    /// The route the next heavy takes, once one cut a strike's recovery short.
+    pub next_route: crate::combo::Route,
 }
 
 impl Hero {
@@ -1255,7 +1387,7 @@ impl Hero {
     pub fn mend(&mut self) { self.hp = (self.hp + self.stats.kit.capped.mend * self.stats.max_hp()).min(self.stats.max_hp()); }
     /// Whole, with these levels: as they rise from a shrine.
     pub fn with(stats: Stats) -> Hero {
-        Hero { stats, hp: stats.max_hp(), stamina: stats.max_stamina(), rested: REGEN_DELAY, flasks: FLASKS + stats.kit.flasks, lane: 0, x: 0.0, act: None, guarding: false, reeling: 0, reel: Reel::None, poise: stats.poise(), poise_wait: 0, buffer: None, dead: false, quiver: Quiver::default(), charges: stats.max_charges(), bulwark: Bulwark::default(), art: 0.0, stone: 0, mark: None, pierced: 0, drawn: false, follow: None }
+        Hero { stats, hp: stats.max_hp(), stamina: stats.max_stamina(), rested: REGEN_DELAY, flasks: FLASKS + stats.kit.flasks, lane: 0, x: 0.0, act: None, guarding: false, reeling: 0, reel: Reel::None, poise: stats.poise(), poise_wait: 0, buffer: None, dead: false, quiver: Quiver::default(), charges: stats.max_charges(), bulwark: Bulwark::default(), art: 0.0, stone: 0, mark: None, pierced: 0, drawn: false, follow: None, next_link: 0, next_route: crate::combo::Route::Plain }
     }
     /// Whole again with the same levels (as at a shrine), keeping what is carried to shoot.
     pub fn renewed(&self) -> Hero { Hero { quiver: Quiver { imbued: 0, ..self.quiver }, ..Hero::with(self.stats) } }
@@ -1457,6 +1589,12 @@ impl Fight {
         if let Some((m, age)) = h.buffer { h.buffer = (age < BUFFER).then_some((m, age + 1)); }
         h.guarding = input.guard && h.free() && !h.drawn;
         h.bulwark.tick(h.guarding, calm);
+        // A strike pressed in a strike's recovery cuts the rest short: the next of its string.
+        if let (Some(a), Some((m, _))) = (h.act, h.buffer) {
+            let next = crate::combo::Route::follows((a.mv, a.route, a.link), m).filter(|_| a.spec.chains_at(a.t));
+            if let Some(next) = next { (h.act, (h.next_link, h.next_route)) = (None, next.parts()); }
+        }
+        if h.free() && h.buffer.is_none() { (h.next_link, h.next_route) = (0, crate::combo::Route::Plain); }
         if h.free() {
             if let Some((m, _)) = h.buffer {
                 // A roll toward the road's edge, with no lane beyond, is a roll forward: the
@@ -1473,6 +1611,9 @@ impl Fight {
                     (Move::Cast, None, _) if kit.imbues() => Move::imbue_spec(),
                     _ => m.spec_with(&kit),
                 };
+                let link = if m == Move::Light { self.hero.next_link } else { 0 };
+                let route = if m == Move::Heavy { self.hero.next_route } else { crate::combo::Route::Plain };
+                let spec = route.shape(spec.chained(link));
                 let cost = self.hero.stats.cost(m, spec.stamina);
                 let h = &mut self.hero;
                 if cost > 0.0 && h.stamina <= 0.0 {
@@ -1492,7 +1633,8 @@ impl Fight {
                     if matches!(m, Move::Draw | Move::Stow) { h.drawn = m == Move::Draw; }
                     let from = h.lane;
                     if let Move::Step(dir) | Move::Lane(dir) = m { h.lane += dir; }
-                    h.act = Some(Act { mv: m, spec, t: 0, landed: false, from_lane: from, from_x: h.x });
+                    (h.next_link, h.next_route) = (0, crate::combo::Route::Plain);
+                    h.act = Some(Act { mv: m, spec, t: 0, landed: false, from_lane: from, from_x: h.x, link, charge: Charge::default(), route });
                     h.guarding = false;
                     h.pierced = 0;
                     out.push(Event::Began(m));
@@ -1505,6 +1647,12 @@ impl Fight {
             let h = &mut self.hero;
             h.stamina = (h.stamina - RUN_COST).max(0.0);
             h.rested = 0;
+        }
+        let h = &mut self.hero;
+        let shot = h.stats.kit.shot(false);
+        if let Some(a) = h.act.as_mut() {
+            let held = if a.mv == Move::Loose { input.loose_held } else { input.heavy_held };
+            if let Some(e) = a.charge.tick(a.route.holds(a.mv, shot), (a.t, a.spec.frames.0), held) { out.push(e); }
         }
         self.hero_rest(walked, out);
     }
@@ -1535,7 +1683,8 @@ impl Fight {
         }
         h.stone = h.stone.saturating_sub(1);
         let Some(mut a) = h.act else { return };
-        let spec = a.spec;
+        // A gathered heavy, or an arrow loosed from full draw, goes with the strength held.
+        let spec = if matches!(a.mv, Move::Heavy | Move::Loose) { a.charge.apply(a.spec) } else { a.spec };
         if a.mv == Move::Art {
             if let Some(art) = h.stats.kit.art { self.art_fires(art, &mut a, walked, out); }
         }
@@ -1563,6 +1712,9 @@ impl Fight {
             }
         }
         let h = &mut self.hero;
+        // A finisher gathered to the full lands the weapon's own finishing blow.
+        let finish = (a.mv == Move::Heavy && a.route == crate::combo::Route::Finisher && a.charge.is_full()).then(|| crate::combo::Finish::of(h.stats.kit.swung_as()));
+        let spec = finish.map_or(spec, |f| f.widen(spec));
         if a.mv.strikes() && a.phase() == Phase::Active && !a.landed {
             let lane = h.lane;
             let mut hit: Vec<usize> = self.enemies.iter().enumerate()
@@ -1570,11 +1722,16 @@ impl Fight {
                 .map(|(i, _)| i).collect();
             // The nearest in its own lane; a sweep takes every one it reaches.
             hit.sort_by(|&x, &y| self.enemies[x].gap(walked).total_cmp(&self.enemies[y].gap(walked)));
-            if spec.wide == 0 { hit.truncate(1); }
+            if spec.wide == 0 && !finish.is_some_and(crate::combo::Finish::is_through) { hit.truncate(1); }
             if !hit.is_empty() { a.landed = true; }
-            for i in hit { self.strike(i, a.mv, spec, out); }
+            if let Some(f) = finish.filter(|_| !hit.is_empty()) { out.push(Event::Finished(f)); }
+            let charged = a.mv == Move::Heavy && a.charge.ticks > CHARGE_FULL / 4;
+            for i in hit {
+                self.strike(i, a.mv, spec, out);
+                if charged { self.crush(i, (a.charge.is_full(), finish), out); }
+            }
         }
-        a.t += 1;
+        if !a.charge.holding { a.t += 1; }
         let (w, act, _) = spec.frames;
         if a.mv.strikes() && a.t == w + act && !a.landed { out.push(Event::Whiffed(a.mv)); }
         self.hero.act = (a.t < a.total()).then_some(a);
@@ -1587,6 +1744,22 @@ impl Fight {
         self.enemies.iter()
             .any(|e| matches!(e.ai, Ai::Staggered(_)) && e.lane == lane && (-0.3..=Move::Riposte.spec().reach).contains(&e.gap(walked)))
             .then_some(Move::Riposte)
+    }
+
+    /// A gathered heavy lands on enemy `i`: at full strength it is knocked stumbling, its own blow
+    /// broken off, or as a finisher's `finish` has it (one already staggered or felled stays).
+    fn crush(&mut self, i: usize, (full, finish): (bool, Option<crate::combo::Finish>), out: &mut Vec<Event>) {
+        out.push(Event::ChargedBlow { enemy: i, full });
+        let enemy = &mut self.enemies[i];
+        if !full || !enemy.alive() || matches!(enemy.ai, Ai::Staggered(_)) { return; }
+        enemy.ai = match finish {
+            Some(f) if f.is_breaking() => {
+                out.push(Event::StanceBroken { enemy: i });
+                Ai::Staggered(STAGGER)
+            }
+            Some(f) => Ai::Stumbled(f.stumble()),
+            None => Ai::Stumbled(STUMBLE),
+        };
     }
 
     fn strike(&mut self, i: usize, mv: Move, spec: Spec, out: &mut Vec<Event>) {
@@ -1719,6 +1892,7 @@ impl Fight {
                 let reach = e.kind.attacks().iter().map(|a| a.reach).fold(f32::MAX, f32::min);
                 let far = e.kind.attacks().iter().filter(|a| !a.follow).map(|a| a.reach).fold(0.0, f32::max);
                 let behind = gap < -0.3;
+                let was = e.s;
                 match e.kind.keep() {
                     // Left far behind: it gives up, and idles where it stands.
                     _ if gap < -LEASH => { *e = e.clone().unaware(); e.ai = Ai::Wait(0); return; }
@@ -1732,6 +1906,7 @@ impl Fight {
                     // Closes to just inside its shortest reach, never through the hero.
                     None => if gap <= notice && gap > reach - 0.4 { e.s -= (pace / 60.0) as f64; },
                 }
+                e.stepping = e.s != was;
                 // Near and a lane off: across toward the hero, easing over from where it stood.
                 let target = self.hero.lane;
                 if gap.abs() <= CROSS_NEAR && e.lane != target && e.kind.keep().is_none() {
@@ -1756,6 +1931,10 @@ impl Fight {
                     }).collect();
                 if openers.is_empty() { return; }
                 let pick = openers[self.roll(openers.len() as u32) as usize];
+                if self.crowded(i, self.enemies[i].kind.attacks()[pick].frames.0, walked) {
+                    self.enemies[i].ai = Ai::Wait(TURN_WAIT);
+                    return;
+                }
                 let side = if self.roll(2) == 0 { -1 } else { 1 };
                 let e = &mut self.enemies[i];
                 let a = e.kind.attacks()[pick];
@@ -1766,14 +1945,19 @@ impl Fight {
             }
             Ai::Attack { i: ai, t, wide, landed, aim } => {
                 let a = e.kind.attacks()[ai];
-                // Aim: follow the hero's lane, a lane at a time, until it commits.
+                // Aim: follow the hero's lane, a lane at a time, until its warning shows; never after.
                 let target = self.hero.lane;
                 let e = &mut self.enemies[i];
-                if (t as f32) < a.frames.0 as f32 * a.lock && t % SHIFT == SHIFT - 1 && e.lane != target {
+                if (t as f32) < a.frames.0 as f32 * a.tell && t % SHIFT == SHIFT - 1 && e.lane != target {
                     e.lane += (target - e.lane).signum();
                 }
+                let left = a.frames.0.saturating_sub(t);
+                if a.travel && (1..=LUNGE_T).contains(&left) {
+                    let goal = (gap.abs() - LUNGE_STOP).max(0.0) * gap.signum();
+                    e.s -= f64::from(goal / left as f32);
+                }
                 // An area attack follows where the hero stands until it locks on.
-                let aim = if a.area && (t as f32) < a.frames.0 as f32 * a.lock { walked + HERO_D as f64 } else { aim };
+                let aim = if a.area && (t as f32) < a.frames.0 as f32 * a.tell { walked + HERO_D as f64 } else { aim };
                 if t == (a.frames.0 as f32 * a.tell).ceil() as u32 { out.push(Event::Commits { enemy: i, kind: a.kind, parry: a.parry }); }
                 let mut landed = landed;
                 if phase(a.frames, t) == Phase::Active && !landed {
@@ -1804,8 +1988,8 @@ impl Fight {
                 let rest = lo + self.roll(hi - lo + 1);
                 self.enemies[i].ai = if t < w + act + rec {
                     Ai::Attack { i: ai, t, wide, landed, aim }
-                } else if let Some(next) = a.then {
-                    // A combo's next blow, straight on.
+                } else if let Some(next) = a.then.filter(|&k| !self.crowded(i, self.enemies[i].kind.attacks()[k].frames.0, walked)) {
+                    // A combo's next blow, straight on, if its moment is free; else the combo ends.
                     out.push(Event::WindsUp { enemy: i, attack: self.enemies[i].kind.attacks()[next].name });
                     Ai::Attack { i: next, t: 0, wide: 0, landed: false, aim }
                 } else {
@@ -1917,6 +2101,18 @@ impl Fight {
         }
     }
 
+    /// Whether foe `i` starting a blow that lands `lands` ticks from now must wait its turn:
+    /// `MOST_WINDING` others already winding up, or another blow or missile landing too near it.
+    fn crowded(&self, i: usize, lands: u32, walked: f64) -> bool {
+        let swings = self.enemies.iter().enumerate().filter(|&(j, e)| j != i && e.alive()).filter_map(|(_, e)| match e.ai {
+            Ai::Attack { i: k, t, landed: false, .. } => Some(e.kind.attacks()[k].frames.0.saturating_sub(t)),
+            _ => None,
+        });
+        let flying = self.missiles.iter().filter_map(|m| m.attack.shot.map(|f| ((m.s - walked) as f32 - HERO_D).max(0.0) / (f.speed / 60.0)));
+        let swings: Vec<u32> = swings.collect();
+        swings.len() >= MOST_WINDING || swings.into_iter().chain(flying.map(|k| k as u32)).any(|at| at.abs_diff(lands) < BLOW_SPACING)
+    }
+
     /// Whether gravecaller `i` can raise now: raises left, room among the enemy objects, and
     /// fewer than `MOST_RAISED` of the raised standing.
     fn can_raise(&self, i: usize) -> bool {
@@ -2017,7 +2213,7 @@ impl Fight {
             let heavy = a.damage >= HEAVY_HIT;
             out.push(Event::Struck { damage, heavy });
             // A heavy strike's armour rides out a flinch or a recoil (not a stagger).
-            if !h.act.is_some_and(|x| x.mv.armoured(x.t) || x.t < x.spec.armour) { h.reel(if heavy { Reel::Recoil } else { Reel::Flinch }); }
+            if !h.act.is_some_and(|x| !x.charge.holding && (x.mv.armoured(x.t) || x.t < x.spec.armour)) { h.reel(if heavy { Reel::Recoil } else { Reel::Flinch }); }
         }
     }
 
@@ -2277,6 +2473,55 @@ mod tests {
     fn husk(gap: f32, lane: i32) -> Enemy { Enemy::new(Archetype::Husk, (HERO_D + gap) as f64, lane) }
     fn idle() -> Input { Input::default() }
 
+    #[test]
+    fn foes_take_turns_so_no_two_blows_land_together() {
+        let crowd = vec![husk(2.0, -1), husk(2.2, 0), husk(2.4, 1), Enemy::new(Archetype::Hound, (HERO_D + 2.6) as f64, 0)];
+        let mut f = Fight::new(crowd);
+        let mut last_landing: Option<u32> = None;
+        for t in 0..4_000u32 {
+            f.hero.hp = HP;
+            let ev = f.tick(&idle(), 0.0);
+            let winding = f.enemies.iter().filter(|e| matches!(e.ai, Ai::Attack { landed: false, .. })).count();
+            assert!(winding <= MOST_WINDING, "{winding} foes winding up at tick {t}");
+            if ev.iter().any(|e| matches!(e, Event::Struck { .. } | Event::Blocked { .. } | Event::Staggered { .. } | Event::KnockedDown { .. })) {
+                if let Some(was) = last_landing { assert!(t - was >= BLOW_SPACING - 1, "blows landed {} ticks apart at tick {t}", t - was); }
+                last_landing = Some(t);
+            }
+        }
+        assert!(last_landing.is_some(), "nobody struck in 4000 ticks");
+    }
+
+    #[test]
+    fn no_foe_changes_lane_once_its_warning_shows() {
+        // The hero weaves between lanes the whole time; every road foe may aim while it winds up,
+        // but once its warning has shown it strikes where it said it would.
+        for kind in Archetype::ALL {
+            let mut f = Fight::new(vec![Enemy::new(kind, (HERO_D + 3.0) as f64, 0)]);
+            for t in 0..3_000u32 {
+                let before = (f.enemies[0].lane, f.enemies[0].ai);
+                let step = if t % 23 == 0 { if f.hero.lane >= 1 { -1 } else { 1 } } else { 0 };
+                f.hero.hp = HP;
+                f.tick(&Input { step, ..idle() }, 0.0);
+                let e = &f.enemies[0];
+                if let (Ai::Attack { i, t: was, .. }, Ai::Attack { i: now_i, t: now, .. }) = (before.1, e.ai) {
+                    let a = kind.attacks()[i];
+                    let told = was as f32 >= (a.frames.0 as f32 * a.tell).ceil();
+                    assert!(!(now_i == i && now > was && told && e.lane != before.0), "{kind:?} {} moved lanes after its warning at tick {now}", a.name);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn a_foe_walks_while_it_closes_in_and_stands_once_in_reach() {
+        let mut f = Fight::new(vec![husk(6.0, 0)]);
+        run(&mut f, 1, |_, _| idle(), |_, _| false);
+        assert!(f.enemies[0].stepping, "closing in from 6 m");
+        run(&mut f, 900, |_, _| idle(), |f, _| !f.enemies[0].stepping);
+        let reach = Archetype::Husk.attacks().iter().map(|a| a.reach).fold(f32::MAX, f32::min);
+        assert!(!f.enemies[0].stepping && f.enemies[0].gap(0.0) <= reach, "stands once in reach: {}", f.enemies[0].gap(0.0));
+    }
+
     /// Walk forward a tick at a time (as the road would) until stopped; returns metres walked.
     fn walk_up(f: &mut Fight, mut walked: f64) -> f64 {
         let go = Input { forward: true, ..idle() };
@@ -2430,7 +2675,7 @@ mod tests {
         assert_eq!(f.hero.stamina, STAMINA - 12.0, "paid up front");
         for _ in 0..(w + a + r + 2) { ev.extend(f.tick(&idle(), 0.0)); }
         assert_eq!(ev.iter().filter(|e| matches!(e, Event::Hit { .. })).count(), 1, "one hit per strike: {ev:?}");
-        assert_eq!(f.enemies[0].hp, Archetype::Husk.hp() - 10.0);
+        assert_eq!(f.enemies[0].hp, Archetype::Husk.hp() - Move::Light.spec().damage);
         let mut g = Fight::new(vec![dummy(1.0, 1)]);
         let mut ev = g.tick(&Input { light: true, ..idle() }, 0.0);
         for _ in 0..(w + a + 2) { ev.extend(g.tick(&idle(), 0.0)); }
@@ -2495,8 +2740,9 @@ mod tests {
         let stumbling = |kind| Enemy { ai: Ai::Stumbled(u32::MAX), ..of(kind, 1.0, 0) };
         let mut f = Fight::new(vec![stumbling(Archetype::Husk)]);
         run(&mut f, 80, |_, t| Input { light: t == 0, ..idle() }, |_, ev| ev.iter().any(|e| matches!(e, Event::Hit { .. })));
-        assert_eq!(f.enemies[0].hp, Archetype::Husk.hp() - 10.0 * STUMBLE_HURT);
-        assert_eq!(f.enemies[0].stance, Archetype::Husk.stance() - 8.0 * STUMBLE_HURT);
+        let light = Move::Light.spec();
+        assert_eq!(f.enemies[0].hp, Archetype::Husk.hp() - light.damage * STUMBLE_HURT);
+        assert_eq!(f.enemies[0].stance, Archetype::Husk.stance() - light.stance * STUMBLE_HURT);
         let mut g = Fight::new(vec![stumbling(Archetype::Shieldbearer)]);
         let ev = run(&mut g, 80, |_, t| Input { light: t == 0, ..idle() }, |_, ev| ev.iter().any(|e| matches!(e, Event::Hit { .. } | Event::Deflected { .. })));
         assert!(ev.contains(&Event::Hit { enemy: 0, mv: Move::Light }), "{ev:?}");
@@ -2781,9 +3027,49 @@ mod tests {
         let mut g = Fight::new(vec![dummy(1.0, 0)]);
         g.tick(&Input { light: true, ..idle() }, 0.0);
         for _ in 0..40 { g.tick(&idle(), 0.0); }
-        assert_eq!(g.enemies[0].stance, 22.0);
+        assert_eq!(g.enemies[0].stance, 30.0 - Move::Light.spec().stance);
         for _ in 0..400 { g.tick(&idle(), 0.0); }
         assert_eq!(g.enemies[0].stance, 30.0);
+    }
+
+    #[test]
+    fn a_heavy_held_at_the_top_of_its_windup_gathers_up_to_double_and_a_quick_one_lands_plain() {
+        // Held for `hold` ticks from the press: the hp the dummy loses, the events, and the tick
+        // the swing landed on.
+        let swing = |hold: u32| {
+            let mut f = Fight::new(vec![Enemy { hp: 1000.0, ..dummy(1.0, 0) }]);
+            let mut ev = Vec::new();
+            let (mut landed, mut stumbled) = (None, false);
+            for t in 0..400u32 {
+                // Its stance held whole, or a doubled heavy breaks it into a stagger instead.
+                f.enemies[0].stance = 1e4;
+                ev.extend(f.tick(&Input { heavy: t == 0, heavy_held: t < hold, ..idle() }, 0.0));
+                if landed.is_none() && ev.iter().any(|e| matches!(e, Event::Hit { .. })) { landed = Some(t); }
+                stumbled |= matches!(f.enemies[0].ai, Ai::Stumbled(_));
+            }
+            (1000.0 - f.enemies[0].hp, ev, landed.unwrap_or(u32::MAX), stumbled)
+        };
+        let (quick, quick_ev, quick_at, quick_stumbled) = swing(1);
+        let (half, _, half_at, half_stumbled) = swing(Move::Heavy.spec().frames.0 + CHARGE_FULL / 2);
+        let (full, full_ev, full_at, full_stumbled) = swing(1000);
+        assert!(full_stumbled && !half_stumbled && !quick_stumbled, "only a full gathering knocks it stumbling");
+        assert!(quick > 0.0 && !quick_ev.iter().any(|e| matches!(e, Event::ChargeFull | Event::ChargedBlow { .. })), "a quick heavy lands plain: {quick_ev:?}");
+        assert!((half / quick - 1.5).abs() < 0.05, "half gathered deals half again: {half} vs {quick}");
+        assert!((full / quick - CHARGE_MOST).abs() < 1e-3, "full deals double: {full} vs {quick}");
+        assert!(full_ev.contains(&Event::ChargeFull) && full_ev.contains(&Event::ChargedBlow { enemy: 0, full: true }), "{full_ev:?}");
+        // It waits at the top of the wind-up while held, and swings by itself once full.
+        assert_eq!(full_at, quick_at + CHARGE_FULL, "{quick_at} {half_at} {full_at}");
+        assert!(half_at > quick_at && half_at < full_at);
+    }
+
+    #[test]
+    fn a_heavy_held_back_is_knocked_out_of_its_gathering_by_a_blow() {
+        let mut f = Fight::new(vec![Enemy { hp: 1000.0, ..dummy(1.0, 0) }]);
+        for t in 0..(Move::Heavy.spec().frames.0 + 10) { f.tick(&Input { heavy: t == 0, heavy_held: true, ..idle() }, 0.0); }
+        assert!(f.hero.act.is_some_and(|a| a.charge.holding), "holding the heavy back");
+        let mut out = Vec::new();
+        f.strike_hero_from(0, Attack { damage: 10.0, ..Archetype::Husk.attacks()[0] }, (-1, 1), false, &mut out);
+        assert!(f.hero.act.is_none() && f.hero.reel != Reel::None, "no armour while gathering: {out:?}");
     }
 
     #[test]
@@ -3073,15 +3359,15 @@ mod tests {
         assert!(!st.burdened());
     }
     #[test]
-    fn a_late_chop_follows_a_roll_made_at_its_flash_and_misses_a_late_one() {
+    fn a_late_chop_stays_in_its_lane_after_its_flash_and_misses_a_late_step() {
         let late = Archetype::Husk.attacks()[2];
         let (w, _, _) = late.frames;
         let tell = (w as f32 * late.tell).ceil() as u32;
-        // Rolled at the flash: the husk turns after the hero, a lane, and the chop lands.
+        // Stepped aside after the flash: the husk keeps the lane it warned on and chops air.
         let mut f = Fight::new(vec![husk(1.2, 0)]);
         until_winds_up(&mut f, "late chop");
-        let ev = run(&mut f, 200, |_, t| Input { step: if t == tell { 1 } else { 0 }, ..idle() }, |f, _| f.enemies[0].attack().is_none());
-        assert!(ev.iter().any(|e| matches!(e, Event::Struck { .. } | Event::Staggered { .. } | Event::KnockedDown { .. })), "followed and struck: {ev:?}");
+        let ev = run(&mut f, 200, |_, t| Input { step: if t == tell + 1 { 1 } else { 0 }, ..idle() }, |f, _| f.enemies[0].attack().is_none());
+        assert_eq!((f.enemies[0].lane, f.hero.hp), (0, HP), "it chased the hero's new lane: {ev:?}");
         // Rolled at the last moment: slipped.
         let mut g = Fight::new(vec![husk(1.2, 0)]);
         until_winds_up(&mut g, "late chop");
@@ -3705,5 +3991,77 @@ mod tests {
         assert_eq!(art_hits(&ev), 1);
         assert!(matches!(f.enemies[0].ai, Ai::Stumbled(_) | Ai::Staggered(_) | Ai::Dead), "{:?}", f.enemies[0].ai);
         assert!(f.enemies[0].s > (HERO_D + 3.5) as f64, "thrown back by the gust");
+    }
+
+    /// Presses `seq` (false a light, true a heavy) one after another, each as soon as the strike
+    /// before is in its recovery, the heavy's button held throughout when `hold`: the route of
+    /// every heavy begun, the tick each strike began, and every event.
+    fn string_of(f: &mut Fight, seq: &[bool], hold: bool) -> (Vec<crate::combo::Route>, Vec<u32>, Vec<Event>) {
+        let (mut routes, mut at, mut ev, mut k, mut asked) = (Vec::new(), Vec::new(), Vec::new(), 0, false);
+        for t in 0..900u32 {
+            for e in &mut f.enemies { e.stance = 1e4; }
+            let ready = f.hero.act.is_none_or(|a| a.phase() == Phase::Recover);
+            let press = if ready && !asked && k < seq.len() { asked = true; k += 1; Some(seq[k - 1]) } else { None };
+            let input = Input { light: press == Some(false), heavy: press == Some(true), heavy_held: hold, ..idle() };
+            let out = f.tick(&input, 0.0);
+            for e in &out {
+                if let Event::Began(m @ (Move::Light | Move::Heavy)) = e {
+                    asked = false;
+                    at.push(t);
+                    if *m == Move::Heavy { routes.extend(f.hero.act.map(|a| a.route)); }
+                }
+            }
+            ev.extend(out);
+        }
+        (routes, at, ev)
+    }
+
+    #[test]
+    fn a_heavy_cut_into_a_string_breaks_after_one_light_and_finishes_after_two() {
+        use crate::combo::Route;
+        let target = || Fight::new(vec![Enemy { hp: 1e5, ..dummy(1.0, 0) }]);
+        assert_eq!(string_of(&mut target(), &[false, true], false).0, vec![Route::Breaker]);
+        assert_eq!(string_of(&mut target(), &[false, false, true], false).0, vec![Route::Finisher]);
+        assert_eq!(string_of(&mut target(), &[true, true], false).0, vec![Route::Plain, Route::FollowThrough]);
+        // A light cut into a heavy's recovery comes before the heavy would have ended.
+        let mut f = target();
+        let heavy = Move::Heavy.spec_with(&f.hero.stats.kit).frames;
+        let (_, at, _) = string_of(&mut f, &[true, false], false);
+        assert!(at.len() == 2 && at[1] - at[0] < heavy.0 + heavy.1 + heavy.2, "{at:?}");
+    }
+
+    #[test]
+    fn a_finisher_gathered_to_the_full_lands_the_weapons_own_blow() {
+        use crate::combo::Finish;
+        // A sword's whirl reaches the lane beside.
+        let mut f = Fight::new(vec![Enemy { hp: 1e5, ..dummy(1.0, 0) }, Enemy { hp: 1e5, ..dummy(1.0, 1) }]);
+        let (_, _, ev) = string_of(&mut f, &[false, false, true], true);
+        assert!(ev.contains(&Event::Finished(Finish::Whirl)) && f.enemies[1].hp < 1e5, "{ev:?}");
+        // Without the gathering, only its own lane.
+        let mut g = Fight::new(vec![Enemy { hp: 1e5, ..dummy(1.0, 0) }, Enemy { hp: 1e5, ..dummy(1.0, 1) }]);
+        let (_, _, ev) = string_of(&mut g, &[false, false, true], false);
+        assert!(!ev.iter().any(|e| matches!(e, Event::Finished(_))) && g.enemies[1].hp == 1e5);
+        // An axe's cleave breaks the stance outright.
+        let mut h = armed("Husk Cleaver", vec![Enemy { hp: 1e5, ..dummy(1.0, 0) }]);
+        let (_, _, ev) = string_of(&mut h, &[false, false, true], true);
+        assert!(ev.contains(&Event::Finished(Finish::Cleave)) && ev.contains(&Event::StanceBroken { enemy: 0 }), "{ev:?}");
+    }
+
+    #[test]
+    fn a_bow_held_at_full_draw_looses_twice_as_hard_and_a_crossbow_goes_when_ready() {
+        use crate::gear::Ranged;
+        let shoot = |r, hold: bool| {
+            let mut f = holding(r, vec![Enemy { hp: 1e4, ..dummy(6.0, 0) }]);
+            let mut ev = Vec::new();
+            for t in 0..400u32 {
+                f.enemies[0].stance = 1e4;
+                ev.extend(f.tick(&Input { loose: t == 0, loose_held: hold, ..idle() }, 0.0));
+            }
+            (1e4 - f.enemies[0].hp, ev)
+        };
+        let ((quick, _), (drawn, ev)) = (shoot(Ranged::Bow, false), shoot(Ranged::Bow, true));
+        assert!(quick > 0.0 && (drawn / quick - CHARGE_MOST).abs() < 1e-3 && ev.contains(&Event::ChargeFull), "{quick} {drawn}");
+        let ((bolt, _), (held, ev)) = (shoot(Ranged::BloodCrossbow, false), shoot(Ranged::BloodCrossbow, true));
+        assert!(bolt > 0.0 && (held - bolt).abs() < 1e-3 && !ev.contains(&Event::ChargeFull), "{bolt} {held}");
     }
 }

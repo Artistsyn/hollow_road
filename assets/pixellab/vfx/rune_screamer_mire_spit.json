@@ -1,0 +1,651 @@
+{
+ "frames": [
+  {
+   "filename": "hollow-road-rune-screamer-mire-spit 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 79,
+    "h": 84
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 79,
+    "h": 84
+   },
+   "sourceSize": {
+    "w": 79,
+    "h": 84
+   },
+   "pivot": {
+    "x": 0.43037974683544306,
+    "y": 0.7738095238095238
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-screamer-mire-spit 1.png",
+   "frame": {
+    "x": 79,
+    "y": 0,
+    "w": 79,
+    "h": 84
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 79,
+    "h": 84
+   },
+   "sourceSize": {
+    "w": 79,
+    "h": 84
+   },
+   "pivot": {
+    "x": 0.43037974683544306,
+    "y": 0.7738095238095238
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-screamer-mire-spit 2.png",
+   "frame": {
+    "x": 158,
+    "y": 0,
+    "w": 79,
+    "h": 84
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 79,
+    "h": 84
+   },
+   "sourceSize": {
+    "w": 79,
+    "h": 84
+   },
+   "pivot": {
+    "x": 0.43037974683544306,
+    "y": 0.7738095238095238
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-screamer-mire-spit 3.png",
+   "frame": {
+    "x": 237,
+    "y": 0,
+    "w": 79,
+    "h": 84
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 79,
+    "h": 84
+   },
+   "sourceSize": {
+    "w": 79,
+    "h": 84
+   },
+   "pivot": {
+    "x": 0.43037974683544306,
+    "y": 0.7738095238095238
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-screamer-mire-spit 4.png",
+   "frame": {
+    "x": 316,
+    "y": 0,
+    "w": 79,
+    "h": 84
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 79,
+    "h": 84
+   },
+   "sourceSize": {
+    "w": 79,
+    "h": 84
+   },
+   "pivot": {
+    "x": 0.43037974683544306,
+    "y": 0.7738095238095238
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-screamer-mire-spit 5.png",
+   "frame": {
+    "x": 0,
+    "y": 84,
+    "w": 79,
+    "h": 84
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 79,
+    "h": 84
+   },
+   "sourceSize": {
+    "w": 79,
+    "h": 84
+   },
+   "pivot": {
+    "x": 0.43037974683544306,
+    "y": 0.7738095238095238
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-screamer-mire-spit 6.png",
+   "frame": {
+    "x": 79,
+    "y": 84,
+    "w": 79,
+    "h": 84
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 79,
+    "h": 84
+   },
+   "sourceSize": {
+    "w": 79,
+    "h": 84
+   },
+   "pivot": {
+    "x": 0.43037974683544306,
+    "y": 0.7738095238095238
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-screamer-mire-spit 7.png",
+   "frame": {
+    "x": 158,
+    "y": 84,
+    "w": 79,
+    "h": 84
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 79,
+    "h": 84
+   },
+   "sourceSize": {
+    "w": 79,
+    "h": 84
+   },
+   "pivot": {
+    "x": 0.43037974683544306,
+    "y": 0.7738095238095238
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-screamer-mire-spit 8.png",
+   "frame": {
+    "x": 237,
+    "y": 84,
+    "w": 79,
+    "h": 84
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 79,
+    "h": 84
+   },
+   "sourceSize": {
+    "w": 79,
+    "h": 84
+   },
+   "pivot": {
+    "x": 0.43037974683544306,
+    "y": 0.7738095238095238
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-screamer-mire-spit 9.png",
+   "frame": {
+    "x": 316,
+    "y": 84,
+    "w": 79,
+    "h": 84
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 79,
+    "h": 84
+   },
+   "sourceSize": {
+    "w": 79,
+    "h": 84
+   },
+   "pivot": {
+    "x": 0.43037974683544306,
+    "y": 0.7738095238095238
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-screamer-mire-spit 10.png",
+   "frame": {
+    "x": 0,
+    "y": 168,
+    "w": 79,
+    "h": 84
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 79,
+    "h": 84
+   },
+   "sourceSize": {
+    "w": 79,
+    "h": 84
+   },
+   "pivot": {
+    "x": 0.43037974683544306,
+    "y": 0.7738095238095238
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-screamer-mire-spit 11.png",
+   "frame": {
+    "x": 79,
+    "y": 168,
+    "w": 79,
+    "h": 84
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 79,
+    "h": 84
+   },
+   "sourceSize": {
+    "w": 79,
+    "h": 84
+   },
+   "pivot": {
+    "x": 0.43037974683544306,
+    "y": 0.7738095238095238
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-screamer-mire-spit 12.png",
+   "frame": {
+    "x": 158,
+    "y": 168,
+    "w": 79,
+    "h": 84
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 79,
+    "h": 84
+   },
+   "sourceSize": {
+    "w": 79,
+    "h": 84
+   },
+   "pivot": {
+    "x": 0.43037974683544306,
+    "y": 0.7738095238095238
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-screamer-mire-spit 13.png",
+   "frame": {
+    "x": 237,
+    "y": 168,
+    "w": 79,
+    "h": 84
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 79,
+    "h": 84
+   },
+   "sourceSize": {
+    "w": 79,
+    "h": 84
+   },
+   "pivot": {
+    "x": 0.43037974683544306,
+    "y": 0.7738095238095238
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-screamer-mire-spit 14.png",
+   "frame": {
+    "x": 316,
+    "y": 168,
+    "w": 79,
+    "h": 84
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 79,
+    "h": 84
+   },
+   "sourceSize": {
+    "w": 79,
+    "h": 84
+   },
+   "pivot": {
+    "x": 0.43037974683544306,
+    "y": 0.7738095238095238
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-screamer-mire-spit 15.png",
+   "frame": {
+    "x": 0,
+    "y": 252,
+    "w": 79,
+    "h": 84
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 79,
+    "h": 84
+   },
+   "sourceSize": {
+    "w": 79,
+    "h": 84
+   },
+   "pivot": {
+    "x": 0.43037974683544306,
+    "y": 0.7738095238095238
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-screamer-mire-spit 16.png",
+   "frame": {
+    "x": 79,
+    "y": 252,
+    "w": 79,
+    "h": 84
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 79,
+    "h": 84
+   },
+   "sourceSize": {
+    "w": 79,
+    "h": 84
+   },
+   "pivot": {
+    "x": 0.43037974683544306,
+    "y": 0.7738095238095238
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-screamer-mire-spit 17.png",
+   "frame": {
+    "x": 158,
+    "y": 252,
+    "w": 79,
+    "h": 84
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 79,
+    "h": 84
+   },
+   "sourceSize": {
+    "w": 79,
+    "h": 84
+   },
+   "pivot": {
+    "x": 0.43037974683544306,
+    "y": 0.7738095238095238
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-screamer-mire-spit 18.png",
+   "frame": {
+    "x": 237,
+    "y": 252,
+    "w": 79,
+    "h": 84
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 79,
+    "h": 84
+   },
+   "sourceSize": {
+    "w": 79,
+    "h": 84
+   },
+   "pivot": {
+    "x": 0.43037974683544306,
+    "y": 0.7738095238095238
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-screamer-mire-spit 19.png",
+   "frame": {
+    "x": 316,
+    "y": 252,
+    "w": 79,
+    "h": 84
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 79,
+    "h": 84
+   },
+   "sourceSize": {
+    "w": 79,
+    "h": 84
+   },
+   "pivot": {
+    "x": 0.43037974683544306,
+    "y": 0.7738095238095238
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-screamer-mire-spit 20.png",
+   "frame": {
+    "x": 0,
+    "y": 336,
+    "w": 79,
+    "h": 84
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 79,
+    "h": 84
+   },
+   "sourceSize": {
+    "w": 79,
+    "h": 84
+   },
+   "pivot": {
+    "x": 0.43037974683544306,
+    "y": 0.7738095238095238
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-screamer-mire-spit 21.png",
+   "frame": {
+    "x": 79,
+    "y": 336,
+    "w": 79,
+    "h": 84
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 79,
+    "h": 84
+   },
+   "sourceSize": {
+    "w": 79,
+    "h": 84
+   },
+   "pivot": {
+    "x": 0.43037974683544306,
+    "y": 0.7738095238095238
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-screamer-mire-spit 22.png",
+   "frame": {
+    "x": 158,
+    "y": 336,
+    "w": 79,
+    "h": 84
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 79,
+    "h": 84
+   },
+   "sourceSize": {
+    "w": 79,
+    "h": 84
+   },
+   "pivot": {
+    "x": 0.43037974683544306,
+    "y": 0.7738095238095238
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-rune-screamer-mire-spit 23.png",
+   "frame": {
+    "x": 237,
+    "y": 336,
+    "w": 79,
+    "h": 84
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 79,
+    "h": 84
+   },
+   "sourceSize": {
+    "w": 79,
+    "h": 84
+   },
+   "pivot": {
+    "x": 0.43037974683544306,
+    "y": 0.7738095238095238
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hollow-road-rune-screamer-mire-spit.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 395,
+   "h": 420
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 34,
+   "y": 65
+  },
+  "frameTags": [
+   {
+    "name": "hollow-road-rune-screamer-mire-spit",
+    "from": 0,
+    "to": 23,
+    "direction": "forward"
+   }
+  ]
+ }
+}

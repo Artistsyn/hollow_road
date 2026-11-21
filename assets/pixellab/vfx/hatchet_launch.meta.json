@@ -1,0 +1,11 @@
+{
+ "name": "hatchet_launch",
+ "for": "bandit_chief hatchet (throw release)",
+ "px_per_m": 55.2,
+ "anchor": "centre",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": null,
+ "pixellab_effect_id": "cce469aa-99a5-4d8d-998e-f2e71e1d92e6",
+ "notes": "Overhand release: a thin tapered whip of pale air arcs over the hand and down-forward (+x), a small air puff and streaks off its tip, a few grit flecks shaken off the haft. Anchor = the throwing hand at release; play on the release frame, then spawn hatchet_flight ahead of it."
+}

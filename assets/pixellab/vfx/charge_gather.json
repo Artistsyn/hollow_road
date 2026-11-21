@@ -1,0 +1,287 @@
+{
+ "frames": [
+  {
+   "filename": "hollow-road-charge-gather 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 88,
+    "h": 88
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 88,
+    "h": 88
+   },
+   "sourceSize": {
+    "w": 88,
+    "h": 88
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-charge-gather 1.png",
+   "frame": {
+    "x": 88,
+    "y": 0,
+    "w": 88,
+    "h": 88
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 88,
+    "h": 88
+   },
+   "sourceSize": {
+    "w": 88,
+    "h": 88
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-charge-gather 2.png",
+   "frame": {
+    "x": 176,
+    "y": 0,
+    "w": 88,
+    "h": 88
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 88,
+    "h": 88
+   },
+   "sourceSize": {
+    "w": 88,
+    "h": 88
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-charge-gather 3.png",
+   "frame": {
+    "x": 264,
+    "y": 0,
+    "w": 88,
+    "h": 88
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 88,
+    "h": 88
+   },
+   "sourceSize": {
+    "w": 88,
+    "h": 88
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-charge-gather 4.png",
+   "frame": {
+    "x": 0,
+    "y": 88,
+    "w": 88,
+    "h": 88
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 88,
+    "h": 88
+   },
+   "sourceSize": {
+    "w": 88,
+    "h": 88
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-charge-gather 5.png",
+   "frame": {
+    "x": 88,
+    "y": 88,
+    "w": 88,
+    "h": 88
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 88,
+    "h": 88
+   },
+   "sourceSize": {
+    "w": 88,
+    "h": 88
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-charge-gather 6.png",
+   "frame": {
+    "x": 176,
+    "y": 88,
+    "w": 88,
+    "h": 88
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 88,
+    "h": 88
+   },
+   "sourceSize": {
+    "w": 88,
+    "h": 88
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-charge-gather 7.png",
+   "frame": {
+    "x": 264,
+    "y": 88,
+    "w": 88,
+    "h": 88
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 88,
+    "h": 88
+   },
+   "sourceSize": {
+    "w": 88,
+    "h": 88
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-charge-gather 8.png",
+   "frame": {
+    "x": 0,
+    "y": 176,
+    "w": 88,
+    "h": 88
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 88,
+    "h": 88
+   },
+   "sourceSize": {
+    "w": 88,
+    "h": 88
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-charge-gather 9.png",
+   "frame": {
+    "x": 88,
+    "y": 176,
+    "w": 88,
+    "h": 88
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 88,
+    "h": 88
+   },
+   "sourceSize": {
+    "w": 88,
+    "h": 88
+   },
+   "pivot": {
+    "x": 0.5,
+    "y": 0.5
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hollow-road-charge-gather.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 352,
+   "h": 264
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 44,
+   "y": 44
+  },
+  "frameTags": [
+   {
+    "name": "hollow-road-charge-gather",
+    "from": 0,
+    "to": 9,
+    "direction": "forward"
+   }
+  ]
+ }
+}

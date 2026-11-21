@@ -1,0 +1,261 @@
+{
+ "frames": [
+  {
+   "filename": "hollow-road-keening-cage-barbed-lash 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 121,
+    "h": 111
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 121,
+    "h": 111
+   },
+   "sourceSize": {
+    "w": 121,
+    "h": 111
+   },
+   "pivot": {
+    "x": 0.9173553719008265,
+    "y": 0.2702702702702703
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-keening-cage-barbed-lash 1.png",
+   "frame": {
+    "x": 121,
+    "y": 0,
+    "w": 121,
+    "h": 111
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 121,
+    "h": 111
+   },
+   "sourceSize": {
+    "w": 121,
+    "h": 111
+   },
+   "pivot": {
+    "x": 0.9173553719008265,
+    "y": 0.2702702702702703
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-keening-cage-barbed-lash 2.png",
+   "frame": {
+    "x": 242,
+    "y": 0,
+    "w": 121,
+    "h": 111
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 121,
+    "h": 111
+   },
+   "sourceSize": {
+    "w": 121,
+    "h": 111
+   },
+   "pivot": {
+    "x": 0.9173553719008265,
+    "y": 0.2702702702702703
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-keening-cage-barbed-lash 3.png",
+   "frame": {
+    "x": 0,
+    "y": 111,
+    "w": 121,
+    "h": 111
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 121,
+    "h": 111
+   },
+   "sourceSize": {
+    "w": 121,
+    "h": 111
+   },
+   "pivot": {
+    "x": 0.9173553719008265,
+    "y": 0.2702702702702703
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-keening-cage-barbed-lash 4.png",
+   "frame": {
+    "x": 121,
+    "y": 111,
+    "w": 121,
+    "h": 111
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 121,
+    "h": 111
+   },
+   "sourceSize": {
+    "w": 121,
+    "h": 111
+   },
+   "pivot": {
+    "x": 0.9173553719008265,
+    "y": 0.2702702702702703
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-keening-cage-barbed-lash 5.png",
+   "frame": {
+    "x": 242,
+    "y": 111,
+    "w": 121,
+    "h": 111
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 121,
+    "h": 111
+   },
+   "sourceSize": {
+    "w": 121,
+    "h": 111
+   },
+   "pivot": {
+    "x": 0.9173553719008265,
+    "y": 0.2702702702702703
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-keening-cage-barbed-lash 6.png",
+   "frame": {
+    "x": 0,
+    "y": 222,
+    "w": 121,
+    "h": 111
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 121,
+    "h": 111
+   },
+   "sourceSize": {
+    "w": 121,
+    "h": 111
+   },
+   "pivot": {
+    "x": 0.9173553719008265,
+    "y": 0.2702702702702703
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-keening-cage-barbed-lash 7.png",
+   "frame": {
+    "x": 121,
+    "y": 222,
+    "w": 121,
+    "h": 111
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 121,
+    "h": 111
+   },
+   "sourceSize": {
+    "w": 121,
+    "h": 111
+   },
+   "pivot": {
+    "x": 0.9173553719008265,
+    "y": 0.2702702702702703
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-keening-cage-barbed-lash 8.png",
+   "frame": {
+    "x": 242,
+    "y": 222,
+    "w": 121,
+    "h": 111
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 121,
+    "h": 111
+   },
+   "sourceSize": {
+    "w": 121,
+    "h": 111
+   },
+   "pivot": {
+    "x": 0.9173553719008265,
+    "y": 0.2702702702702703
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hollow-road-keening-cage-barbed-lash.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 363,
+   "h": 333
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 111,
+   "y": 30
+  },
+  "frameTags": [
+   {
+    "name": "hollow-road-keening-cage-barbed-lash",
+    "from": 0,
+    "to": 8,
+    "direction": "forward"
+   }
+  ]
+ }
+}

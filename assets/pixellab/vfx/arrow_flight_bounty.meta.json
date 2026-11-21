@@ -1,0 +1,14 @@
+{
+ "name": "arrow_flight_bounty",
+ "for": "bounty_echo arrow / long draw / low arrow (Motion::Shot)",
+ "px_per_m": 50.9,
+ "anchor": "centre",
+ "loop": true,
+ "travels": true,
+ "hit_band_m": [
+  1.0,
+  1.7
+ ],
+ "pixellab_effect_id": "1a20ea39-d62b-40da-a0c3-efed108a575e",
+ "notes": "arrow_flight redrawn at the Echo of Bounty's scale (89 px / 1.75 m = 50.9 px/m): a 25 px arrow with grey fletching like the fox's quiver, same streak. Low arrow band 0.0-0.55 m: the game sets its height."
+}

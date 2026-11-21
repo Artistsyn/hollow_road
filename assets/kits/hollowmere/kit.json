@@ -30,7 +30,8 @@
         "at": 0.8,
         "flicker": 0.0
       },
-      "trim": true
+      "trim": true,
+      "footing": 0.8
     },
     "dead_tree": {
       "description": "gnarled dead tree of the Wretched Vale",
@@ -61,7 +62,8 @@
         "at": 0.8,
         "flicker": 0.0
       },
-      "trim": true
+      "trim": true,
+      "footing": 1.0
     },
     "gravestones": {
       "description": "three crooked mossy gravestones",
@@ -92,7 +94,8 @@
         "at": 0.8,
         "flicker": 0.0
       },
-      "trim": true
+      "trim": true,
+      "footing": 0.6
     },
     "reeds": {
       "description": "marsh reeds and cattails",
@@ -154,7 +157,8 @@
         "at": 0.25,
         "flicker": 0.3
       },
-      "trim": true
+      "trim": true,
+      "footing": 0.9
     },
     "signpost": {
       "description": "leaning wooden signpost, rope-bound",
@@ -185,7 +189,200 @@
         "at": 0.8,
         "flicker": 0.0
       },
-      "trim": true
+      "trim": true,
+      "footing": 0.5
+    },
+    "stilt_hut": {
+      "description": "fisher's hut on tall stilts over the water, its windows lit",
+      "sprite": {
+        "path": "",
+        "pool": [
+          "stilt_hut/stilt_hut_1.png"
+        ],
+        "flip_x": false,
+        "pixelated": true
+      },
+      "shape": [],
+      "kind": "Rock",
+      "tint": null,
+      "height": 6.0,
+      "anchor": "Ground",
+      "glow": 1.0,
+      "glow_from": 0.6,
+      "light": {
+        "enabled": true,
+        "color": [
+          255,
+          196,
+          112
+        ],
+        "intensity": 0.9,
+        "radius": 7.0,
+        "at": 0.55,
+        "flicker": 0.15
+      },
+      "trim": true,
+      "footing": 1.0
+    },
+    "pilings": {
+      "description": "old mooring posts standing in the water, roped and mossy",
+      "sprite": {
+        "path": "",
+        "pool": [
+          "pilings/pilings_1.png"
+        ],
+        "flip_x": false,
+        "pixelated": true
+      },
+      "shape": [],
+      "kind": "Rock",
+      "tint": null,
+      "height": 2.6,
+      "anchor": "Ground",
+      "glow": 0.0,
+      "glow_from": 0.0,
+      "light": {
+        "enabled": false,
+        "color": [
+          255,
+          200,
+          120
+        ],
+        "intensity": 0.5,
+        "radius": 3.0,
+        "at": 0.25,
+        "flicker": 0.3
+      },
+      "trim": true,
+      "footing": 0.8
+    },
+    "shrine_wood": {
+      "description": "mossy wayside shrine overgrown with ivy, a candle burning in it",
+      "sprite": {
+        "path": "",
+        "pool": [
+          "shrine_wood/shrine_wood_1.png"
+        ],
+        "flip_x": false,
+        "pixelated": true
+      },
+      "shape": [],
+      "kind": "Rock",
+      "tint": null,
+      "height": 2.4,
+      "anchor": "Ground",
+      "glow": 1.0,
+      "glow_from": 0.8,
+      "light": {
+        "enabled": true,
+        "color": [
+          255,
+          200,
+          120
+        ],
+        "intensity": 0.5,
+        "radius": 3.0,
+        "at": 0.25,
+        "flicker": 0.3
+      },
+      "trim": true,
+      "footing": 0.9
+    },
+    "shrine_marsh": {
+      "description": "waterlogged shrine stained by the marsh, a candle burning in it",
+      "sprite": {
+        "path": "",
+        "pool": [
+          "shrine_marsh/shrine_marsh_1.png"
+        ],
+        "flip_x": false,
+        "pixelated": true
+      },
+      "shape": [],
+      "kind": "Rock",
+      "tint": null,
+      "height": 2.4,
+      "anchor": "Ground",
+      "glow": 1.0,
+      "glow_from": 0.8,
+      "light": {
+        "enabled": true,
+        "color": [
+          255,
+          200,
+          120
+        ],
+        "intensity": 0.5,
+        "radius": 3.0,
+        "at": 0.25,
+        "flicker": 0.3
+      },
+      "trim": true,
+      "footing": 0.9
+    },
+    "shrine_stone": {
+      "description": "carved pale stone town shrine with a candle lantern",
+      "sprite": {
+        "path": "",
+        "pool": [
+          "shrine_stone/shrine_stone_1.png"
+        ],
+        "flip_x": false,
+        "pixelated": true
+      },
+      "shape": [],
+      "kind": "Rock",
+      "tint": null,
+      "height": 2.4,
+      "anchor": "Ground",
+      "glow": 1.0,
+      "glow_from": 0.8,
+      "light": {
+        "enabled": true,
+        "color": [
+          255,
+          200,
+          120
+        ],
+        "intensity": 0.5,
+        "radius": 3.0,
+        "at": 0.25,
+        "flicker": 0.3
+      },
+      "trim": true,
+      "footing": 0.9
+    },
+    "shrine_crypt": {
+      "description": "dark crypt shrine with candles dripping wax, an angel in its niche",
+      "sprite": {
+        "path": "",
+        "pool": [
+          "shrine_crypt/shrine_crypt_1.png"
+        ],
+        "flip_x": false,
+        "pixelated": true
+      },
+      "shape": [],
+      "kind": "Rock",
+      "tint": null,
+      "height": 2.4,
+      "anchor": "Ground",
+      "glow": 1.0,
+      "glow_from": 0.8,
+      "light": {
+        "enabled": true,
+        "color": [
+          255,
+          200,
+          120
+        ],
+        "intensity": 0.5,
+        "radius": 3.0,
+        "at": 0.25,
+        "flicker": 0.3
+      },
+      "trim": true,
+      "footing": 0.9
     }
   }
 }

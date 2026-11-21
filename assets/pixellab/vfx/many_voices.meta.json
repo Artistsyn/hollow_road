@@ -1,0 +1,20 @@
+{
+ "name": "many_voices",
+ "for": "Mother of the Black Water: many voices",
+ "px_per_m": 33.6,
+ "anchor": "feet",
+ "loop": true,
+ "travels": true,
+ "hit_band_m": [
+  0.0,
+  2.4
+ ],
+ "pixellab_effect_id": "d245b235-7db3-42da-a585-d3fe5f77e048",
+ "ground_y_px": 86,
+ "front_x_px": 58,
+ "notes": "Her waking: her voice with every voice at once: six drowned faces (three fainter ones a step behind for depth), two echoes, a more agitated front, more wisps and drips. Same band. Facing +x, exported in place (12 frames @ 12 fps, seamless loop). Feet anchor: ground is canvas row 86; the front's leading edge is at canvas x 58; place that point on the ring's position.",
+ "anchor_px": [
+  58,
+  86
+ ]
+}

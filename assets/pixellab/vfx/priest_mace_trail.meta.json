@@ -1,0 +1,30 @@
+{
+ "name": "priest_mace_trail",
+ "for": "The Angel Priest - mace / mace again (side.rs PRIEST_BLOWS reach 0.3-2.9 m, height 0-3.0 m)",
+ "px_per_m": 50.8,
+ "anchor": "feet",
+ "anchor_px": [
+  164,
+  170
+ ],
+ "faces": "left (as the angel_priest toll clip; mirror with the sprite)",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": [
+  0.0,
+  3.0
+ ],
+ "reach_m": [
+  0.3,
+  2.9
+ ],
+ "fps": 12,
+ "start_on": "first live tick (toll frame 6)",
+ "pixellab_effect_id": "3529b7bc-42cc-4adc-a684-b892e693a059",
+ "notes": "Heavy flanged-mace arc in the priest ivory steel with a gold outer rim (its robe trim), apex at 3.0 m over its hood, down to the ground at the full 2.9 m reach; a glint on the head at the peak, a few gold motes shed, dust where it passes the ground. px_per_m from idle figure 183 px / sprite 3.6 m.",
+ "frames": 9,
+ "frame_px": [
+  186,
+  179
+ ]
+}

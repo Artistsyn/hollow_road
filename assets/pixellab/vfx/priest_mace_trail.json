@@ -1,0 +1,261 @@
+{
+ "frames": [
+  {
+   "filename": "hollow-road-angel-priest-mace-trail 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 186,
+    "h": 179
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 186,
+    "h": 179
+   },
+   "sourceSize": {
+    "w": 186,
+    "h": 179
+   },
+   "pivot": {
+    "x": 0.5161290322580645,
+    "y": 0.44692737430167595
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-angel-priest-mace-trail 1.png",
+   "frame": {
+    "x": 186,
+    "y": 0,
+    "w": 186,
+    "h": 179
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 186,
+    "h": 179
+   },
+   "sourceSize": {
+    "w": 186,
+    "h": 179
+   },
+   "pivot": {
+    "x": 0.5161290322580645,
+    "y": 0.44692737430167595
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-angel-priest-mace-trail 2.png",
+   "frame": {
+    "x": 372,
+    "y": 0,
+    "w": 186,
+    "h": 179
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 186,
+    "h": 179
+   },
+   "sourceSize": {
+    "w": 186,
+    "h": 179
+   },
+   "pivot": {
+    "x": 0.5161290322580645,
+    "y": 0.44692737430167595
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-angel-priest-mace-trail 3.png",
+   "frame": {
+    "x": 0,
+    "y": 179,
+    "w": 186,
+    "h": 179
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 186,
+    "h": 179
+   },
+   "sourceSize": {
+    "w": 186,
+    "h": 179
+   },
+   "pivot": {
+    "x": 0.5161290322580645,
+    "y": 0.44692737430167595
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-angel-priest-mace-trail 4.png",
+   "frame": {
+    "x": 186,
+    "y": 179,
+    "w": 186,
+    "h": 179
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 186,
+    "h": 179
+   },
+   "sourceSize": {
+    "w": 186,
+    "h": 179
+   },
+   "pivot": {
+    "x": 0.5161290322580645,
+    "y": 0.44692737430167595
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-angel-priest-mace-trail 5.png",
+   "frame": {
+    "x": 372,
+    "y": 179,
+    "w": 186,
+    "h": 179
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 186,
+    "h": 179
+   },
+   "sourceSize": {
+    "w": 186,
+    "h": 179
+   },
+   "pivot": {
+    "x": 0.5161290322580645,
+    "y": 0.44692737430167595
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-angel-priest-mace-trail 6.png",
+   "frame": {
+    "x": 0,
+    "y": 358,
+    "w": 186,
+    "h": 179
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 186,
+    "h": 179
+   },
+   "sourceSize": {
+    "w": 186,
+    "h": 179
+   },
+   "pivot": {
+    "x": 0.5161290322580645,
+    "y": 0.44692737430167595
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-angel-priest-mace-trail 7.png",
+   "frame": {
+    "x": 186,
+    "y": 358,
+    "w": 186,
+    "h": 179
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 186,
+    "h": 179
+   },
+   "sourceSize": {
+    "w": 186,
+    "h": 179
+   },
+   "pivot": {
+    "x": 0.5161290322580645,
+    "y": 0.44692737430167595
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-angel-priest-mace-trail 8.png",
+   "frame": {
+    "x": 372,
+    "y": 358,
+    "w": 186,
+    "h": 179
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 186,
+    "h": 179
+   },
+   "sourceSize": {
+    "w": 186,
+    "h": 179
+   },
+   "pivot": {
+    "x": 0.5161290322580645,
+    "y": 0.44692737430167595
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hollow-road-angel-priest-mace-trail.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 558,
+   "h": 537
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 96,
+   "y": 80
+  },
+  "frameTags": [
+   {
+    "name": "hollow-road-angel-priest-mace-trail",
+    "from": 0,
+    "to": 8,
+    "direction": "forward"
+   }
+  ]
+ }
+}

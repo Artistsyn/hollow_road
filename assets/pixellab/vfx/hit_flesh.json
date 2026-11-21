@@ -1,0 +1,339 @@
+{
+ "frames": [
+  {
+   "filename": "hollow-road-hit-flesh 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 89,
+    "h": 98
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 89,
+    "h": 98
+   },
+   "sourceSize": {
+    "w": 89,
+    "h": 98
+   },
+   "pivot": {
+    "x": 0.16853932584269662,
+    "y": 0.19387755102040816
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-hit-flesh 1.png",
+   "frame": {
+    "x": 89,
+    "y": 0,
+    "w": 89,
+    "h": 98
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 89,
+    "h": 98
+   },
+   "sourceSize": {
+    "w": 89,
+    "h": 98
+   },
+   "pivot": {
+    "x": 0.16853932584269662,
+    "y": 0.19387755102040816
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-hit-flesh 2.png",
+   "frame": {
+    "x": 178,
+    "y": 0,
+    "w": 89,
+    "h": 98
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 89,
+    "h": 98
+   },
+   "sourceSize": {
+    "w": 89,
+    "h": 98
+   },
+   "pivot": {
+    "x": 0.16853932584269662,
+    "y": 0.19387755102040816
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-hit-flesh 3.png",
+   "frame": {
+    "x": 267,
+    "y": 0,
+    "w": 89,
+    "h": 98
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 89,
+    "h": 98
+   },
+   "sourceSize": {
+    "w": 89,
+    "h": 98
+   },
+   "pivot": {
+    "x": 0.16853932584269662,
+    "y": 0.19387755102040816
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-hit-flesh 4.png",
+   "frame": {
+    "x": 0,
+    "y": 98,
+    "w": 89,
+    "h": 98
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 89,
+    "h": 98
+   },
+   "sourceSize": {
+    "w": 89,
+    "h": 98
+   },
+   "pivot": {
+    "x": 0.16853932584269662,
+    "y": 0.19387755102040816
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-hit-flesh 5.png",
+   "frame": {
+    "x": 89,
+    "y": 98,
+    "w": 89,
+    "h": 98
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 89,
+    "h": 98
+   },
+   "sourceSize": {
+    "w": 89,
+    "h": 98
+   },
+   "pivot": {
+    "x": 0.16853932584269662,
+    "y": 0.19387755102040816
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-hit-flesh 6.png",
+   "frame": {
+    "x": 178,
+    "y": 98,
+    "w": 89,
+    "h": 98
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 89,
+    "h": 98
+   },
+   "sourceSize": {
+    "w": 89,
+    "h": 98
+   },
+   "pivot": {
+    "x": 0.16853932584269662,
+    "y": 0.19387755102040816
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-hit-flesh 7.png",
+   "frame": {
+    "x": 267,
+    "y": 98,
+    "w": 89,
+    "h": 98
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 89,
+    "h": 98
+   },
+   "sourceSize": {
+    "w": 89,
+    "h": 98
+   },
+   "pivot": {
+    "x": 0.16853932584269662,
+    "y": 0.19387755102040816
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-hit-flesh 8.png",
+   "frame": {
+    "x": 0,
+    "y": 196,
+    "w": 89,
+    "h": 98
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 89,
+    "h": 98
+   },
+   "sourceSize": {
+    "w": 89,
+    "h": 98
+   },
+   "pivot": {
+    "x": 0.16853932584269662,
+    "y": 0.19387755102040816
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-hit-flesh 9.png",
+   "frame": {
+    "x": 89,
+    "y": 196,
+    "w": 89,
+    "h": 98
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 89,
+    "h": 98
+   },
+   "sourceSize": {
+    "w": 89,
+    "h": 98
+   },
+   "pivot": {
+    "x": 0.16853932584269662,
+    "y": 0.19387755102040816
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-hit-flesh 10.png",
+   "frame": {
+    "x": 178,
+    "y": 196,
+    "w": 89,
+    "h": 98
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 89,
+    "h": 98
+   },
+   "sourceSize": {
+    "w": 89,
+    "h": 98
+   },
+   "pivot": {
+    "x": 0.16853932584269662,
+    "y": 0.19387755102040816
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-hit-flesh 11.png",
+   "frame": {
+    "x": 267,
+    "y": 196,
+    "w": 89,
+    "h": 98
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 89,
+    "h": 98
+   },
+   "sourceSize": {
+    "w": 89,
+    "h": 98
+   },
+   "pivot": {
+    "x": 0.16853932584269662,
+    "y": 0.19387755102040816
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hollow-road-hit-flesh.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 356,
+   "h": 294
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 15,
+   "y": 19
+  },
+  "frameTags": [
+   {
+    "name": "hollow-road-hit-flesh",
+    "from": 0,
+    "to": 11,
+    "direction": "forward"
+   }
+  ]
+ }
+}

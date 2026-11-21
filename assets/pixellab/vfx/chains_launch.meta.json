@@ -1,0 +1,11 @@
+{
+ "name": "chains_launch",
+ "for": "hollow_magistrate chains (throw)",
+ "px_per_m": 50.8,
+ "anchor": "centre",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": null,
+ "pixellab_effect_id": "cce96dda-9b09-4a1d-8fbf-5763a166750f",
+ "notes": "The chain flung from the wrist: a coil at the hand clinks (small glint), uncoils up and forward, then lashes down-forward toward the floor with a pale motion smear trailing the manacle. Anchor = the throwing hand. The last frame ends with the manacle ~0.6 m below/1 m ahead of the hand: hand over to chains_flight on the ground there."
+}

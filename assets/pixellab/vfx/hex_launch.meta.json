@@ -1,0 +1,11 @@
+{
+ "name": "hex_launch",
+ "for": "hexer hex: cast at the open hand",
+ "px_per_m": 62.6,
+ "anchor": "centre",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": null,
+ "pixellab_effect_id": "dbb443e8-56a4-4e44-afaa-ef96b5130c94",
+ "notes": "Three violet tendrils wind in and knot tight at the hand while motes are drawn in (frames 1-4), then a rune ring flashes open around the knot and a few curse sparks spit forward (+x) as a dark puff rises; the runes crumble away in blocks. Anchor = the casting hand. 10 frames @10 fps; the wisp (hex_flight) should leave on frame 5."
+}

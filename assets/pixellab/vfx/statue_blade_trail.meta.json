@@ -1,0 +1,30 @@
+{
+ "name": "statue_blade_trail",
+ "for": "The Statue Archangel - stone blade (side.rs STATUE_BLOWS reach 0.3-3.8 m, height 0-3.8 m; held long, tell 0.45)",
+ "px_per_m": 40.7,
+ "anchor": "feet",
+ "anchor_px": [
+  192,
+  171
+ ],
+ "faces": "left (as the statue_archangel toll clip; mirror with the sprite)",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": [
+  0.0,
+  3.8
+ ],
+ "reach_m": [
+  0.3,
+  3.8
+ ],
+ "fps": 12,
+ "start_on": "first live tick (toll frame 8)",
+ "pixellab_effect_id": "db334a31-afe2-4048-839b-b9a39893acfa",
+ "notes": "A wide lichen-grey stone arc from 3.8 m down into the ground at ~3.8 m reach, a pale outer echo; stone chips (stepped on twos) and moss flecks crumble off the swept edge as it falls; on contact a 2-frame hit-stop, debris thrown up and settling, a dust bed. anchor_px lies just past the right edge. px_per_m from idle figure 179 px / sprite 4.4 m.",
+ "frames": 11,
+ "frame_px": [
+  185,
+  186
+ ]
+}

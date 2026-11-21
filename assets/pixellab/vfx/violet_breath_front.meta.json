@@ -1,0 +1,14 @@
+{
+ "name": "violet_breath_front",
+ "for": "warped_drake violet breath (Motion::Shot 11/TPS): the travelling front",
+ "px_per_m": 42.6,
+ "anchor": "centre",
+ "loop": true,
+ "travels": true,
+ "hit_band_m": [
+  0.4,
+  1.8
+ ],
+ "pixellab_effect_id": "ce9bef38-f04c-4711-a970-709dae144de1",
+ "notes": "Loop, in place, facing +x: a rolling violet billow (two masses tumbling round a bright core, the top rolling forward) with a vapour wake streaming back, short violet-white crackles flickering on its leading face, motes and sparks shed behind. ~56 px tall = the 0.4-1.8 m band; anchor = the billow's leading core."
+}

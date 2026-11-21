@@ -1,7 +1,7 @@
 {
  "frames": [
   {
-   "filename": "hollow-road-heavy-slash 0.png",
+   "filename": "hollow-road-hero-heavy-slash-v2 0.png",
    "frame": {
     "x": 0,
     "y": 0,
@@ -27,7 +27,7 @@
    "duration": 50
   },
   {
-   "filename": "hollow-road-heavy-slash 1.png",
+   "filename": "hollow-road-hero-heavy-slash-v2 1.png",
    "frame": {
     "x": 112,
     "y": 0,
@@ -53,7 +53,7 @@
    "duration": 50
   },
   {
-   "filename": "hollow-road-heavy-slash 2.png",
+   "filename": "hollow-road-hero-heavy-slash-v2 2.png",
    "frame": {
     "x": 224,
     "y": 0,
@@ -79,7 +79,7 @@
    "duration": 50
   },
   {
-   "filename": "hollow-road-heavy-slash 3.png",
+   "filename": "hollow-road-hero-heavy-slash-v2 3.png",
    "frame": {
     "x": 0,
     "y": 152,
@@ -105,7 +105,7 @@
    "duration": 50
   },
   {
-   "filename": "hollow-road-heavy-slash 4.png",
+   "filename": "hollow-road-hero-heavy-slash-v2 4.png",
    "frame": {
     "x": 112,
     "y": 152,
@@ -131,7 +131,7 @@
    "duration": 50
   },
   {
-   "filename": "hollow-road-heavy-slash 5.png",
+   "filename": "hollow-road-hero-heavy-slash-v2 5.png",
    "frame": {
     "x": 224,
     "y": 152,
@@ -157,7 +157,7 @@
    "duration": 50
   },
   {
-   "filename": "hollow-road-heavy-slash 6.png",
+   "filename": "hollow-road-hero-heavy-slash-v2 6.png",
    "frame": {
     "x": 0,
     "y": 304,
@@ -183,7 +183,7 @@
    "duration": 50
   },
   {
-   "filename": "hollow-road-heavy-slash 7.png",
+   "filename": "hollow-road-hero-heavy-slash-v2 7.png",
    "frame": {
     "x": 112,
     "y": 304,
@@ -211,7 +211,7 @@
  ],
  "meta": {
   "app": "PixelLab VFX Creator",
-  "image": "hollow-road-heavy-slash.png",
+  "image": "hollow-road-hero-heavy-slash-v2.png",
   "format": "RGBA8888",
   "size": {
    "w": 336,
@@ -225,7 +225,7 @@
   },
   "frameTags": [
    {
-    "name": "hollow-road-heavy-slash",
+    "name": "hollow-road-hero-heavy-slash-v2",
     "from": 0,
     "to": 7,
     "direction": "forward"

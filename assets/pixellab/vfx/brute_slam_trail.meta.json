@@ -1,0 +1,30 @@
+{
+ "name": "brute_slam_trail",
+ "for": "brute - slam / late slam (side.rs BRUTE reach 0.2-2.4 m, height 0-2.6 m; road fight.rs slam reach 3.0 m)",
+ "px_per_m": 45.6,
+ "anchor": "feet",
+ "anchor_px": [
+  164,
+  136
+ ],
+ "faces": "left (as the brute w_slam clip; mirror with the sprite)",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": [
+  0.0,
+  2.6
+ ],
+ "reach_m": [
+  0.2,
+  2.4
+ ],
+ "fps": 12,
+ "start_on": "first live tick (w_slam frame 5)",
+ "pixellab_effect_id": "caddc9ae-47d7-4f4c-8438-3973eef50038",
+ "notes": "Thick iron maul arc over the brute head (2.6 m apex) down into the ground ~2.3 m in front; on contact a 2-frame hit-stop (recipe freeze), hot iron-on-stone sparks, debris chunks thrown up that bounce and settle, a dust bed. Impact lands on effect frame 3.",
+ "frames": 10,
+ "frame_px": [
+  204,
+  158
+ ]
+}

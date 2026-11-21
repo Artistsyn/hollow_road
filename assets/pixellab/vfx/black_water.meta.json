@@ -1,0 +1,20 @@
+{
+ "name": "black_water",
+ "for": "Mother of the Black Water: black water",
+ "px_per_m": 33.6,
+ "anchor": "feet",
+ "loop": true,
+ "travels": true,
+ "hit_band_m": [
+  0.0,
+  0.55
+ ],
+ "pixellab_effect_id": "2a0303cb-2d8c-4a05-a55f-96099c7be3a6",
+ "ground_y_px": 27,
+ "front_x_px": 64,
+ "notes": "A low wave of near-black water 19 px tall (foam cap to ~21 px): a translucent teal band under the crest, a 1 px teal rim light along its back so it reads on dark ground, a hand-placed foam cap on the curling lip (morphing on twos), foam spilling down the face, spray off the crest, drips and a splash at its foot. Low: jump it. Facing +x, exported in place (12 frames @ 12 fps, seamless loop). Feet anchor: ground is canvas row 27; the front's leading edge is at canvas x 64; place that point on the ring's position.",
+ "anchor_px": [
+  64,
+  27
+ ]
+}

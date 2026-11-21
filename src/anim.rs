@@ -78,25 +78,46 @@ pub struct Sheet {
     pub draws: HashMap<String, Vec<Hold>>,
     /// Which weapon and offhand pairs `dress` has drawn.
     pub dressed: std::collections::HashSet<(String, String)>,
+    /// Which weapon and kind pairs `arm_as` has drawn (a kind with no light or idle clip of its
+    /// own, as "one" has none, would otherwise be drawn again every frame).
+    pub armed: std::collections::HashSet<(String, String)>,
     /// Each armed or dressed frame's `Glint`, by the frame (`Arc::as_ptr`), and whether it is the
     /// mirror of the one drawn (the glint is kept once, for the frame as drawn).
     pub glints: HashMap<usize, (Arc<Glint>, bool)>,
+    /// The frame each attack clip is drawn making contact (its `contact.txt`), by clip.
+    pub contacts: HashMap<String, usize>,
 }
 
 /// Where a frame holds its weapon: the grip in canvas pixels, the blade's angle on screen
 /// (degrees, 0 = right, 90 = down), whether it is drawn over the body or behind it, and how much
-/// of its length shows (1 = all; less when it points toward or away from the viewer).
+/// of its length shows (1 = all; less when it points toward or away from the viewer), and how much
+/// of its breadth across the haft (1 = its face; less as it turns edge-on, as an axe head does
+/// seen from behind a chop, whose swing runs away from the viewer). `lead` is the way its clip's
+/// strike sweeps the head round the grip on screen: 1 clockwise, -1 anticlockwise, 0 not known.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Hold { pub grip: (f32, f32), pub angle: f32, pub over: bool, pub reach: f32 }
+pub struct Hold { pub grip: (f32, f32), pub angle: f32, pub over: bool, pub reach: f32, pub face: f32, pub lead: i8 }
 
 impl Hold {
     /// Whether an axe in `clip` must be drawn mirrored across its haft to cut with its edge: its
-    /// strike (the clip's fastest turn) sweeps anticlockwise on screen, and an axe's picture lies
-    /// with its edge on the side that leads a clockwise one (below the haft, the head to the right).
+    /// strike sweeps anticlockwise on screen (`lead`; a track without one, its fastest turn), and
+    /// an axe's picture lies with its edge leading a clockwise one (below the haft, head right).
     fn edge_trails(clip: &str, holds: &[Hold]) -> bool {
         if !clip.strip_prefix("e_").unwrap_or(clip).starts_with("axe_") { return false; }
+        if let Some(lead) = holds.first().map(|h| h.lead).filter(|&lead| lead != 0) { return lead < 0; }
         let turn = |a: f32, b: f32| (b - a + 540.0).rem_euclid(360.0) - 180.0;
         holds.windows(2).map(|w| turn(w[0].angle, w[1].angle)).max_by(|a, b| a.abs().total_cmp(&b.abs())).is_some_and(|d| d < 0.0)
+    }
+
+    /// This hold with its blade raised, where it would pass under the ground row `ground`, until a
+    /// blade `length` long rests its tip there: a side-on swing ends on the floor, never in it,
+    /// however long the weapon is next to the one its clip's track was drawn for.
+    fn resting_on(self, ground: f32, length: f32) -> Hold {
+        let shown = length * self.reach.clamp(0.2, 1.0);
+        let (sin, cos) = self.angle.to_radians().sin_cos();
+        let room = ground - self.grip.1;
+        if room <= 0.0 || shown <= 0.0 || sin * shown <= room { return self; }
+        let lowest = (room / shown).asin().to_degrees();
+        Hold { angle: if cos >= 0.0 { lowest } else { 180.0 - lowest }, ..self }
     }
 }
 
@@ -109,15 +130,16 @@ impl Hold {
 pub struct OffHold { pub fist: (f32, f32), pub angle: f32, pub over: bool, pub side: bool, pub spin: f32, pub lying: bool }
 
 /// Which pixels of a frame the weapon and the offhand cover, as they were drawn into it (`Sheet::arm`,
-/// `Sheet::dress`): for a look laid on the piece itself and nowhere else (`sheen`).
+/// `Sheet::dress`): for a look laid on the piece itself and nowhere else (`sheen`). `grown` is how
+/// many columns each side and rows on top the frame gained for a weapon reaching past the canvas.
 #[derive(Clone, Debug, Default, PartialEq)]
-pub struct Glint { pub weapon: Vec<(u16, u16)>, pub off: Vec<(u16, u16)> }
+pub struct Glint { pub weapon: Vec<(u16, u16)>, pub off: Vec<(u16, u16)>, pub grown: (u16, u16) }
 
 impl Glint {
     /// As it lies on the frame flipped left to right, `width` wide.
     pub fn mirrored(&self, width: u32) -> Glint {
         let flip = |v: &[(u16, u16)]| v.iter().map(|&(x, y)| ((width as u16).saturating_sub(1 + x), y)).collect();
-        Glint { weapon: flip(&self.weapon), off: flip(&self.off) }
+        Glint { weapon: flip(&self.weapon), off: flip(&self.off), grown: self.grown }
     }
 }
 
@@ -389,109 +411,235 @@ fn stroke(out: &mut RgbaImage, frame: &RgbaImage, a: (f32, f32), b: (f32, f32), 
 const HOLD_MARGIN: u32 = 64;
 
 /// A weapon's picture, drawn lying along its blade, with the pixel the hand closes on and its tip.
+/// `depth` is how thick its head is beside its breadth: what still shows of it edge-on (a blade
+/// next to nothing, a hammer's block most of its face).
 #[derive(Clone)]
-pub struct Weapon { pub image: RgbaImage, pub grip: (f32, f32), pub tip: (f32, f32) }
+pub struct Weapon { pub image: RgbaImage, pub grip: (f32, f32), pub tip: (f32, f32), pub depth: f32 }
 
 impl Weapon {
-    /// `<dir>/<name>.png`, its grip and tip from `<dir>/weapons.txt` (`name gx gy tx ty` a line).
+    /// `<dir>/<name>.png`, its grip and tip from `<dir>/weapons.txt` (`name gx gy tx ty [depth]` a
+    /// line; a thin blade's `THIN` when the depth is left out).
     pub fn load(dir: &Path, name: &str) -> Option<Weapon> {
         let image = image::open(dir.join(format!("{name}.png"))).ok()?.to_rgba8();
         let list = std::fs::read_to_string(dir.join("weapons.txt")).ok()?;
         let n: Vec<f32> = list.lines().find_map(|l| l.strip_prefix(name)?.strip_prefix(' ').map(|r| r.split_whitespace().filter_map(|v| v.parse().ok()).collect()))?;
-        (n.len() == 4).then(|| Weapon { image, grip: (n[0], n[1]), tip: (n[2], n[3]) })
+        (4..=5).contains(&n.len()).then(|| Weapon { image, grip: (n[0], n[1]), tip: (n[2], n[3]), depth: n.get(4).copied().unwrap_or(Self::THIN) })
+    }
+
+    /// A blade's depth: edge-on it shows this much of its breadth.
+    pub const THIN: f32 = 0.15;
+
+    /// What shows of the head's breadth turned to `face` (`Hold::face`, 1 face-on): its face
+    /// foreshortened plus its thickness turning into view, a block's outline seen round its haft.
+    fn breadth_at(&self, face: f32) -> f32 {
+        let face = face.clamp(0.0, 1.0);
+        (face + self.depth * (1.0 - face * face).sqrt()).clamp(Self::THIN, 1.0)
+    }
+
+    /// From grip to tip, in its own pixels.
+    fn length(&self) -> f32 { (self.tip.0 - self.grip.0).hypot(self.tip.1 - self.grip.1) }
+
+    /// Half the haft's breadth where it is held: the opaque run across the grip, in its own pixels.
+    /// A haft is round, so it keeps this breadth however far the head turns edge-on.
+    fn haft_half(&self) -> f32 { self.breadth_across(0.0).max(1.0) / 2.0 }
+
+    /// The opaque run across the weapon `along` pixels from the grip toward the tip, own pixels.
+    fn breadth_across(&self, along: f32) -> f32 {
+        let (sin, cos) = (self.tip.1 - self.grip.1).atan2(self.tip.0 - self.grip.0).sin_cos();
+        let (cx, cy) = (self.grip.0 + along * cos, self.grip.1 + along * sin);
+        let solid = |k: f32| {
+            let (x, y) = (cx - k * sin, cy + k * cos);
+            x >= 0.0 && y >= 0.0 && self.image.get_pixel_checked(x as u32, y as u32).is_some_and(|p| p[3] >= 128)
+        };
+        let run = |way: f32| (1..48).take_while(|&k| solid(way * k as f32)).count() as f32;
+        if solid(0.0) { run(1.0) + run(-1.0) + 1.0 } else { 0.0 }
+    }
+
+    /// A thick head's start along the weapon from the grip and its thickness, own pixels: where it
+    /// first grows past twice the haft's breadth. None for a blade (`THIN`) or a bare haft.
+    fn head(&self) -> Option<(f32, f32)> {
+        if self.depth <= Self::THIN { return None; }
+        let haft = 2.0 * self.haft_half();
+        let length = self.length() as usize;
+        let start = (0..length).map(|k| k as f32).find(|&k| self.breadth_across(k) > 2.0 * haft)?;
+        let widest = (start as usize..length).map(|k| self.breadth_across(k as f32)).fold(0.0, f32::max);
+        Some((start, self.depth * widest))
+    }
+
+    /// Where along its own picture a point `along` pixels from the grip on screen comes from, the
+    /// weapon foreshortened to `reach`: the haft shortens with it, a thick head (`head`) less, as
+    /// its top turns into view the way a block's does.
+    fn source_along(&self, along: f32, reach: f32, head: Option<(f32, f32)>) -> f32 {
+        let reach = reach.clamp(0.2, 1.0);
+        let Some((start, thick)) = head.filter(|&(start, _)| along > start * reach) else { return along / reach };
+        let span = (self.length() - start).max(1.0);
+        let shown = (reach + thick / span * (1.0 - reach * reach).sqrt()).min(1.0);
+        start + (along - start * reach) / shown
     }
 
     /// The same weapon turned over: its picture mirrored across its haft, grip and tip kept.
     fn mirrored(&self) -> Weapon {
         let h = self.image.height() as f32;
-        Weapon { image: image::imageops::flip_vertical(&self.image), grip: (self.grip.0, h - self.grip.1), tip: (self.tip.0, h - self.tip.1) }
+        Weapon { image: image::imageops::flip_vertical(&self.image), grip: (self.grip.0, h - self.grip.1), tip: (self.tip.0, h - self.tip.1), depth: self.depth }
     }
 
     /// `frame` with the weapon put in its hand as `hold` says.
     #[cfg(test)]
-    pub fn held_in(&self, frame: &RgbaImage, hold: &Hold) -> RgbaImage { self.held_marking(frame, hold, &mut Vec::new()) }
+    pub fn held_in(&self, frame: &RgbaImage, hold: &Hold) -> RgbaImage { self.held_marking(frame, hold, &mut Glint::default()) }
 
-    /// As `held_in`, each pixel of the weapon that shows added to `marks`.
-    fn held_marking(&self, frame: &RgbaImage, hold: &Hold, marks: &mut Vec<(u16, u16)>) -> RgbaImage {
+    /// As `held_in`, each pixel of the weapon that shows added to `glint`'s weapon marks. A weapon
+    /// reaching past the frame's top or sides grows the frame there, rows on top and columns on
+    /// both sides alike so the figure stays centred (`Sheet::place` reads the size; `glint.grown`
+    /// says by how much, and the offhand marks already in `glint` move with the frame).
+    fn held_marking(&self, frame: &RgbaImage, hold: &Hold, glint: &mut Glint) -> RgbaImage {
+        let drawn = self.pixels_at(hold);
+        let (w, h) = frame.dimensions();
+        let top = drawn.iter().map(|&((_, y), _)| y).min().unwrap_or(0).min(0).unsigned_abs();
+        let side = drawn.iter().map(|&((x, _), _)| (-x).max(x + 1 - w as i32)).max().unwrap_or(0).max(0).unsigned_abs();
+        let mut out = RgbaImage::new(w + 2 * side, h + top);
+        image::imageops::replace(&mut out, frame, i64::from(side), i64::from(top));
+        let grown = (side as u16, top as u16);
+        for mark in &mut glint.off { *mark = (mark.0 + grown.0, mark.1 + grown.1); }
+        for ((x, y), p) in drawn {
+            if y >= h as i32 { continue; }
+            let under = x >= 0 && y >= 0 && x < w as i32 && frame.get_pixel(x as u32, y as u32)[3] >= 128;
+            if under && !hold.over { continue; }
+            let (gx, gy) = ((x + side as i32) as u32, (y + top as i32) as u32);
+            out.put_pixel(gx, gy, p);
+            glint.weapon.push((gx as u16, gy as u16));
+        }
+        glint.grown = grown;
+        out
+    }
+
+    /// The weapon's opaque pixels where `hold` puts it, in the frame's pixel grid and past its edges
+    /// too: turned about the grip, and foreshortened along its length (`Hold::reach`) and across
+    /// its head (`Hold::face`).
+    fn pixels_at(&self, hold: &Hold) -> Vec<((i32, i32), image::Rgba<u8>)> {
         let own = (self.tip.1 - self.grip.1).atan2(self.tip.0 - self.grip.0);
         let (s, c) = (hold.angle.to_radians() - own).sin_cos();
         let (os, oc) = own.sin_cos();
-        let stretch = 1.0 / hold.reach.clamp(0.2, 1.0);
-        let (w, h) = frame.dimensions();
+        let head = self.head();
+        let flat = 1.0 / self.breadth_at(hold.face);
+        let haft = if flat > 1.0 { self.haft_half() } else { 0.0 };
         // Only the pixels the turned weapon can cover: a circle round the grip as far as its
         // farthest corner.
         let (iw, ih) = (self.image.width() as f32, self.image.height() as f32);
-        let r = [(0.0, 0.0), (iw, 0.0), (0.0, ih), (iw, ih)].iter().map(|&(x, y): &(f32, f32)| (x - self.grip.0).hypot(y - self.grip.1)).fold(0.0, f32::max).ceil();
-        let (x0, x1) = ((hold.grip.0 - r).max(0.0) as u32, ((hold.grip.0 + r) as u32).min(w));
-        let (y0, y1) = ((hold.grip.1 - r).max(0.0) as u32, ((hold.grip.1 + r) as u32).min(h));
-        let mut out = frame.clone();
+        let radius = [(0.0, 0.0), (iw, 0.0), (0.0, ih), (iw, ih)].iter().map(|&(x, y): &(f32, f32)| (x - self.grip.0).hypot(y - self.grip.1)).fold(0.0, f32::max).ceil();
+        let (x0, x1) = ((hold.grip.0 - radius).floor() as i32, (hold.grip.0 + radius).ceil() as i32);
+        let (y0, y1) = ((hold.grip.1 - radius).floor() as i32, (hold.grip.1 + radius).ceil() as i32);
+        let mut pixels = Vec::new();
         for y in y0..y1 {
             for x in x0..x1 {
                 let (dx, dy) = (x as f32 + 0.5 - hold.grip.0, y as f32 + 0.5 - hold.grip.1);
                 // The weapon's own pixel: this one turned back about the grip.
                 let (ox, oy) = (dx * c + dy * s, -dx * s + dy * c);
-                // Foreshortened: what shows of the blade is drawn from farther along it.
-                let (along, across) = ((ox * oc + oy * os) * stretch, -ox * os + oy * oc);
+                // Foreshortened: what shows of the blade is drawn from farther along it, and of its breadth
+                // from farther across as it turns edge-on.
+                let across = -ox * os + oy * oc;
+                let across = if across.abs() <= haft { across } else { across.signum() * (haft + (across.abs() - haft) * flat) };
+                let along = self.source_along(ox * oc + oy * os, hold.reach, head);
                 let (sx, sy) = (self.grip.0 + along * oc - across * os, self.grip.1 + along * os + across * oc);
                 if sx < 0.0 || sy < 0.0 || sx >= iw || sy >= ih { continue; }
-                let p = *self.image.get_pixel(sx as u32, sy as u32);
-                if p[3] < 128 { continue; }
-                if hold.over || frame.get_pixel(x, y)[3] < 128 { out.put_pixel(x, y, p); marks.push((x as u16, y as u16)); }
+                let texel = *self.image.get_pixel(sx as u32, sy as u32);
+                if texel[3] >= 128 { pixels.push(((x, y), texel)); }
             }
         }
-        out
+        pixels
     }
 }
 
 /// One frame's line of a weapon track (`read_holds`).
-struct TrackLine { x: f32, y: f32, angle: f32, over: bool, reach: f32, elbow: Option<(f32, f32)>, locked: bool }
+struct TrackLine { x: f32, y: f32, angle: f32, over: bool, reach: f32, elbow: Option<(f32, f32)>, locked: bool, face: f32, lead: i8 }
 
-/// A clip's weapon track: `x y angle over [reach [ex ey [lock]]]` a line, x and y fractions of
-/// the frame; `ex ey`, the elbow of the skeleton the frame was drawn to, lets [`fit_hold`] find
-/// the fist as drawn; `lock` 1 keeps the angle as written rather than turned with the forearm.
+impl TrackLine {
+    /// The grip and blade angle of one frame's hold, moved to the fist as `frame` draws it (the drawing
+    /// follows its skeleton only roughly). The fist is the far end of the arm: the opaque pixel farthest
+    /// along the skeleton's forearm (elbow to grip), within a corridor round it, less half a fist. A
+    /// forearm pointed at or away from the eye is short on screen with the hood past it, so there only
+    /// arm pixels count (warm: leather, glove, skin) and the blade keeps its authored angle; otherwise
+    /// the blade turns as the drawn forearm does. Cloak and hood are never the fist: a place mostly
+    /// cloth tries the farthest glove instead, and with none showing the hand is behind the hood or
+    /// cloak (the third value false) and keeps the skeleton's grip. Fractions of the frame in and out.
+    fn fit_hold(frame: &RgbaImage, grip: (f32, f32), angle: f32, elbow: (f32, f32)) -> ((f32, f32), f32, bool) {
+        let (w, h) = frame.dimensions();
+        let px = |p: (f32, f32)| (p.0 * w as f32, p.1 * h as f32);
+        let (g, e) = (px(grip), px(elbow));
+        let (dx, dy) = (g.0 - e.0, g.1 - e.1);
+        let len = dx.hypot(dy);
+        if len < 1.0 { return (grip, angle, true); }
+        let d = (dx / len, dy / len);
+        // How far the fist may be from where the skeleton put it, and its half-length: image heights.
+        let (reach, side, half) = (0.15 * h as f32, 0.10 * h as f32, 0.022 * h as f32);
+        let warm = |p: &image::Rgba<u8>| i16::from(p[0]) >= i16::from(p[1]) + 12 && i16::from(p[0]) >= i16::from(p[2]) + 20;
+        let (mut any, mut arm): (Option<(f32, (f32, f32))>, Option<(f32, (f32, f32))>) = (None, None);
+        for (x, y, p) in frame.enumerate_pixels() {
+            if p[3] < 128 || Self::is_cloth(p) { continue; }
+            let (qx, qy) = (x as f32 + 0.5 - e.0, y as f32 + 0.5 - e.1);
+            let (along, across) = (qx * d.0 + qy * d.1, (qy * d.0 - qx * d.1).abs());
+            if along < len * 0.5 || across > side || ((x as f32 + 0.5 - g.0).hypot(y as f32 + 0.5 - g.1)) > reach { continue; }
+            let here = Some((along, (x as f32 + 0.5, y as f32 + 0.5)));
+            if any.map_or(true, |(a, _)| along > a) { any = here; }
+            if warm(p) && arm.map_or(true, |(a, _)| along > a) { arm = here; }
+        }
+        // Foreshortened below about three quarters of a forearm and fist (0.15 of the frame).
+        let short = len < 0.11 * h as f32;
+        let first = if short { arm.map(|a| (a, true)).or(any.map(|a| (a, false))) } else { any.map(|a| (a, false)) };
+        for ((_, t), gloved) in first.into_iter().chain(arm.map(|a| (a, true))) {
+            // The drawn forearm runs from the elbow to the tip; the fist's middle is half a fist back.
+            let (fx, fy) = (t.0 - e.0, t.1 - e.1);
+            let fl = fx.hypot(fy).max(1.0);
+            let fist = (t.0 - fx / fl * half, t.1 - fy / fl * half);
+            if Self::is_covered(frame, fist, half) { continue; }
+            let turn = (fy.atan2(fx) - d.1.atan2(d.0)).to_degrees();
+            let turn = if gloved { 0.0 } else { ((turn + 540.0) % 360.0 - 180.0).clamp(-35.0, 35.0) };
+            return ((fist.0 / w as f32, fist.1 / h as f32), angle + turn, true);
+        }
+        (grip, angle, false)
+    }
+
+    /// Cloak or hood: blue-grey, or the near-black outline round it.
+    fn is_cloth(p: &image::Rgba<u8>) -> bool {
+        i16::from(p[2]) > i16::from(p[0]) + 10 || p[0].max(p[1]).max(p[2]) < 20
+    }
+
+    /// Whether the drawing round `fist` (pixels, within `radius`) is mostly cloak or hood.
+    fn is_covered(frame: &RgbaImage, fist: (f32, f32), radius: f32) -> bool {
+        let (w, h) = frame.dimensions();
+        let (x0, x1) = ((fist.0 - radius).max(0.0) as u32, ((fist.0 + radius) as u32 + 1).min(w));
+        let (y0, y1) = ((fist.1 - radius).max(0.0) as u32, ((fist.1 + radius) as u32 + 1).min(h));
+        let (mut seen, mut covered) = (0u32, 0u32);
+        for (x, y) in (y0..y1).flat_map(|y| (x0..x1).map(move |x| (x, y))) {
+            let texel = frame.get_pixel(x, y);
+            if texel[3] < 128 || (x as f32 + 0.5 - fist.0).hypot(y as f32 + 0.5 - fist.1) > radius { continue; }
+            seen += 1;
+            covered += u32::from(Self::is_cloth(texel));
+        }
+        2 * covered > seen
+    }
+}
+
+/// One frame of a track moved to the fist it holds with (`Sheet::fitted`), in fractions of the frame.
+#[derive(Clone, Copy)]
+struct Fitted { x: f32, y: f32, angle: f32, over: bool, reach: f32, face: f32, lead: i8 }
+
+/// Each clip's fitted track with the size of its frames.
+type Tracks = HashMap<String, (Vec<Fitted>, (u32, u32))>;
+
+/// A clip's weapon track: `x y angle over [reach [ex ey [lock [face [lead]]]]]` a line, x and y
+/// fractions of the frame; `ex ey`, the elbow of the skeleton the frame was drawn to, lets
+/// [`TrackLine::fit_hold`] find the fist as drawn; `lock` 1 keeps the angle as written rather than turned
+/// with the forearm; `face` and `lead` are `Hold`'s (1 and 0 when left out).
 fn read_holds(path: &Path) -> Option<Vec<TrackLine>> {
     let text = std::fs::read_to_string(path).ok()?;
     text.lines().filter(|l| !l.trim().is_empty()).map(|l| {
         let v: Vec<&str> = l.split_whitespace().collect();
         let reach = v.get(4).map_or(Some(1.0), |r| r.parse().ok())?;
         let elbow = match (v.get(5), v.get(6)) { (Some(x), Some(y)) => Some((x.parse().ok()?, y.parse().ok()?)), _ => None };
-        Some(TrackLine { x: v.first()?.parse().ok()?, y: v.get(1)?.parse().ok()?, angle: v.get(2)?.parse().ok()?, over: *v.get(3)? == "1", reach, elbow, locked: v.get(7) == Some(&"1") })
+        let face = v.get(8).map_or(Some(1.0), |f| f.parse().ok())?;
+        let lead = v.get(9).map_or(Some(0), |l| l.parse().ok())?;
+        Some(TrackLine { x: v.first()?.parse().ok()?, y: v.get(1)?.parse().ok()?, angle: v.get(2)?.parse().ok()?, over: *v.get(3)? == "1", reach, elbow, locked: v.get(7) == Some(&"1"), face, lead })
     }).collect()
-}
-
-/// The grip and blade angle of one frame's hold, moved to the fist as `frame` draws it. The
-/// drawing follows its skeleton only roughly (an outstretched arm comes out higher and flatter),
-/// so a grip put at the skeleton's wrist can hang below the fist. The fist is the far end of the
-/// arm: the opaque pixel farthest along the skeleton's forearm (elbow to grip), within a corridor
-/// round it, less half a fist. The blade turns by as much as the drawn forearm does, keeping the
-/// wrist's bend as it was authored. Fractions of the frame in and out; unchanged when nothing of
-/// the arm is found there.
-pub fn fit_hold(frame: &RgbaImage, grip: (f32, f32), angle: f32, elbow: (f32, f32)) -> ((f32, f32), f32) {
-    let (w, h) = frame.dimensions();
-    let px = |p: (f32, f32)| (p.0 * w as f32, p.1 * h as f32);
-    let (g, e) = (px(grip), px(elbow));
-    let (dx, dy) = (g.0 - e.0, g.1 - e.1);
-    let len = dx.hypot(dy);
-    if len < 1.0 { return (grip, angle); }
-    let d = (dx / len, dy / len);
-    // How far the fist may be from where the skeleton put it, and its half-length: image heights.
-    let (reach, side, half) = (0.15 * h as f32, 0.10 * h as f32, 0.022 * h as f32);
-    let mut tip: Option<(f32, (f32, f32))> = None;
-    for (x, y, p) in frame.enumerate_pixels() {
-        if p[3] < 128 { continue; }
-        let (qx, qy) = (x as f32 + 0.5 - e.0, y as f32 + 0.5 - e.1);
-        let (along, across) = (qx * d.0 + qy * d.1, (qy * d.0 - qx * d.1).abs());
-        if along < len * 0.5 || across > side || ((x as f32 + 0.5 - g.0).hypot(y as f32 + 0.5 - g.1)) > reach { continue; }
-        if tip.map_or(true, |(a, _)| along > a) { tip = Some((along, (x as f32 + 0.5, y as f32 + 0.5))); }
-    }
-    let Some((_, t)) = tip else { return (grip, angle) };
-    // The drawn forearm runs from the elbow to the tip; the fist's middle is half a fist back.
-    let (fx, fy) = (t.0 - e.0, t.1 - e.1);
-    let fl = fx.hypot(fy).max(1.0);
-    let fist = (t.0 - fx / fl * half, t.1 - fy / fl * half);
-    let turn = (fy.atan2(fx) - d.1.atan2(d.0)).to_degrees();
-    let turn = ((turn + 540.0) % 360.0 - 180.0).clamp(-35.0, 35.0);
-    ((fist.0 / w as f32, fist.1 / h as f32), angle + turn)
 }
 
 impl Sheet {
@@ -499,9 +647,10 @@ impl Sheet {
     pub fn load(dir: &Path) -> Option<Sheet> {
         let mut clips: HashMap<String, Clip> = HashMap::new();
         // Weapon tracks, in fractions of each clip's own frames until the canvas is known.
-        let mut tracks: HashMap<String, (Vec<(f32, f32, f32, bool, f32)>, (u32, u32))> = HashMap::new();
-        let mut off_tracks: HashMap<String, (Vec<(f32, f32, f32, bool, f32)>, (u32, u32))> = HashMap::new();
-        let mut draw_tracks: HashMap<String, (Vec<(f32, f32, f32, bool, f32)>, (u32, u32))> = HashMap::new();
+        let mut tracks: Tracks = HashMap::new();
+        let mut off_tracks: Tracks = HashMap::new();
+        let mut draw_tracks: Tracks = HashMap::new();
+        let mut contacts = HashMap::new();
         let mut names: Vec<_> = std::fs::read_dir(dir).ok()?.flatten().filter(|e| e.path().is_dir()).collect();
         names.sort_by_key(|e| e.file_name());
         for e in names {
@@ -526,16 +675,19 @@ impl Sheet {
             if let Some(t) = read_holds(&e.path().join("draw.txt")).filter(|t| t.len() == frames.len()) {
                 draw_tracks.insert(name.clone(), (Sheet::fitted(t, &frames), frames[0].dimensions()));
             }
+            if let Some(k) = std::fs::read_to_string(e.path().join("contact.txt")).ok().and_then(|t| t.trim().parse::<usize>().ok()).filter(|&k| k < frames.len()) {
+                contacts.insert(name.clone(), k);
+            }
             clips.insert(name, Clip { frames, mirrored: Vec::new() });
         }
         // One canvas for all: pad each frame, centred, to the largest (and a bare-handed clip's
         // by room for the weapon it will hold).
         let mut canvas = clips.values().flat_map(|c| c.frames.iter()).fold((0, 0), |a, f| (a.0.max(f.width()), a.1.max(f.height())));
         for (_, size) in tracks.values() { canvas = (canvas.0.max(size.0 + 2 * HOLD_MARGIN), canvas.1.max(size.1 + 2 * HOLD_MARGIN)); }
-        let on_canvas = |tracks: HashMap<String, (Vec<(f32, f32, f32, bool, f32)>, (u32, u32))>| -> HashMap<String, Vec<Hold>> {
+        let on_canvas = |tracks: Tracks| -> HashMap<String, Vec<Hold>> {
             tracks.into_iter().map(|(name, (t, (w, h)))| {
                 let (ox, oy) = (((canvas.0 - w) / 2) as f32, ((canvas.1 - h) / 2) as f32);
-                (name, t.into_iter().map(|(x, y, angle, over, reach)| Hold { grip: (ox + x * w as f32, oy + y * h as f32), angle, over, reach }).collect())
+                (name, t.into_iter().map(|f| Hold { grip: (ox + f.x * w as f32, oy + f.y * h as f32), angle: f.angle, over: f.over, reach: f.reach, face: f.face, lead: f.lead }).collect())
             }).collect()
         };
         let mut holds = on_canvas(tracks);
@@ -544,7 +696,7 @@ impl Sheet {
             let (ox, oy) = (((canvas.0 - w) / 2) as f32, ((canvas.1 - h) / 2) as f32);
             let side = name.starts_with("e_");
             let lying = ["getup", "knockdown", "death"].iter().any(|n| name.ends_with(n));
-            (name, t.into_iter().map(|(x, y, angle, over, _)| OffHold { fist: (ox + x * w as f32, oy + y * h as f32), angle, over, side, spin: 0.0, lying }).collect())
+            (name, t.into_iter().map(|f| OffHold { fist: (ox + f.x * w as f32, oy + f.y * h as f32), angle: f.angle, over: f.over, side, spin: 0.0, lying }).collect())
         }).collect();
         for clip in clips.values_mut() {
             for f in clip.frames.iter_mut() {
@@ -571,14 +723,14 @@ impl Sheet {
                       [&format!("e_{fam}_idle"), &format!("e_{fam}_roll"), &format!("e_{fam}_flip")], &format!("{fam}_roll_side"));
         }
         Some(Sheet { clips, ground: bottom as f32 + 1.0, figure: (bottom + 1 - top) as f32, canvas, roll_keys, holds, blades: HashMap::new(),
-                     offs, weapons: HashMap::new(), shields: HashMap::new(), helds: HashMap::new(), draws, dressed: Default::default(), glints: HashMap::new() })
+                     offs, weapons: HashMap::new(), shields: HashMap::new(), helds: HashMap::new(), draws, dressed: Default::default(), armed: Default::default(), glints: HashMap::new(), contacts })
     }
 
     /// Put `weapon` in the hands of the bare-handed clips drawn for its kind (`<kind>_...` and,
     /// side-on, `e_<kind>_...`; a kind is a weapon type's strikes or a way of holding one, see
     /// `Class::family`): each gains `<clip>@<art>`.
     pub fn arm(&mut self, art: &str, kind: &str, weapon: &Weapon) {
-        self.blades.insert(art.to_owned(), (weapon.tip.0 - weapon.grip.0).hypot(weapon.tip.1 - weapon.grip.1));
+        self.blades.insert(art.to_owned(), weapon.length());
         self.weapons.entry(art.to_owned()).or_insert_with(|| Arc::new(weapon.clone()));
         let turned = weapon.mirrored();
         let mut built = Vec::new();
@@ -587,8 +739,8 @@ impl Sheet {
             let Some(bare) = self.clips.get(name) else { continue };
             let weapon = if Hold::edge_trails(name, holds) { &turned } else { weapon };
             let (frames, glints): (Vec<Arc<RgbaImage>>, Vec<Glint>) = bare.frames.iter().zip(holds).map(|(f, h)| {
-                let mut marks = Vec::new();
-                (Arc::new(weapon.held_marking(f, h, &mut marks)), Glint { weapon: marks, off: Vec::new() })
+                let mut glint = Glint::default();
+                (Arc::new(weapon.held_marking(f, &self.hold_for(name, *h, weapon), &mut glint)), glint)
             }).unzip();
             let mirrored: Vec<_> = frames.iter().map(|f| Arc::new(image::imageops::flip_horizontal(f.as_ref()))).collect();
             for f in frames.iter().chain(&mirrored) { quartz::set_pixel_art(f, true); }
@@ -618,17 +770,22 @@ impl Sheet {
     /// `arm` the weapon `art` (put in hand already, by `arm`) into the clips of another `kind`, once:
     /// a weapon made for both hands held in one is drawn into the one-handed clips when it is.
     /// A track's holds moved to the fists as `frames` draw them (`fit_hold`); a hold locked on
-    /// screen keeps its blade's angle, as a thrust must to drive along its line.
-    fn fitted(track: Vec<TrackLine>, frames: &[Arc<RgbaImage>]) -> Vec<(f32, f32, f32, bool, f32)> {
+    /// screen keeps its blade's angle, as a thrust must to drive along its line. A hand the drawing
+    /// hides behind the body takes its hilt behind the body too, never over the hood.
+    fn fitted(track: Vec<TrackLine>, frames: &[Arc<RgbaImage>]) -> Vec<Fitted> {
         track.into_iter().zip(frames).map(|(line, frame)| {
-            let ((x, y), turned) = line.elbow.map_or(((line.x, line.y), line.angle), |elbow| fit_hold(frame, (line.x, line.y), line.angle, elbow));
-            (x, y, if line.locked { line.angle } else { turned }, line.over, line.reach)
+            let ((x, y), turned, drawn) = line.elbow.map_or(((line.x, line.y), line.angle, true), |elbow| TrackLine::fit_hold(frame, (line.x, line.y), line.angle, elbow));
+            Fitted { x, y, angle: if line.locked { line.angle } else { turned }, over: line.over && drawn, reach: line.reach, face: line.face, lead: line.lead }
         }).collect()
     }
 
+    /// Put the weapon `art` (already armed once) into `kind`'s clips too, once per pair: held in
+    /// one hand, a weapon made for both is drawn into the one-handed clips.
     pub fn arm_as(&mut self, art: &str, kind: &str) {
-        if [format!("{kind}_light@{art}"), format!("{kind}_idle@{art}")].iter().any(|n| self.clips.contains_key(n)) { return; }
+        if self.armed.contains(&(art.to_owned(), kind.to_owned())) { return; }
         let Some(weapon) = self.weapons.get(art).cloned() else { return };
+        self.armed.insert((art.to_owned(), kind.to_owned()));
+        if [format!("{kind}_light@{art}"), format!("{kind}_idle@{art}")].iter().any(|n| self.clips.contains_key(n)) { return; }
         self.arm(art, kind, &weapon);
     }
 
@@ -660,7 +817,7 @@ impl Sheet {
             let (frames, glints): (Vec<Arc<RgbaImage>>, Vec<Glint>) = bare.frames.iter().zip(holds).zip(offs).map(|((f, h), o)| {
                 let mut g = Glint::default();
                 let on = put(f, o, &mut g.off);
-                (Arc::new(weapon.held_marking(&on, h, &mut g.weapon)), g)
+                (Arc::new(weapon.held_marking(&on, &self.hold_for(&name, *h, weapon), &mut g)), g)
             }).unzip();
             let clip = Clip::marked(frames);
             self.keep_glints(&clip, glints);
@@ -680,7 +837,20 @@ impl Sheet {
         }
     }
 
+    /// `hold` as clip `name` shows `weapon`: side-on (`e_`), where the ground is a line, the
+    /// blade is kept off the floor.
+    fn hold_for(&self, name: &str, hold: Hold, weapon: &Weapon) -> Hold {
+        if name.starts_with("e_") { hold.resting_on(self.ground, weapon.length()) } else { hold }
+    }
+
     pub fn clip(&self, name: &str) -> Option<&Clip> { self.clips.get(name) }
+
+    /// `phased` keys for attack clip `name` of `n` frames: its live ticks start on the drawing of
+    /// it making contact (`contacts`) and run on to the drawing after, so a blow registers on the
+    /// frame that shows it landing; a clip not read yet goes live past its middle.
+    pub fn contact_keys(&self, name: &str, n: usize) -> (usize, usize) {
+        self.contacts.get(name).map_or((n * 5 / 10, n * 7 / 10), |&k| (k, (k + 2).min(n)))
+    }
 
     /// A clip's frames for its shield way (`hold_shield.txt`): where the bare drawing lifts the
     /// weapon hand above where the shield way holds it, the weapon side above the resting fist is
@@ -709,12 +879,14 @@ impl Sheet {
         }).collect())
     }
 
-    /// Where to draw a frame so the figure stands `metres` tall with its feet at `feet` (canvas
-    /// units), `ppm` canvas units to the metre: the object's position and size.
-    pub fn place(&self, feet: (f32, f32), metres: f32, ppm: f32) -> ((f32, f32), (f32, f32)) {
+    /// Where to draw a frame `size` pixels big so the figure stands `metres` tall with its feet at
+    /// `feet` (canvas units), `ppm` canvas units to the metre: the object's position and size. A
+    /// frame bigger than the canvas grew on top and evenly at the sides (`Weapon::held_marking`).
+    pub fn place(&self, feet: (f32, f32), metres: f32, ppm: f32, size: (u32, u32)) -> ((f32, f32), (f32, f32)) {
         let k = metres * ppm / self.figure;
-        let (w, h) = (self.canvas.0 as f32 * k, self.canvas.1 as f32 * k);
-        ((feet.0 - 0.5 * w, feet.1 - self.ground * k), (w, h))
+        let above = size.1.saturating_sub(self.canvas.1) as f32;
+        let (w, h) = (size.0.max(self.canvas.0) as f32 * k, (self.canvas.1 as f32 + above) * k);
+        ((feet.0 - 0.5 * w, feet.1 - (self.ground + above) * k), (w, h))
     }
 }
 
@@ -866,7 +1038,7 @@ mod tests {
         assert_eq!((s.ground, s.figure, s.canvas), (30.0, 20.0, (20, 40)));
         // 2 m at 100 units a metre: 10 units a pixel, so the canvas is 200 x 400 and the feet
         // (row 30) land on y 1000.
-        let ((x, y), (w, h)) = s.place((500.0, 1000.0), 2.0, 100.0);
+        let ((x, y), (w, h)) = s.place((500.0, 1000.0), 2.0, 100.0, s.canvas);
         assert_eq!((x, y, w, h), (400.0, 700.0, 200.0, 400.0));
         let clip = s.clip("idle").unwrap();
         assert!(quartz::is_pixel_art(&clip.frames[0]) && quartz::is_pixel_art(&clip.mirrored[0]));
@@ -895,19 +1067,19 @@ mod tests {
         // A 5-pixel blade, grip at its left end; a body pixel where it will cross.
         let mut image = RgbaImage::new(5, 1);
         for x in 0..5 { image.put_pixel(x, 0, image::Rgba([200, 200, 255, 255])); }
-        let w = Weapon { image, grip: (0.5, 0.5), tip: (4.5, 0.5) };
+        let w = Weapon { image, grip: (0.5, 0.5), tip: (4.5, 0.5), depth: Weapon::THIN };
         let mut frame = RgbaImage::new(16, 16);
         frame.put_pixel(8, 10, image::Rgba([90, 50, 20, 255]));
         // Straight down from (8, 7): the tip at (8, 11), crossing the body at (8, 10).
-        let over = w.held_in(&frame, &Hold { grip: (8.5, 7.5), angle: 90.0, over: true, reach: 1.0 });
+        let over = w.held_in(&frame, &Hold { grip: (8.5, 7.5), angle: 90.0, over: true, reach: 1.0, face: 1.0, lead: 0 });
         assert_eq!(over.get_pixel(8, 11)[2], 255);
         assert_eq!(over.get_pixel(8, 10)[2], 255, "over the body");
         assert_eq!(over.get_pixel(9, 9)[3], 0, "nothing beside the blade");
-        let under = w.held_in(&frame, &Hold { grip: (8.5, 7.5), angle: 90.0, over: false, reach: 1.0 });
+        let under = w.held_in(&frame, &Hold { grip: (8.5, 7.5), angle: 90.0, over: false, reach: 1.0, face: 1.0, lead: 0 });
         assert_eq!(under.get_pixel(8, 10)[2], 20, "behind the body");
         assert_eq!(under.get_pixel(8, 11)[2], 255);
         // Pointing partly toward the viewer, three-fifths of it shows.
-        let short = w.held_in(&RgbaImage::new(16, 16), &Hold { grip: (8.5, 7.5), angle: 90.0, over: true, reach: 0.6 });
+        let short = w.held_in(&RgbaImage::new(16, 16), &Hold { grip: (8.5, 7.5), angle: 90.0, over: true, reach: 0.6, face: 1.0, lead: 0 });
         assert_eq!((short.get_pixel(8, 9)[2], short.get_pixel(8, 10)[3]), (255, 0), "the tip comes nearer the hand");
     }
 
@@ -938,7 +1110,7 @@ mod tests {
         assert_eq!(*carried.get_pixel(16, 16), stave, "the grip in the fist");
         assert_eq!(*carried.get_pixel(13, 16), STRING, "strung tip to tip");
         // On the string: pulled back to the hand at (8, 16), an arrow from it out past the bow.
-        let drawn = bow.gripped(&frame, &OffHold { angle: 0.0, ..hang }, Some(&Hold { grip: (8.5, 16.5), angle: 0.0, over: true, reach: 1.0 }));
+        let drawn = bow.gripped(&frame, &OffHold { angle: 0.0, ..hang }, Some(&Hold { grip: (8.5, 16.5), angle: 0.0, over: true, reach: 1.0, face: 1.0, lead: 0 }));
         assert_eq!(*drawn.get_pixel(16, 14), stave, "upright in the reaching fist");
         assert_eq!(*drawn.get_pixel(10, 14), STRING, "the string comes back to the hand");
         assert_eq!(*drawn.get_pixel(12, 12), STRING, "the tips flex back toward it");
@@ -946,7 +1118,7 @@ mod tests {
         assert_eq!(*drawn.get_pixel(13, 16), Rgba([90, 60, 30, 255]), "the shaft through the bow");
         assert_eq!(*drawn.get_pixel(19, 16), POINT, "its point past the grip");
         // Let go: straight again. Carried on a forearm reaching forward: along it.
-        let loosed = bow.gripped(&frame, &OffHold { angle: 0.0, ..hang }, Some(&Hold { grip: (8.5, 16.5), angle: 0.0, over: false, reach: 1.0 }));
+        let loosed = bow.gripped(&frame, &OffHold { angle: 0.0, ..hang }, Some(&Hold { grip: (8.5, 16.5), angle: 0.0, over: false, reach: 1.0, face: 1.0, lead: 0 }));
         assert_eq!(*loosed.get_pixel(13, 16), STRING);
         let reaching = bow.gripped(&frame, &OffHold { angle: 0.0, ..hang }, None);
         assert_eq!((*reaching.get_pixel(14, 16), reaching.get_pixel(16, 13)[3]), (stave, 0), "turned with the forearm");
@@ -958,12 +1130,89 @@ mod tests {
         // the skeleton put the grip (72, 46) along its own forearm from the elbow (20, 50).
         let mut frame = RgbaImage::new(100, 100);
         for x in 20..80 { for y in 48..52 { frame.put_pixel(x, y - (x - 20) / 6, image::Rgba([120, 80, 40, 255])); } }
-        let (grip, angle) = fit_hold(&frame, (0.72, 0.46), 40.0, (0.2, 0.5));
-        assert!((grip.0 - 0.775).abs() < 0.02 && (grip.1 - 0.40).abs() < 0.02, "{grip:?}");
+        let (grip, angle, drawn) = TrackLine::fit_hold(&frame, (0.72, 0.46), 40.0, (0.2, 0.5));
+        assert!(drawn && (grip.0 - 0.775).abs() < 0.02 && (grip.1 - 0.40).abs() < 0.02, "{grip:?}");
         // The skeleton's forearm rose 4 degrees, the drawing's about 10: the blade turns up with it.
         assert!(angle < 38.0 && angle > 31.0, "{angle}");
-        // Nothing drawn near: unchanged.
-        assert_eq!(fit_hold(&RgbaImage::new(100, 100), (0.6, 0.6), 40.0, (0.2, 0.5)), ((0.6, 0.6), 40.0));
+        // Nothing drawn near: unchanged, and the hand counts as hidden.
+        assert_eq!(TrackLine::fit_hold(&RgbaImage::new(100, 100), (0.6, 0.6), 40.0, (0.2, 0.5)), ((0.6, 0.6), 40.0, false));
+        // A long forearm raised up the screen past the fist into the hood (a greatsword's wind-up):
+        // the hood's blue-grey and its black outline are never the fist.
+        let mut raised = RgbaImage::new(100, 100);
+        for y in 30..60 { for x in 66..70 { raised.put_pixel(x, y, image::Rgba([50, 24, 22, 255])); } }
+        for y in 5..30 { for x in 50..70 { raised.put_pixel(x, y, image::Rgba([83, 96, 109, 255])); } }
+        for x in 50..70 { raised.put_pixel(x, 4, image::Rgba([0, 0, 0, 255])); }
+        let (grip, _, drawn) = TrackLine::fit_hold(&raised, (0.68, 0.34), 270.0, (0.68, 0.55));
+        assert!(drawn && (grip.1 - 0.32).abs() < 0.02, "the grip stays on the glove, not the hood: {grip:?}");
+        // A hand the drawing hides behind the hood: only hood found, so it is behind the body.
+        let mut hidden = RgbaImage::new(100, 100);
+        for y in 5..40 { for x in 50..70 { hidden.put_pixel(x, y, image::Rgba([83, 96, 109, 255])); } }
+        assert!(!TrackLine::fit_hold(&hidden, (0.6, 0.3), 270.0, (0.6, 0.5)).2);
+        // Two glove pixels peeking past the hood's edge: the hand is behind it all the same.
+        hidden.put_pixel(50, 20, image::Rgba([50, 24, 22, 255]));
+        hidden.put_pixel(50, 21, image::Rgba([50, 24, 22, 255]));
+        assert!(!TrackLine::fit_hold(&hidden, (0.5, 0.2), 270.0, (0.55, 0.35)).2);
+        // A forearm driven ahead is short on screen from behind, pointing up it: the grey hood
+        // past the leather fist is farther along it, but the fist is what holds the weapon.
+        let mut ahead = RgbaImage::new(100, 100);
+        for y in 40..60 { for x in 58..62 { ahead.put_pixel(x, y, image::Rgba([120, 80, 40, 255])); } }
+        for y in 20..40 { for x in 50..64 { ahead.put_pixel(x, y, image::Rgba([80, 90, 110, 255])); } }
+        let (grip, _, _) = TrackLine::fit_hold(&ahead, (0.60, 0.52), 270.0, (0.60, 0.60));
+        assert!((grip.1 - 0.42).abs() < 0.02, "the grip closes on the fist, not the hood: {grip:?}");
+    }
+
+    #[test]
+    fn a_blade_too_long_for_its_track_rests_on_the_ground_instead_of_passing_under_it() {
+        let hold = Hold { grip: (50.0, 80.0), angle: 45.0, over: true, reach: 1.0, face: 1.0, lead: 0 };
+        let tip = |h: Hold, length: f32| h.grip.1 + length * h.reach * h.angle.to_radians().sin();
+        // 100 long from 20 above the ground: raised until its tip is on it, still leading forward.
+        let long = hold.resting_on(100.0, 100.0);
+        assert!((tip(long, 100.0) - 100.0).abs() < 0.01 && long.angle > 0.0 && long.angle < 45.0, "{long:?}");
+        // Leading backward it stays on its own side.
+        let back = Hold { angle: 135.0, ..hold }.resting_on(100.0, 100.0);
+        assert!((tip(back, 100.0) - 100.0).abs() < 0.01 && back.angle > 135.0 && back.angle < 180.0, "{back:?}");
+        // A blade that clears the ground, or is seen end-on enough to, is left as it is.
+        assert_eq!(hold.resting_on(100.0, 25.0), hold);
+        let end_on = Hold { reach: 0.25, ..hold };
+        assert_eq!(end_on.resting_on(100.0, 100.0), end_on);
+    }
+
+    #[test]
+    fn an_axe_cuts_with_its_edge_the_way_its_strike_sweeps_not_the_way_it_returns_to_guard() {
+        // Up-left, round to the right (the strike, clockwise), then snapped back up anticlockwise.
+        let track = |lead: i8| [-143.0, -46.0, -15.0, 21.0, -93.0].map(|angle| Hold { grip: (0.0, 0.0), angle, over: true, reach: 1.0, face: 1.0, lead });
+        assert!(!Hold::edge_trails("axe_third", &track(1)), "a clockwise strike leads with the edge as drawn");
+        assert!(Hold::edge_trails("e_axe_third", &track(-1)));
+        // Without a lead the fastest turn decides, here the snap back; a sword is never turned over.
+        assert!(Hold::edge_trails("axe_third", &track(0)));
+        assert!(!Hold::edge_trails("sword_third", &track(-1)));
+    }
+
+    #[test]
+    fn a_head_turned_edge_on_or_end_on_keeps_its_round_haft_and_its_own_thickness() {
+        // A haft 3 pixels thick along row 4 and a head 9 tall on its last four columns.
+        let mut picture = RgbaImage::new(16, 9);
+        for (x, y, p) in picture.enumerate_pixels_mut() {
+            if (3..=5).contains(&y) || x >= 12 { *p = Rgba([200, 200, 200, 255]); }
+        }
+        let axe = Weapon { image: picture, grip: (1.0, 4.5), tip: (15.0, 4.5), depth: Weapon::THIN };
+        let rows = |face: f32, column: u32| {
+            let drawn = axe.held_in(&RgbaImage::new(32, 32), &Hold { grip: (8.0, 16.5), angle: 0.0, over: true, reach: 1.0, face, lead: 0 });
+            (0..32).filter(|&y| drawn.get_pixel(column, y)[3] > 0).count()
+        };
+        assert_eq!((rows(1.0, 12), rows(1.0, 20)), (3, 9), "face on: the haft 3 thick, the head 9");
+        assert_eq!(rows(0.25, 12), 3, "the haft keeps its breadth");
+        assert!(rows(0.25, 20) < 6 && rows(0.25, 20) > 3, "the head narrows to a wedge: {}", rows(0.25, 20));
+        let hammer = Weapon { depth: 0.65, ..axe.clone() };
+        let drawn = hammer.held_in(&RgbaImage::new(32, 32), &Hold { grip: (8.0, 16.5), angle: 0.0, over: true, reach: 1.0, face: 0.25, lead: 0 });
+        let head = (0..32).filter(|&y| drawn.get_pixel(20, y)[3] > 0).count();
+        assert!(head >= 7, "a hammer's block keeps most of its face edge-on: {head} of 9");
+        let head_columns = |weapon: &Weapon| {
+            let drawn = weapon.held_in(&RgbaImage::new(32, 32), &Hold { grip: (8.0, 16.5), angle: 0.0, over: true, reach: 0.3, face: 1.0, lead: 0 });
+            (0..32).filter(|&x| (0..32).filter(|&y| drawn.get_pixel(x, y)[3] > 0).count() > 3).count()
+        };
+        assert!(head_columns(&axe) <= 2, "a thin head shortens with its haft: {}", head_columns(&axe));
+        assert!(head_columns(&hammer) >= 3, "pointed at the eye a block shows its top: {}", head_columns(&hammer));
     }
 
     #[test]
@@ -1059,5 +1308,55 @@ mod tests {
             out.save(dir.join(format!("sheet_{name}.png"))).unwrap();
             eprintln!("[sheet] {name}: {}", clips.iter().map(|(n, c)| format!("{n} {}", c.frames.len())).collect::<Vec<_>>().join(", "));
         }
+    }
+
+    /// Frames whose weapon is not in a hand: each hold's grip that lies off the drawn figure, by
+    /// how far (and how far from any leather or skin pixel), worst first, so a weapon left
+    /// floating beside the fist shows up: `cargo test --release grips_in_hand -- --ignored --nocapture`.
+    #[test]
+    #[ignore]
+    fn grips_in_hand() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let s = Sheet::load(&root.join("assets/pixellab/wayfarer_ne")).expect("hero sheet");
+        let warm = |p: &image::Rgba<u8>| p[3] >= 128 && i16::from(p[0]) >= i16::from(p[1]) + 12 && i16::from(p[0]) >= i16::from(p[2]) + 20;
+        let nearest = |frame: &RgbaImage, at: (f32, f32), hit: &dyn Fn(&image::Rgba<u8>) -> bool| {
+            let (cx, cy) = (at.0 as i32, at.1 as i32);
+            let mut best = f32::MAX;
+            for dy in -24..=24 {
+                for dx in -24..=24 {
+                    let (x, y) = (cx + dx, cy + dy);
+                    let Some(p) = frame.get_pixel_checked(x as u32, y as u32).filter(|_| x >= 0 && y >= 0) else { continue };
+                    if hit(p) { best = best.min((dx as f32).hypot(dy as f32)); }
+                }
+            }
+            best
+        };
+        let mut found = Vec::new();
+        for (name, holds) in &s.holds {
+            let Some(clip) = s.clips.get(name) else { continue };
+            for (k, (frame, hold)) in clip.frames.iter().zip(holds).enumerate() {
+                let (glove, body) = (nearest(frame, hold.grip, &warm), nearest(frame, hold.grip, &|p| p[3] >= 128));
+                found.push((glove, body, name.clone(), k));
+            }
+        }
+        found.sort_by(|a, b| b.1.total_cmp(&a.1).then(b.0.total_cmp(&a.0)));
+        for (glove, body, name, k) in found.iter().filter(|f| f.1 > 1.5 || (f.0 > 7.0 && f.0 < 99.0)) { eprintln!("[grip] {name} frame {k}: body {body:.1} px, glove {} px", if *glove < 99.0 { format!("{glove:.1}") } else { "none near".to_owned() }); }
+    }
+
+    /// `Sheet::load` drops a contact frame it cannot use without a word, so a mistyped
+    /// `contact.txt` would quietly move that blow back to the generic keys.
+    #[test]
+    fn every_contact_frame_names_a_drawing_of_its_clip() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("assets/pixellab");
+        let Ok(characters) = std::fs::read_dir(&root) else { return };
+        let mut read = 0;
+        for clip in characters.flatten().filter_map(|c| std::fs::read_dir(c.path()).ok()).flatten().flatten() {
+            let Ok(text) = std::fs::read_to_string(clip.path().join("contact.txt")) else { continue };
+            let pngs = std::fs::read_dir(clip.path()).unwrap().flatten().filter(|f| f.path().extension().is_some_and(|x| x == "png")).count();
+            let k: usize = text.trim().parse().unwrap_or_else(|_| panic!("{:?}: {text:?} is not a frame", clip.path()));
+            assert!(k < pngs, "{:?}: contact {k} of {pngs} frames", clip.path());
+            read += 1;
+        }
+        assert!(read >= 90, "only {read} contact frames found");
     }
 }

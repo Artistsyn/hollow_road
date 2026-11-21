@@ -1,0 +1,11 @@
+{
+ "name": "bile_pool",
+ "for": "road bloater belch (lingering puddle)",
+ "px_per_m": 55.4,
+ "anchor": "feet",
+ "loop": true,
+ "travels": false,
+ "hit_band_m": null,
+ "pixellab_effect_id": "7f583396-c833-4c18-b928-9e223afaedcd",
+ "notes": "The settled bile puddle (~0.8 m wide, same outline as bile_splash's last frame), its rim creeping slightly, bubbles swelling and popping in small rings, glints, a thin sickly fume. 8 frames @ 10 fps loop. Anchor = puddle centre on the ground (feet). Purely decorative unless the game makes the pool a hazard."
+}

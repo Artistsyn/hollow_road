@@ -1,0 +1,14 @@
+{
+ "name": "light_spear_impact",
+ "for": "angel_priest lance of light / the_archangel spear of light, hit",
+ "px_per_m": 53.3,
+ "anchor": "centre",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": [
+  0.7,
+  2.4
+ ],
+ "pixellab_effect_id": "5e7a3336-8813-4cd8-9b79-86ffbba66d8c",
+ "notes": "One-shot at the hit point (= the spear tip): the spearhead drives in (frames 1-2), a hard white-gold 8-point star with long rays, then the spear shatters into gold light slivers flung back along its line and cooling to amber, a few spark streaks, motes blinking out. Light: nothing falls or settles. Priest scale; archangel x0.86 or as is."
+}

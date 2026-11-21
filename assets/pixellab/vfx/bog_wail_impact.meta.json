@@ -1,0 +1,14 @@
+{
+ "name": "bog_wail_impact",
+ "for": "hollowmere_screamer bog wail: hit",
+ "px_per_m": 30.0,
+ "anchor": "centre",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": [
+  0.4,
+  2.0
+ ],
+ "pixellab_effect_id": "3a5a264a-55ea-424b-882a-5221880bdcad",
+ "notes": "One-shot at the hit point: the bog glob slaps flat and bursts, pale foam crescents and dark spray thrown back toward the thrower, weed clumps and drips falling, while the sickly-green wail crescent carries on past (+x) and frays. Anchor = hit point (pivot); comes from the left travelling +x."
+}

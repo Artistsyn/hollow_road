@@ -353,7 +353,7 @@
       "kind": "Snow",
       "cover": 0.6,
       "count": 10,
-      "drift": 1.0,
+      "drift": 0.08,
       "scale": 1.0,
       "opacity": 0.5,
       "tint": [

@@ -1,0 +1,20 @@
+{
+ "name": "double_knell",
+ "for": "Bell Warden: double knell",
+ "px_per_m": 53.2,
+ "anchor": "feet",
+ "loop": true,
+ "travels": true,
+ "hit_band_m": [
+  0.0,
+  0.55
+ ],
+ "pixellab_effect_id": "34fb0b80-0695-4395-ba23-00274b412494",
+ "ground_y_px": 36,
+ "front_x_px": 56,
+ "notes": "The bell rung twice: the knell with a second bronze front riding 6 px behind the first, shivering on the off-beat, and more chips. If the game spawns two knell fronts for this blow, use knell twice instead. Facing +x, exported in place (12 frames @ 12 fps, seamless loop). Feet anchor: ground is canvas row 36; the front's leading edge is at canvas x 56; place that point on the ring's position.",
+ "anchor_px": [
+  56,
+  36
+ ]
+}

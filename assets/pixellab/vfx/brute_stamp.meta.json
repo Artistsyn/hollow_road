@@ -1,0 +1,24 @@
+{
+ "name": "brute_stamp",
+ "for": "brute 'stamp' (fight.rs BRUTE, wide 1: its lane and the next)",
+ "px_per_m": 49,
+ "anchor": "feet",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": [
+  0.0,
+  0.5
+ ],
+ "pixellab_effect_id": "f5684ece-85c0-4797-b5f5-978707c74b4f",
+ "notes": "The foot comes down at the anchor (left end): a dust burst at the foot, then a main crack and a second crack race along the ground toward +x for ~145 px (3 m, two lane widths), each with a lighter broken lip, and as the crack front passes, rubble pops up and dust puffs rise in four beats that settle behind it. Frame 1 is the contact frame and is empty. Mirror x to race the other way. Built at brute density (123 px / 2.5 m). 14 frames @ 12 fps.",
+ "frame_size": [
+  169,
+  35
+ ],
+ "frames": 14,
+ "fps": 12,
+ "anchor_px": [
+  19,
+  22
+ ]
+}

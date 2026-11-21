@@ -1,0 +1,287 @@
+{
+ "frames": [
+  {
+   "filename": "hr-shots-void-bolt-launch 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 45,
+    "h": 38
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 45,
+    "h": 38
+   },
+   "sourceSize": {
+    "w": 45,
+    "h": 38
+   },
+   "pivot": {
+    "x": 0.4222222222222222,
+    "y": 0.47368421052631576
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-void-bolt-launch 1.png",
+   "frame": {
+    "x": 45,
+    "y": 0,
+    "w": 45,
+    "h": 38
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 45,
+    "h": 38
+   },
+   "sourceSize": {
+    "w": 45,
+    "h": 38
+   },
+   "pivot": {
+    "x": 0.4222222222222222,
+    "y": 0.47368421052631576
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-void-bolt-launch 2.png",
+   "frame": {
+    "x": 90,
+    "y": 0,
+    "w": 45,
+    "h": 38
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 45,
+    "h": 38
+   },
+   "sourceSize": {
+    "w": 45,
+    "h": 38
+   },
+   "pivot": {
+    "x": 0.4222222222222222,
+    "y": 0.47368421052631576
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-void-bolt-launch 3.png",
+   "frame": {
+    "x": 135,
+    "y": 0,
+    "w": 45,
+    "h": 38
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 45,
+    "h": 38
+   },
+   "sourceSize": {
+    "w": 45,
+    "h": 38
+   },
+   "pivot": {
+    "x": 0.4222222222222222,
+    "y": 0.47368421052631576
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-void-bolt-launch 4.png",
+   "frame": {
+    "x": 0,
+    "y": 38,
+    "w": 45,
+    "h": 38
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 45,
+    "h": 38
+   },
+   "sourceSize": {
+    "w": 45,
+    "h": 38
+   },
+   "pivot": {
+    "x": 0.4222222222222222,
+    "y": 0.47368421052631576
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-void-bolt-launch 5.png",
+   "frame": {
+    "x": 45,
+    "y": 38,
+    "w": 45,
+    "h": 38
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 45,
+    "h": 38
+   },
+   "sourceSize": {
+    "w": 45,
+    "h": 38
+   },
+   "pivot": {
+    "x": 0.4222222222222222,
+    "y": 0.47368421052631576
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-void-bolt-launch 6.png",
+   "frame": {
+    "x": 90,
+    "y": 38,
+    "w": 45,
+    "h": 38
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 45,
+    "h": 38
+   },
+   "sourceSize": {
+    "w": 45,
+    "h": 38
+   },
+   "pivot": {
+    "x": 0.4222222222222222,
+    "y": 0.47368421052631576
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-void-bolt-launch 7.png",
+   "frame": {
+    "x": 135,
+    "y": 38,
+    "w": 45,
+    "h": 38
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 45,
+    "h": 38
+   },
+   "sourceSize": {
+    "w": 45,
+    "h": 38
+   },
+   "pivot": {
+    "x": 0.4222222222222222,
+    "y": 0.47368421052631576
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-void-bolt-launch 8.png",
+   "frame": {
+    "x": 0,
+    "y": 76,
+    "w": 45,
+    "h": 38
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 45,
+    "h": 38
+   },
+   "sourceSize": {
+    "w": 45,
+    "h": 38
+   },
+   "pivot": {
+    "x": 0.4222222222222222,
+    "y": 0.47368421052631576
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-void-bolt-launch 9.png",
+   "frame": {
+    "x": 45,
+    "y": 76,
+    "w": 45,
+    "h": 38
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 45,
+    "h": 38
+   },
+   "sourceSize": {
+    "w": 45,
+    "h": 38
+   },
+   "pivot": {
+    "x": 0.4222222222222222,
+    "y": 0.47368421052631576
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hr-shots-void-bolt-launch.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 180,
+   "h": 114
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 19,
+   "y": 18
+  },
+  "frameTags": [
+   {
+    "name": "hr-shots-void-bolt-launch",
+    "from": 0,
+    "to": 9,
+    "direction": "forward"
+   }
+  ]
+ }
+}

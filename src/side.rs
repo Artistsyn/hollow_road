@@ -71,6 +71,10 @@ pub struct SideInput {
     pub jump: bool,
     pub light: bool,
     pub heavy: bool,
+    /// The heavy's button still held (`fight::Input::heavy_held`).
+    pub heavy_held: bool,
+    /// The loose button still held (`fight::Input::loose_held`).
+    pub loose_held: bool,
     pub parry: bool,
     pub flask: bool,
     /// A ranged attack: an arrow or a bolt from what the other hand holds.
@@ -142,7 +146,6 @@ impl Act {
         s.reach -= 0.9;
         s
     }
-    fn total(self, kit: &Kit) -> u32 { let f = self.frames(kit); f.0 + f.1 + f.2 }
     /// As the road fight costs and names it.
     fn as_move(self) -> Move {
         match self { Act::Light => Move::Light, Act::Heavy => Move::Heavy, Act::Roll(d) => Move::Step(d as i32), Act::Parry => Move::Parry, Act::Flask => Move::Flask, Act::Loose => Move::Loose, Act::Cast => Move::Cast, Act::Art => Move::Art,
@@ -195,6 +198,16 @@ pub struct SideHero {
     /// away (as `fight::Hero::drawn`).
     pub drawn: bool,
     follow: Option<Act>,
+    /// Which light of a string the light under way is, and the link the next takes once one
+    /// cut the last short (`fight::Spec::chained`).
+    pub link: u8,
+    next_link: u8,
+    /// What the heavy under way is in its string, and the route the next heavy takes once one
+    /// cut a strike's recovery short (`combo::Route`).
+    pub route: crate::combo::Route,
+    next_route: crate::combo::Route,
+    /// A heavy's strength gathered at the top of its wind-up, or a bow's at full draw (`fight::Charge`).
+    pub charge: crate::fight::Charge,
 }
 
 /// How the hero is moving along the yard: the pace (m/tick, signed) carried from tick to tick,
@@ -224,6 +237,20 @@ impl SideHero {
     /// Up through a jump: 1 springing off the ground, 0 at the top, about -1 coming down.
     pub fn rise(&self) -> f32 { self.vy / JUMP_V }
     fn free(&self) -> bool { self.act.is_none() && self.reeling == 0 && !self.dead }
+    /// `a` as this hero swings it: a light as the link of its string it is, a heavy by its route.
+    pub fn struck_of(&self, a: Act) -> Spec {
+        let s = a.struck(&self.stats.kit);
+        match a { Act::Light => s.chained(self.link), Act::Heavy => self.route.shape(s), _ => s }
+    }
+    /// Windup, live and recovery ticks of `a` as this hero does it (`struck_of` for a strike).
+    pub fn frames_of(&self, a: Act) -> (u32, u32, u32) {
+        if matches!(a, Act::Light | Act::Heavy) { self.struck_of(a).frames } else { a.frames(&self.stats.kit) }
+    }
+    /// The finishing blow the heavy under way lands, gathered to the full as a finisher.
+    fn finish(&self) -> Option<crate::combo::Finish> {
+        let finisher = matches!(self.act, Some((Act::Heavy, _))) && self.route == crate::combo::Route::Finisher && self.charge.is_full();
+        finisher.then(|| crate::combo::Finish::of(self.stats.kit.swung_as()))
+    }
     fn invulnerable(&self) -> bool {
         matches!(self.act, Some((Act::Roll(_), t)) if (ROLL_IFRAMES.0..ROLL_IFRAMES.1).contains(&t))
             || matches!(self.act, Some((Act::Art, t)) if Act::art_spec(&self.stats.kit).iframes.is_some_and(|(a, b)| (a..b).contains(&t)))
@@ -287,6 +314,11 @@ pub struct Follow { pub to: usize, pub at: u32, pub odds: u32 }
 
 /// Ticks a foe that fixates on the rune stands open after it, turned to where it fell.
 pub const LURED: u32 = 120;
+/// How long a foe reels from a fully gathered heavy; how far back it skids (metres), over how
+/// many of those first ticks.
+pub const REEL: u32 = 45;
+const REEL_SHOVE: f32 = 0.6;
+const REEL_SKID: u32 = 10;
 
 /// One of a foe's blows.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -427,56 +459,72 @@ const WARDEN_LIKE: Breed = Breed {
 };
 
 /// The Hollowmere Screamer: a drowned thing of the marsh. Its scream rolls out at chest height, so
-/// no jump clears it: roll through. Its rakes come in strings of two or three (wait for the
-/// third), and it leaps from afar onto where you stood: dodge late, and it is stuck in the mud.
-const SCREAMER_BLOWS: [Blow; 6] = [
+/// no jump clears it: roll through, and often again, as a second scream answers the first. Its
+/// rakes come in strings of two or three (wait for the third); from afar it leaps onto where you
+/// stood (dodge late, and it is stuck in the mud) or spits the mire up under you (step off).
+const SCREAMER_BLOWS: [Blow; 8] = [
     blow("rake", (26, 6, 18), (0.2, 2.6), (0.0, 2.4), 18.0, Physical, true, 26.0, Motion::Strike).art("toll").then(1, 10, 7),
     blow("rake again", (16, 6, 20), (0.2, 2.6), (0.0, 2.4), 18.0, Physical, true, 26.0, Motion::Strike).art("toll").then(2, 8, 5),
     blow("rending rake", (22, 8, 40), (0.2, 3.0), (0.0, 2.4), 26.0, GuardBreak, false, 40.0, Motion::Strike).art("sweep"),
-    blow("scream", (50, 70, 40), (0.0, 0.0), (0.0, 2.2), 24.0, Unblockable, false, 0.0, Motion::Ring).art("knell"),
+    blow("scream", (50, 70, 40), (0.0, 0.0), (0.0, 2.2), 24.0, Unblockable, false, 0.0, Motion::Ring).art("knell").then(6, 4, 4),
     blow("drowning leap", (60, 8, 30), (-1.6, 1.6), (0.0, 2.8), 32.0, GuardBreak, false, 50.0, Motion::Leap).art("leap").tell(0.55).stuck(70),
     blow("bog wail", (40, 90, 30), (0.0, 0.0), (0.4, 2.0), 20.0, Physical, false, 30.0, Motion::Shot(6.0 / TPS)).art("throw").then(3, 20, 10),
+    // The scream answered: a second, sooner, while the hero is still getting up from the first roll.
+    blow("second scream", (40, 70, 36), (0.0, 0.0), (0.0, 2.2), 18.0, Unblockable, false, 0.0, Motion::Ring).art("knell"),
+    // The mire spat up under where the hero stood: too tall to jump, so step or roll off it.
+    blow("mire spit", (56, 12, 36), (-1.0, 1.0), (0.0, 2.0), 20.0, Unblockable, false, 0.0, Motion::Rune).art("throw").tell(0.6),
 ];
 pub static SCREAMER: Breed = boss("The Hollowmere Screamer", 640.0, 120.0, 44, 1.15, &SCREAMER_BLOWS,
-    |near, r, wild| match (near, r, wild) { (true, 0..=5, _) => 0, (true, 6..=7, _) => 3, (true, _, _) => 2, (false, 0..=4, _) => 4, (false, 5..=7, _) => 5, (false, _, true) => 5, (false, _, _) => 3 },
+    |near, r, wild| match (near, r, wild) {
+        (true, 0..=5, _) => 0, (true, 6..=7, _) => 3, (true, _, _) => 2,
+        (false, 0..=3, _) => 4, (false, 4..=5, _) => 5, (false, 6..=7, _) => 7, (false, _, true) => 5, (false, _, _) => 3,
+    },
     3.0, Some(5), ("hollowmere_screamer", 3.6));
 
 /// The Keening Cage, the bone thing out of the reeds past the Warrens' east gate (the book's): its
 /// barbed tendrils lash in pairs, swept low they want a jump, and its keen rolls out at chest
-/// height like the Screamer's (roll through). From afar it lunges antlers first: dodge late.
-const KEENER_BLOWS: [Blow; 6] = [
+/// height like the Screamer's (roll through). From afar it charges antlers first across the yard
+/// (roll through it, and it is stuck in the far wall a moment), or bone bursts up under the hero
+/// in a thicket, then again where they went.
+const KEENER_BLOWS: [Blow; 8] = [
     blow("barbed lash", (24, 6, 20), (0.2, 3.4), (0.0, 2.6), 20.0, Physical, true, 28.0, Motion::Strike).art("toll").then(1, 10, 6),
     blow("second lash", (14, 6, 22), (0.2, 3.4), (0.0, 2.6), 20.0, Physical, true, 28.0, Motion::Strike).art("toll"),
     blow("barbed sweep", (30, 8, 36), (-0.5, 3.6), (0.0, 0.8), 22.0, GuardBreak, false, 40.0, Motion::Strike).art("sweep"),
     blow("keen", (54, 70, 40), (0.0, 0.0), (0.0, 2.4), 22.0, Unblockable, false, 0.0, Motion::Ring).art("knell"),
-    blow("antler lunge", (56, 8, 30), (-1.4, 1.4), (0.0, 2.8), 28.0, GuardBreak, false, 46.0, Motion::Leap).art("leap").tell(0.5).stuck(60),
+    blow("antler charge", (36, 40, 34), (-1.0, 1.0), (0.0, 2.6), 28.0, GuardBreak, false, 46.0, Motion::Charge(8.0 / TPS)).art("leap").stuck(40),
     blow("double keen", (40, 70, 20), (0.0, 0.0), (0.0, 2.4), 20.0, Unblockable, false, 0.0, Motion::Ring).art("knell").then(3, 30, 10),
+    blow("bone thicket", (50, 10, 30), (-0.9, 0.9), (0.0, 2.2), 22.0, Unblockable, false, 0.0, Motion::Rune).art("sweep").tell(0.6).then(7, 20, 7),
+    blow("thicket again", (40, 10, 34), (-0.9, 0.9), (0.0, 2.2), 20.0, Unblockable, false, 0.0, Motion::Rune).art("sweep").tell(0.6),
 ];
 pub static KEENER: Breed = Breed {
     name: "The Keening Cage", hp: 560.0, half: 0.9, height: 3.4, blows: &KEENER_BLOWS,
-    pick: |near, r, _| match (near, r) { (true, 0..=5) => 0, (true, 6..=7) => 2, (true, _) => 3, (false, 0..=5) => 4, (false, _) => 3 },
+    pick: |near, r, _| match (near, r) { (true, 0..=5) => 0, (true, 6..=7) => 2, (true, _) => 3, (false, 0..=3) => 4, (false, 4..=6) => 6, (false, _) => 3 },
     walk: 1.5, rest: 40, open: 130, power: 1.1, wake: Some(5), sprite: Some(("keening_cage", 3.6)), ..WARDEN_LIKE
 };
 
 /// The Mother of the Black Water, Krix's beast, in the mire past the east gate: it keeps the
 /// drowned and speaks in their voices. Its hooked hands reach in twos (parry the second), its coils
 /// drag low (jump), the black water surges along the ground (jump it) and a voice rolls out at
-/// chest height (roll through). From afar it sinks and rises under where the hero stood.
-const MOTHER_BLOWS: [Blow; 7] = [
+/// chest height (roll through), and once she rages straight after the water: a jump, then a roll. From afar it
+/// sinks and rises under where the hero stood, or the drowned reach up for them, twice.
+const MOTHER_BLOWS: [Blow; 9] = [
     blow("reaching hand", (26, 6, 18), (0.2, 3.2), (0.0, 2.8), 20.0, Physical, true, 28.0, Motion::Strike).art("toll").then(1, 10, 7),
     blow("second hand", (18, 6, 22), (0.2, 3.2), (0.0, 2.8), 22.0, Physical, true, 30.0, Motion::Strike).art("toll").then(2, 8, 4),
     blow("dragging coil", (30, 8, 36), (-0.6, 3.6), (0.0, 0.8), 24.0, GuardBreak, false, 42.0, Motion::Strike).art("sweep"),
-    blow("black water", (46, 66, 36), (0.0, 0.0), (0.0, 0.55), 24.0, Unblockable, false, 0.0, Motion::Ring).art("sweep"),
+    blow("black water", (46, 66, 36), (0.0, 0.0), (0.0, 0.55), 24.0, Unblockable, false, 0.0, Motion::Ring).art("sweep").then(4, 6, 0),
     blow("her voice", (52, 70, 40), (0.0, 0.0), (0.0, 2.4), 22.0, Unblockable, false, 0.0, Motion::Ring).art("knell"),
     blow("rising under", (64, 8, 30), (-1.5, 1.5), (0.0, 2.8), 32.0, GuardBreak, false, 50.0, Motion::Leap).art("leap").tell(0.6).stuck(70),
     // Its waking: every voice it keeps at once, then the water.
     blow("many voices", (40, 70, 20), (0.0, 0.0), (0.0, 2.4), 22.0, Unblockable, false, 0.0, Motion::Ring).art("knell").then(3, 26, 10),
+    // The drowned she keeps reach up under the hero, and again where they went.
+    blow("drowned hands", (48, 12, 32), (-0.8, 0.8), (0.0, 2.0), 22.0, Unblockable, false, 0.0, Motion::Rune).art("knell").tell(0.55).then(8, 18, 6),
+    blow("more hands", (36, 12, 34), (-0.8, 0.8), (0.0, 2.0), 20.0, Unblockable, false, 0.0, Motion::Rune).art("knell").tell(0.55),
 ];
 pub static MOTHER: Breed = Breed {
     name: "The Mother of the Black Water", hp: 620.0, stance: 120.0, half: 1.0, height: 3.4, blows: &MOTHER_BLOWS,
     pick: |near, r, wild| match (near, r, wild) {
         (true, 0..=4, _) => 0, (true, 5..=6, _) => 2, (true, 7, true) => 4, (true, _, _) => 3,
-        (false, 0..=4, _) => 5, (false, 5..=7, _) => 4, (false, _, _) => 3,
+        (false, 0..=3, _) => 5, (false, 4..=5, _) => 7, (false, 6..=7, _) => 4, (false, _, _) => 3,
     },
     walk: 1.2, rest: 42, open: 130, power: 1.2, wake: Some(6), sprite: Some(("black_water_mother", 3.6)), ..WARDEN_LIKE
 };
@@ -725,7 +773,7 @@ pub static SENTINEL: Breed = elite(&HUSK_BASE, "The Rune Sentinel", 380.0, 2.4,
     |near, r, _| match (near, r) { (true, 0..=5) => 0, (true, 6..=7) => 1, (true, _) => 2, (false, _) => 2 }, ("rune_sentinel", 2.9));
 /// The Butcher: a cleaver held up too long, a hook for the turtle and thrown on its chain at
 /// whoever keeps away, and past half its health the chop and the held cleave together.
-pub static BUTCHER: Breed = Breed { grab: Some(3), reply: Some(5), wake: Some(6), rest: 40, walk: 1.4, near: 2.2, ..elite(&HUSK_BASE, "The Butcher", 420.0, 2.7,
+pub static BUTCHER: Breed = Breed { grab: Some(3), reply: Some(5), wake: Some(6), rest: 36, walk: 1.4, near: 2.2, ..elite(&HUSK_BASE, "The Butcher", 420.0, 2.7,
     &[HUSK_CHOP.art("toll").then(2, 0, 5), HUSK_SWEEP.then(0, 6, 4),
       blow("cleave", (60, 6, 40), (0.2, 1.9), (0.0, 2.4), 24.0, Physical, true, 30.0, Motion::Strike).art("toll").tell(0.38),
       blow("meathook", (30, 6, 40), (0.1, 1.6), (0.0, 2.2), 26.0, Unblockable, false, 0.0, Motion::Strike).art("grab").stuck(30),
@@ -882,6 +930,8 @@ pub enum Ai {
     Blow { i: usize, t: u32, hit: bool, from: f32, aim: f32 },
     /// Open after a parry or a broken stance.
     Open(u32),
+    /// Reeling from a gathered heavy, `left` ticks more of `of`: its blow broken off, its guard not.
+    Reel { left: u32, of: u32 },
     Dead,
 }
 
@@ -968,6 +1018,46 @@ impl Foe {
         let b = self.timed(i);
         (b.motion == Motion::Ring && t >= b.frames.0 && t < b.frames.0 + b.frames.1).then(|| (from + self.facing * 1.4, (t - b.frames.0) as f32 * RING_V))
     }
+    /// Where the blow under way is in its timing: the blow, how far through its windup (0..1), the
+    /// ticks since it went live (None: still winding up) and where it aims (a rune's patch).
+    pub fn cue(&self) -> Option<(Blow, f32, Option<u32>, f32)> {
+        let Ai::Blow { i, t, aim, .. } = self.ai else { return None };
+        let b = self.timed(i);
+        Some((b, (t as f32 / b.frames.0.max(1) as f32).min(1.0), t.checked_sub(b.frames.0), aim))
+    }
+
+    /// A leap from its take-off on: where it left the ground and the ticks since.
+    pub fn leapt(&self) -> Option<(f32, u32)> {
+        let Ai::Blow { i, t, from, .. } = self.ai else { return None };
+        let b = self.timed(i);
+        let tell = Foe::tell_at(&b);
+        (b.motion == Motion::Leap && t >= tell).then(|| (from, t - tell))
+    }
+
+    /// A shot from the moment it leaves the hand on: the blow, where it left (metres along the
+    /// yard) and the ticks since.
+    pub fn loosed(&self) -> Option<(Blow, f32, u32)> {
+        let Ai::Blow { i, t, from, .. } = self.ai else { return None };
+        let b = self.timed(i);
+        (matches!(b.motion, Motion::Shot(_)) && t >= b.frames.0).then(|| (b, from + self.facing * SHOT_FROM, t - b.frames.0))
+    }
+
+    /// A strike from its first live tick on, through its recovery: the blow and the ticks since it
+    /// went live (what its drawn swing is timed by).
+    pub fn struck(&self) -> Option<(Blow, u32)> {
+        let Ai::Blow { i, t, .. } = self.ai else { return None };
+        let b = self.timed(i);
+        (b.motion == Motion::Strike && t >= b.frames.0).then(|| (b, t - b.frames.0))
+    }
+    /// A strike while it is live: the ground it covers (from the foe out, metres along the yard),
+    /// the heights it hits, and how far through its live ticks it is (0..1).
+    pub fn swing(&self) -> Option<((f32, f32), (f32, f32), f32)> {
+        let Ai::Blow { i, t, .. } = self.ai else { return None };
+        let b = self.timed(i);
+        let live = t.checked_sub(b.frames.0).filter(|&k| b.motion == Motion::Strike && k < b.frames.1)?;
+        let reach = (self.s + self.facing * b.reach.0, self.s + self.facing * b.reach.1);
+        Some((reach, b.height, (live as f32 + 0.5) / b.frames.1.max(1) as f32))
+    }
     /// A shot in flight: its middle now, while live and within the yard.
     pub fn shot(&self) -> Option<f32> {
         let Ai::Blow { i, t, from, .. } = self.ai else { return None };
@@ -1014,10 +1104,13 @@ impl Foe {
         if ph == crate::fight::Phase::Recover { return None; }
         let span = match b.motion {
             Motion::Ring => { let (at, r) = self.ring().unwrap_or((self.s + self.facing * 1.4, 0.0)); (at - r - RING_HALF, at + r + RING_HALF) }
+            // The ground it runs over, laid from where it set off, so the mark stays put while it
+            // runs instead of sliding a whole run ahead of it.
             Motion::Charge(v) => {
+                let Ai::Blow { from, .. } = self.ai else { return None };
                 let run = v * b.frames.1 as f32 + self.breed.half;
-                let end = (self.s + self.facing * run).clamp(-HALF, HALF);
-                (self.s.min(end), self.s.max(end))
+                let end = (from + self.facing * run).clamp(-HALF, HALF);
+                (from.min(end), from.max(end))
             }
             Motion::Strike => { let (a, z) = (self.s + self.facing * b.reach.0, self.s + self.facing * b.reach.1); (a.min(z), a.max(z)) }
             // Where it will come down (followed until its tell).
@@ -1085,7 +1178,7 @@ impl SideFight {
         SideFight {
             hero: SideHero {
                 stats, hp, stamina, rested: 30, flasks, s, y: 0.0, vy: 0.0, facing: 1.0, act: None, guarding: false,
-                reel: Reel::None, reeling: 0, poise: stats.poise(), poise_wait: 0, from: 0.0, landed: false, dead: false, walking: false, buffer: None,
+                reel: Reel::None, reeling: 0, poise: stats.poise(), poise_wait: 0, from: 0.0, landed: false, dead: false, walking: false, buffer: None, link: 0, next_link: 0, route: crate::combo::Route::Plain, next_route: crate::combo::Route::Plain, charge: crate::fight::Charge::default(),
                 quiver: crate::fight::Quiver::default(), charges: stats.max_charges(), bulwark: Bulwark::default(),
                 art: 0.0, stone: 0, mark: None, pierced: 0, footing: Footing::default(), drawn: false, follow: None,
             },
@@ -1201,6 +1294,13 @@ impl SideFight {
         // The bow drawn first for a shot, or put away first for what needs the hand.
         let ready = want.and_then(|a| a.as_move().readied(&h.stats.kit, h.drawn).filter(|_| h.able(a)).map(|r| (r, a)));
         let (want, follow) = match ready { Some((r, a)) => (Some(if r == Move::Draw { Act::Draw } else { Act::Stow }), Some(a)), None => (want, None) };
+        // A strike pressed in a strike's recovery cuts the rest short: the next of its string.
+        if let (Some((prev, t)), Some(next)) = (h.act, want) {
+            let strikes = matches!(prev, Act::Light | Act::Heavy) && matches!(next, Act::Light | Act::Heavy);
+            let follows = crate::combo::Route::follows((prev.as_move(), h.route, h.link), next.as_move()).filter(|_| strikes && h.struck_of(prev).chains_at(t));
+            if let Some(n) = follows { (h.act, (h.next_link, h.next_route)) = (None, n.parts()); }
+        }
+        if h.free() && h.buffer.is_none() { (h.next_link, h.next_route) = (0, crate::combo::Route::Plain); }
         if h.free() {
             if p.jump && !h.airborne() && !h.guarding {
                 h.buffer = None;
@@ -1208,7 +1308,8 @@ impl SideFight {
             } else if let Some(a) = want.filter(|a| !h.airborne() || matches!(a, Act::Light | Act::Heavy | Act::Draw | Act::Stow)) {
                 h.buffer = None;
                 let cost = h.stats.cost(a.as_move(), match a {
-                    Act::Light | Act::Heavy => a.struck(&h.stats.kit).stamina,
+                    Act::Light => a.struck(&h.stats.kit).stamina,
+                    Act::Heavy => h.next_route.shape(a.struck(&h.stats.kit)).stamina,
                     Act::Roll(_) => 12.0,
                     Act::Cast if h.stats.kit.imbues() => 0.0,
                     Act::Loose | Act::Cast => Move::loose_spec(a.shot(&h.stats.kit).unwrap_or(crate::gear::Ranged::Bow)).stamina,
@@ -1226,7 +1327,11 @@ impl SideFight {
                     if let Act::Roll(d) = a { h.facing = d as f32; }
                     // A move plants the feet: its own travel is all it moves.
                     h.footing.pace = 0.0;
+                    h.link = if a == Act::Light { h.next_link } else { 0 };
+                    h.route = if a == Act::Heavy { h.next_route } else { crate::combo::Route::Plain };
+                    (h.next_link, h.next_route) = (0, crate::combo::Route::Plain);
                     h.act = Some((a, 0));
+                    h.charge = crate::fight::Charge::default();
                     (h.from, h.landed, h.pierced) = (h.s, false, 0);
                     out.push(Event::Began(a.as_move()));
                 }
@@ -1266,7 +1371,7 @@ impl SideFight {
         // The move under way.
         if let Some((a, t)) = h.act {
             let kit = h.stats.kit;
-            let f = a.frames(&kit);
+            let f = h.frames_of(a);
             match a {
                 Act::Roll(d) => {
                     // Fast out of it, easing at the end.
@@ -1289,7 +1394,8 @@ impl SideFight {
                 Act::Loose | Act::Cast if t == f.0 => {
                     if let Some(r) = a.shot(&kit) {
                         let imbued = if r == crate::gear::Ranged::Frost { h.charges = (h.charges - 1.0).max(0.0); false } else { h.quiver.take(r) };
-                        let spec = Move::loose_spec(r);
+                        // Loosed from full draw, it goes with the strength held.
+                        let spec = h.charge.apply(Move::loose_spec(r));
                         let damage = spec.damage * h.stats.ranged_damage(r) * if imbued { crate::fight::IMBUE_DAMAGE } else { 1.0 };
                         let bolt = SideBolt { s: h.s + h.facing * 0.4, dir: h.facing, y: h.y + 1.3, ranged: r, damage, stance: spec.stance, left: crate::fight::BOLT_RANGE, age: 0, imbued, pierced: 0, keen: kit.capped.keen && r != crate::gear::Ranged::Frost };
                         self.bolts.push(bolt);
@@ -1298,7 +1404,10 @@ impl SideFight {
                 }
                 _ => {}
             }
-            h.act = (t + 1 < a.total(&kit)).then_some((a, t + 1));
+            let held = if a == Act::Loose { input.loose_held } else { input.heavy_held };
+            if let Some(e) = h.charge.tick(h.route.holds(a.as_move(), kit.shot(false)), (t, f.0), held) { out.push(e); }
+            let next = if h.charge.holding { t } else { t + 1 };
+            h.act = (next < f.0 + f.1 + f.2).then_some((a, next));
             if matches!(a, Act::Light | Act::Heavy) && t >= f.0 && t < f.0 + f.1 && !h.landed { self.strike(a, out); }
             if a == Act::Art { if let Some(art) = kit.art { self.art_fires(art, t, out); } }
         }
@@ -1323,19 +1432,46 @@ impl SideFight {
     /// The hero's strike `a` in its live frames: the nearest foe in front within reach takes it;
     /// a heavy cleaves through every one there.
     fn strike(&mut self, a: Act, out: &mut Vec<Event>) {
-        let reach = a.struck(&self.hero.stats.kit).reach;
+        let finish = self.hero.finish();
+        let reach = finish.map_or_else(|| a.struck(&self.hero.stats.kit), |f| f.widen(a.struck(&self.hero.stats.kit))).reach;
+        let round = finish.is_some_and(crate::combo::Finish::is_round);
         let cleave = a == Act::Heavy;
         let (hs, hf) = (self.hero.s, self.hero.facing);
         let mut struck: Vec<usize> = (0..self.foes.len()).filter(|&i| {
             let f = &self.foes[i];
             let ahead = (f.s - hs) * hf;
-            f.alive() && ahead >= -f.breed.half && ahead <= reach + f.breed.half
+            let behind = if round { reach } else { 0.0 };
+            f.alive() && ahead >= -f.breed.half - behind && ahead <= reach + f.breed.half
         }).collect();
         struck.sort_by(|&x, &y| (self.foes[x].s - hs).abs().total_cmp(&(self.foes[y].s - hs).abs()));
         if !cleave { struck.truncate(1); }
         if struck.is_empty() { return; }
         self.hero.landed = true;
-        for i in struck { self.hit(i, a, out); }
+        let charge = self.hero.charge;
+        let charged = a == Act::Heavy && charge.ticks > crate::fight::CHARGE_FULL / 4;
+        if let Some(f) = finish { out.push(Event::Finished(f)); }
+        for i in struck {
+            self.hit(i, a, out);
+            if charged { self.crush(i, (charge.is_full(), finish), out); }
+        }
+    }
+
+    /// A gathered heavy lands on foe `i`: at full strength it reels a step back, its blow broken
+    /// off, or as a finisher's `finish` has it (one thrown open or felled stays as it is).
+    fn crush(&mut self, i: usize, (full, finish): (bool, Option<crate::combo::Finish>), out: &mut Vec<Event>) {
+        out.push(Event::ChargedBlow { enemy: i, full });
+        let hero = self.hero.s;
+        let foe = &mut self.foes[i];
+        if !full || !foe.alive() || matches!(foe.ai, Ai::Open(_)) { return; }
+        foe.facing = if hero >= foe.s { 1.0 } else { -1.0 };
+        // An axe's cleave breaks a road kind's stance outright; a boss only reels.
+        if finish.is_some_and(crate::combo::Finish::is_breaking) && foe.breed.kind.is_some() {
+            (foe.stance, foe.ai) = (foe.breed.stance, Ai::Open(foe.breed.open));
+            out.push(Event::StanceBroken { enemy: i });
+            return;
+        }
+        let of = (REEL as f32 * finish.map_or(1.0, crate::combo::Finish::reel_scale)).round() as u32;
+        foe.ai = Ai::Reel { left: of, of };
     }
 
     /// Foe `i` takes the hero's strike `a`.
@@ -1410,7 +1546,7 @@ impl SideFight {
 
     fn hit(&mut self, i: usize, a: Act, out: &mut Vec<Event>) {
         let h = &self.hero;
-        let Spec { damage, stance, .. } = a.struck(&h.stats.kit);
+        let Spec { damage, stance, .. } = if a == Act::Heavy { h.charge.apply(h.struck_of(a)) } else { h.struck_of(a) };
         let b = &mut self.foes[i];
         let open = matches!(b.ai, Ai::Open(_));
         // A parma's ward goes into the first blow on an open foe (the yard's riposte).
@@ -1585,6 +1721,14 @@ impl SideFight {
             Ai::Dead => {}
             Ai::Open(0) => b.ai = Ai::Wait(30),
             Ai::Open(n) => b.ai = Ai::Open(n - 1),
+            Ai::Reel { left: 0, .. } => b.ai = Ai::Wait(20),
+            // Driven back from the hero over its first ticks, slowing as it skids.
+            Ai::Reel { left, of } => {
+                let k = left.saturating_sub(of.saturating_sub(REEL_SKID)) as f32 / REEL_SKID as f32;
+                let step = 2.0 * REEL_SHOVE / REEL_SKID as f32 * k;
+                b.s = (b.s - b.facing * step).clamp(-HALF + b.breed.half, HALF - b.breed.half);
+                b.ai = Ai::Reel { left: left - 1, of };
+            }
             Ai::Wait(_) if wake.is_some() || (!b.woke && b.enraged()) => {
                 b.woke = true;
                 if let Some(k) = wake {
@@ -2015,7 +2159,7 @@ impl SideFight {
             let heavy = blow.damage >= crate::fight::HEAVY_HIT;
             // An armoured swing (an ultra greatsword's) rides it out.
             let armoured = match h.act {
-                Some((a @ (Act::Light | Act::Heavy), t)) => t < a.struck(&h.stats.kit).armour,
+                Some((a @ (Act::Light | Act::Heavy), t)) => !h.charge.holding && t < a.struck(&h.stats.kit).armour,
                 Some((Act::Art, t)) => t < Act::art_spec(&h.stats.kit).armour,
                 _ => false,
             };
@@ -2163,7 +2307,7 @@ pub(crate) mod tests {
     #[test]
     #[ignore]
     fn boss_bots() {
-        let roster: [(&'static Breed, u32); 22] = [(&COLLECTOR, 0), (&ALPHA, 2), (&WARDEN, 1), (&SCREAMER, 1), (&AGENT, 3), (&CHIEF, 2),
+        let roster: [(&'static Breed, u32); 24] = [(&COLLECTOR, 0), (&ALPHA, 2), (&WARDEN, 1), (&SCREAMER, 1), (&KEENER, 2), (&MOTHER, 2), (&AGENT, 3), (&CHIEF, 2),
             (&MAGISTRATE, 3), (&SENTINEL, 4), (&WRAITH, 4), (&BUTCHER, 5), (&PRIEST, 5), (&STALKER, 6), (&STATUE, 6), (&BOUNTY_ECHO, 6), (&CONSTRUCT, 7), (&DRAKE, 7), (&ARCHANGEL, 7), (&crate::order::CAPTAIN, 8), (&crate::order::EXODUS, 8), (&crate::order::VESSEL, 8), (&crate::order::WHOLE, 8), (&HUSK, 0)];
         for (breed, tier) in roster {
             let mut line = format!("{:<26} t{tier}", breed.name);
@@ -2189,9 +2333,10 @@ pub(crate) mod tests {
     /// person's health it may leave).
     #[test]
     fn bosses_beat_a_masher_and_a_turtle_and_fall_to_a_reader_at_a_cost() {
-        // The Collector's blows are mostly low: a jump timed well clears them, so the first boss
-        // leaves more than the others do.
-        for (breed, tier, most) in [(&COLLECTOR, 0, 0.8), (&WARDEN, 1, 0.75), (&CHIEF, 2, 0.75), (&AGENT, 3, 0.75), (&BUTCHER, 5, 0.8)] {
+        // The Collector's blows are mostly low: a jump timed well clears them, and its lunge
+        // stumbles where its mark ends for anyone who rolls it, so the first boss leaves more than
+        // the others do (86% measured once the lunge's mark stopped sliding ahead of it).
+        for (breed, tier, most) in [(&COLLECTOR, 0, 0.88), (&WARDEN, 1, 0.75), (&CHIEF, 2, 0.75), (&AGENT, 3, 0.75), (&BUTCHER, 5, 0.8)] {
             let runs = |bot| (0..12u32).map(|k| bout(breed, tier, bot, 0x51DE + 977 * k)).collect::<Vec<_>>();
             let wins = |r: &[(bool, f32, f32, u32)]| r.iter().filter(|r| r.0).count();
             let (mash, turtle, read, human) = (runs(Bot::Masher), runs(Bot::Turtle), runs(Bot::Reader), runs(Bot::Human));
@@ -2405,7 +2550,9 @@ pub(crate) mod tests {
         use crate::gear::{Arms, Guard, Off, SWORD};
         // The Wayfarer's sword keeps the numbers the yard was tuned with.
         let sword = Kit::default();
-        assert_eq!(Act::Light.frames(&sword), (12, 4, 16));
+        // The light: the road's own, the windup two ticks quicker.
+        let road = Move::Light.spec().frames;
+        assert_eq!(Act::Light.frames(&sword), (road.0 - 2, road.1, road.2));
         assert_eq!(Act::Heavy.frames(&sword), (28, 6, 26));
         assert!((Act::Light.strike_spec(Class::Sword).reach - 1.7).abs() < 1e-5);
         assert!((Act::Heavy.strike_spec(Class::Sword).reach - 2.0).abs() < 1e-5);
@@ -2416,6 +2563,26 @@ pub(crate) mod tests {
         assert_eq!(Act::Parry.frames(&sword), Move::Parry.spec().frames);
         assert_eq!(Act::Parry.frames(&great), Move::Parry.spec_for(Class::Greatsword, None).frames);
         assert!(Act::Parry.frames(&kite).0 > Act::Parry.frames(&sword).0 && Act::Parry.frames(&great).1 < Act::Parry.frames(&sword).1);
+    }
+
+    #[test]
+    fn a_heavy_held_in_the_yard_gathers_to_double_and_goes_once_full() {
+        let swing = |hold: u32| {
+            let mut f = SideFight::ambush(Stats::default(), 100.0, 100.0, 3, &[(&HUSK, 0.9)]);
+            f.hero.facing = 1.0;
+            f.foes[0].ai = Ai::Wait(u32::MAX / 2);
+            (f.foes[0].top, f.foes[0].hp, f.foes[0].stance) = (1e4, 1e4, 1e4);
+            let (mut ev, mut reeled) = (Vec::new(), false);
+            for t in 0..300u32 {
+                ev.extend(f.tick(&SideInput { heavy: t == 0, heavy_held: t < hold, ..idle() }));
+                reeled |= matches!(f.foes[0].ai, Ai::Reel { .. });
+            }
+            (f.foes[0].max_hp() - f.foes[0].hp, ev, reeled)
+        };
+        let ((quick, _, quick_reeled), (full, ev, full_reeled)) = (swing(1), swing(1000));
+        assert!(full_reeled && !quick_reeled, "a full gathering sends it reeling");
+        assert!(quick > 0.0 && (full / quick - crate::fight::CHARGE_MOST).abs() < 1e-3, "{quick} {full}");
+        assert!(ev.contains(&Event::ChargeFull) && ev.contains(&Event::ChargedBlow { enemy: 0, full: true }), "{ev:?}");
     }
 
     #[test]
@@ -2470,6 +2637,32 @@ pub(crate) mod tests {
         f.foes[0].facing = -1.0;
         f.foes[0].ai = Ai::Blow { i, t: 0, hit: false, from: f.foes[0].s, aim: f.hero.s };
         f
+    }
+
+    /// Every charge's mark is the track it runs: laid at the windup, the same while it runs, and
+    /// the charger never ends past its far end.
+    #[test]
+    fn a_charge_marks_the_track_it_runs_and_the_mark_stays_put() {
+        let chargers: [&'static Breed; 3] = [&KEENER, &CHIEF, &STATUE];
+        for breed in chargers {
+            let i = breed.blows.iter().position(|b| matches!(b.motion, Motion::Charge(_))).unwrap();
+            let mut f = boss_throwing(breed, i, 9.0);
+            f.foes[0].s = HALF - breed.half;
+            f.hero.s = f.foes[0].s - 9.0;
+            f.foes[0].ai = Ai::Blow { i, t: 0, hit: false, from: f.foes[0].s, aim: f.hero.s };
+            let start = f.foes[0].s;
+            let laid = f.foes[0].warning().unwrap();
+            let mut furthest = start;
+            run(&mut f, 400, idle(), |f, _| {
+                let same = matches!(f.foes[0].ai, Ai::Blow { i: k, .. } if k == i);
+                let Some(now) = f.foes[0].warning().filter(|_| same) else { return true };
+                assert!((now.0 - laid.0).abs() < 1e-4 && (now.1 - laid.1).abs() < 1e-4, "{}: mark moved {:?} -> {:?}", breed.name, (laid.0, laid.1), (now.0, now.1));
+                furthest = furthest.min(f.foes[0].s);
+                false
+            });
+            assert!(start - furthest > 1.0, "{} never ran ({start} -> {furthest})", breed.name);
+            assert!(furthest - breed.half >= laid.0 - 0.05, "{} ran past its mark: front {} beyond {}", breed.name, furthest - breed.half, laid.0);
+        }
     }
 
     #[test]
@@ -2868,5 +3061,31 @@ pub(crate) mod tests {
         fight.foes[0].ai = Ai::Dead;
         fight.lure();
         assert_eq!(fight.foes[0].ai, Ai::Dead, "nothing rises for it");
+    }
+
+    #[test]
+    fn in_the_yard_a_light_light_heavy_held_to_the_full_whirls_round_to_the_foe_behind() {
+        use crate::combo::{Finish, Route};
+        let string = |hold: bool| {
+            let mut f = SideFight::ambush(Stats::default(), 100.0, 100.0, 3, &[(&HUSK, 0.9), (&HUSK, -0.9)]);
+            f.hero.facing = 1.0;
+            for foe in &mut f.foes { (foe.ai, foe.top, foe.hp) = (Ai::Wait(u32::MAX / 2), 1e4, 1e4); }
+            let (seq, mut k, mut asked, mut ev, mut routes) = ([false, false, true], 0, false, Vec::new(), Vec::new());
+            for _ in 0..600u32 {
+                for foe in &mut f.foes { foe.stance = 1e4; }
+                let ready = f.hero.act.is_none_or(|(a, t)| t >= { let fr = f.hero.frames_of(a); fr.0 + fr.1 });
+                let press = if ready && !asked && k < seq.len() { asked = true; k += 1; Some(seq[k - 1]) } else { None };
+                let out = f.tick(&SideInput { light: press == Some(false), heavy: press == Some(true), heavy_held: hold, ..idle() });
+                if out.iter().any(|e| matches!(e, Event::Began(Move::Light | Move::Heavy))) { asked = false; }
+                if out.contains(&Event::Began(Move::Heavy)) { routes.push(f.hero.route); }
+                ev.extend(out);
+            }
+            (f.foes[1].hp, routes, ev)
+        };
+        let (behind, routes, ev) = string(true);
+        assert_eq!(routes, vec![Route::Finisher]);
+        assert!(ev.contains(&Event::Finished(Finish::Whirl)) && behind < 1e4, "{ev:?}");
+        let (behind, _, _) = string(false);
+        assert_eq!(behind, 1e4, "an ungathered finisher strikes only ahead");
     }
 }

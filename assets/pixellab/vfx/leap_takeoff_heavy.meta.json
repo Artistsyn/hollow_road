@@ -1,0 +1,21 @@
+{
+ "name": "leap_takeoff_heavy",
+ "for": "boss leap/dive take-off (Screamer drowning leap, Mother rising under, Horror out of the fog, Drake dive, Krix/Lurz echo leaps)",
+ "px_per_m": 45,
+ "anchor": "feet",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": null,
+ "pixellab_effect_id": "b7e42dd8-b08e-4675-bd8f-c7f68131bcc7",
+ "notes": "The light take-off at boss weight: a bigger, slower dust clot thrown back (-x), more and larger pebbles that bounce and settle. Built at about 45 px/m (Keening Cage density). Screamer is ~28 px/m and Mother ~34 px/m, so scale by px_per_m. 12 frames @ 12 fps.",
+ "frame_size": [
+  117,
+  44
+ ],
+ "frames": 12,
+ "fps": 12,
+ "anchor_px": [
+  107,
+  37
+ ]
+}

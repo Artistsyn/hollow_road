@@ -1,0 +1,339 @@
+{
+ "frames": [
+  {
+   "filename": "bell-warden-knell-front 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 61,
+    "h": 41
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 61,
+    "h": 41
+   },
+   "sourceSize": {
+    "w": 61,
+    "h": 41
+   },
+   "pivot": {
+    "x": 0.29508196721311475,
+    "y": 0.43902439024390244
+   },
+   "duration": 83
+  },
+  {
+   "filename": "bell-warden-knell-front 1.png",
+   "frame": {
+    "x": 61,
+    "y": 0,
+    "w": 61,
+    "h": 41
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 61,
+    "h": 41
+   },
+   "sourceSize": {
+    "w": 61,
+    "h": 41
+   },
+   "pivot": {
+    "x": 0.29508196721311475,
+    "y": 0.43902439024390244
+   },
+   "duration": 83
+  },
+  {
+   "filename": "bell-warden-knell-front 2.png",
+   "frame": {
+    "x": 122,
+    "y": 0,
+    "w": 61,
+    "h": 41
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 61,
+    "h": 41
+   },
+   "sourceSize": {
+    "w": 61,
+    "h": 41
+   },
+   "pivot": {
+    "x": 0.29508196721311475,
+    "y": 0.43902439024390244
+   },
+   "duration": 83
+  },
+  {
+   "filename": "bell-warden-knell-front 3.png",
+   "frame": {
+    "x": 183,
+    "y": 0,
+    "w": 61,
+    "h": 41
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 61,
+    "h": 41
+   },
+   "sourceSize": {
+    "w": 61,
+    "h": 41
+   },
+   "pivot": {
+    "x": 0.29508196721311475,
+    "y": 0.43902439024390244
+   },
+   "duration": 83
+  },
+  {
+   "filename": "bell-warden-knell-front 4.png",
+   "frame": {
+    "x": 0,
+    "y": 41,
+    "w": 61,
+    "h": 41
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 61,
+    "h": 41
+   },
+   "sourceSize": {
+    "w": 61,
+    "h": 41
+   },
+   "pivot": {
+    "x": 0.29508196721311475,
+    "y": 0.43902439024390244
+   },
+   "duration": 83
+  },
+  {
+   "filename": "bell-warden-knell-front 5.png",
+   "frame": {
+    "x": 61,
+    "y": 41,
+    "w": 61,
+    "h": 41
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 61,
+    "h": 41
+   },
+   "sourceSize": {
+    "w": 61,
+    "h": 41
+   },
+   "pivot": {
+    "x": 0.29508196721311475,
+    "y": 0.43902439024390244
+   },
+   "duration": 83
+  },
+  {
+   "filename": "bell-warden-knell-front 6.png",
+   "frame": {
+    "x": 122,
+    "y": 41,
+    "w": 61,
+    "h": 41
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 61,
+    "h": 41
+   },
+   "sourceSize": {
+    "w": 61,
+    "h": 41
+   },
+   "pivot": {
+    "x": 0.29508196721311475,
+    "y": 0.43902439024390244
+   },
+   "duration": 83
+  },
+  {
+   "filename": "bell-warden-knell-front 7.png",
+   "frame": {
+    "x": 183,
+    "y": 41,
+    "w": 61,
+    "h": 41
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 61,
+    "h": 41
+   },
+   "sourceSize": {
+    "w": 61,
+    "h": 41
+   },
+   "pivot": {
+    "x": 0.29508196721311475,
+    "y": 0.43902439024390244
+   },
+   "duration": 83
+  },
+  {
+   "filename": "bell-warden-knell-front 8.png",
+   "frame": {
+    "x": 0,
+    "y": 82,
+    "w": 61,
+    "h": 41
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 61,
+    "h": 41
+   },
+   "sourceSize": {
+    "w": 61,
+    "h": 41
+   },
+   "pivot": {
+    "x": 0.29508196721311475,
+    "y": 0.43902439024390244
+   },
+   "duration": 83
+  },
+  {
+   "filename": "bell-warden-knell-front 9.png",
+   "frame": {
+    "x": 61,
+    "y": 82,
+    "w": 61,
+    "h": 41
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 61,
+    "h": 41
+   },
+   "sourceSize": {
+    "w": 61,
+    "h": 41
+   },
+   "pivot": {
+    "x": 0.29508196721311475,
+    "y": 0.43902439024390244
+   },
+   "duration": 83
+  },
+  {
+   "filename": "bell-warden-knell-front 10.png",
+   "frame": {
+    "x": 122,
+    "y": 82,
+    "w": 61,
+    "h": 41
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 61,
+    "h": 41
+   },
+   "sourceSize": {
+    "w": 61,
+    "h": 41
+   },
+   "pivot": {
+    "x": 0.29508196721311475,
+    "y": 0.43902439024390244
+   },
+   "duration": 83
+  },
+  {
+   "filename": "bell-warden-knell-front 11.png",
+   "frame": {
+    "x": 183,
+    "y": 82,
+    "w": 61,
+    "h": 41
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 61,
+    "h": 41
+   },
+   "sourceSize": {
+    "w": 61,
+    "h": 41
+   },
+   "pivot": {
+    "x": 0.29508196721311475,
+    "y": 0.43902439024390244
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "bell-warden-knell-front.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 244,
+   "h": 123
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 18,
+   "y": 18
+  },
+  "frameTags": [
+   {
+    "name": "bell-warden-knell-front",
+    "from": 0,
+    "to": 11,
+    "direction": "forward"
+   }
+  ]
+ }
+}

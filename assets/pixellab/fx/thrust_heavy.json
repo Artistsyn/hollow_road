@@ -1,7 +1,7 @@
 {
  "frames": [
   {
-   "filename": "hollow-road-rapier-heavy 0.png",
+   "filename": "hollow-road-hero-thrust-heavy-v2 0.png",
    "frame": {
     "x": 0,
     "y": 0,
@@ -27,7 +27,7 @@
    "duration": 50
   },
   {
-   "filename": "hollow-road-rapier-heavy 1.png",
+   "filename": "hollow-road-hero-thrust-heavy-v2 1.png",
    "frame": {
     "x": 64,
     "y": 0,
@@ -53,7 +53,7 @@
    "duration": 50
   },
   {
-   "filename": "hollow-road-rapier-heavy 2.png",
+   "filename": "hollow-road-hero-thrust-heavy-v2 2.png",
    "frame": {
     "x": 128,
     "y": 0,
@@ -79,7 +79,7 @@
    "duration": 50
   },
   {
-   "filename": "hollow-road-rapier-heavy 3.png",
+   "filename": "hollow-road-hero-thrust-heavy-v2 3.png",
    "frame": {
     "x": 0,
     "y": 160,
@@ -105,7 +105,7 @@
    "duration": 50
   },
   {
-   "filename": "hollow-road-rapier-heavy 4.png",
+   "filename": "hollow-road-hero-thrust-heavy-v2 4.png",
    "frame": {
     "x": 64,
     "y": 160,
@@ -131,7 +131,7 @@
    "duration": 50
   },
   {
-   "filename": "hollow-road-rapier-heavy 5.png",
+   "filename": "hollow-road-hero-thrust-heavy-v2 5.png",
    "frame": {
     "x": 128,
     "y": 160,
@@ -157,7 +157,7 @@
    "duration": 50
   },
   {
-   "filename": "hollow-road-rapier-heavy 6.png",
+   "filename": "hollow-road-hero-thrust-heavy-v2 6.png",
    "frame": {
     "x": 0,
     "y": 320,
@@ -183,7 +183,7 @@
    "duration": 50
   },
   {
-   "filename": "hollow-road-rapier-heavy 7.png",
+   "filename": "hollow-road-hero-thrust-heavy-v2 7.png",
    "frame": {
     "x": 64,
     "y": 320,
@@ -211,7 +211,7 @@
  ],
  "meta": {
   "app": "PixelLab VFX Creator",
-  "image": "hollow-road-rapier-heavy.png",
+  "image": "hollow-road-hero-thrust-heavy-v2.png",
   "format": "RGBA8888",
   "size": {
    "w": 192,
@@ -225,7 +225,7 @@
   },
   "frameTags": [
    {
-    "name": "hollow-road-rapier-heavy",
+    "name": "hollow-road-hero-thrust-heavy-v2",
     "from": 0,
     "to": 7,
     "direction": "forward"

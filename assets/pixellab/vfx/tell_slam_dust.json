@@ -1,0 +1,339 @@
+{
+ "frames": [
+  {
+   "filename": "hollow-road-tell-heavy-slam-dust-and-grit 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 81,
+    "h": 89
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 81,
+    "h": 89
+   },
+   "sourceSize": {
+    "w": 81,
+    "h": 89
+   },
+   "pivot": {
+    "x": 0.32098765432098764,
+    "y": 0.15730337078651685
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-tell-heavy-slam-dust-and-grit 1.png",
+   "frame": {
+    "x": 81,
+    "y": 0,
+    "w": 81,
+    "h": 89
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 81,
+    "h": 89
+   },
+   "sourceSize": {
+    "w": 81,
+    "h": 89
+   },
+   "pivot": {
+    "x": 0.32098765432098764,
+    "y": 0.15730337078651685
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-tell-heavy-slam-dust-and-grit 2.png",
+   "frame": {
+    "x": 162,
+    "y": 0,
+    "w": 81,
+    "h": 89
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 81,
+    "h": 89
+   },
+   "sourceSize": {
+    "w": 81,
+    "h": 89
+   },
+   "pivot": {
+    "x": 0.32098765432098764,
+    "y": 0.15730337078651685
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-tell-heavy-slam-dust-and-grit 3.png",
+   "frame": {
+    "x": 243,
+    "y": 0,
+    "w": 81,
+    "h": 89
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 81,
+    "h": 89
+   },
+   "sourceSize": {
+    "w": 81,
+    "h": 89
+   },
+   "pivot": {
+    "x": 0.32098765432098764,
+    "y": 0.15730337078651685
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-tell-heavy-slam-dust-and-grit 4.png",
+   "frame": {
+    "x": 0,
+    "y": 89,
+    "w": 81,
+    "h": 89
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 81,
+    "h": 89
+   },
+   "sourceSize": {
+    "w": 81,
+    "h": 89
+   },
+   "pivot": {
+    "x": 0.32098765432098764,
+    "y": 0.15730337078651685
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-tell-heavy-slam-dust-and-grit 5.png",
+   "frame": {
+    "x": 81,
+    "y": 89,
+    "w": 81,
+    "h": 89
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 81,
+    "h": 89
+   },
+   "sourceSize": {
+    "w": 81,
+    "h": 89
+   },
+   "pivot": {
+    "x": 0.32098765432098764,
+    "y": 0.15730337078651685
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-tell-heavy-slam-dust-and-grit 6.png",
+   "frame": {
+    "x": 162,
+    "y": 89,
+    "w": 81,
+    "h": 89
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 81,
+    "h": 89
+   },
+   "sourceSize": {
+    "w": 81,
+    "h": 89
+   },
+   "pivot": {
+    "x": 0.32098765432098764,
+    "y": 0.15730337078651685
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-tell-heavy-slam-dust-and-grit 7.png",
+   "frame": {
+    "x": 243,
+    "y": 89,
+    "w": 81,
+    "h": 89
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 81,
+    "h": 89
+   },
+   "sourceSize": {
+    "w": 81,
+    "h": 89
+   },
+   "pivot": {
+    "x": 0.32098765432098764,
+    "y": 0.15730337078651685
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-tell-heavy-slam-dust-and-grit 8.png",
+   "frame": {
+    "x": 0,
+    "y": 178,
+    "w": 81,
+    "h": 89
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 81,
+    "h": 89
+   },
+   "sourceSize": {
+    "w": 81,
+    "h": 89
+   },
+   "pivot": {
+    "x": 0.32098765432098764,
+    "y": 0.15730337078651685
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-tell-heavy-slam-dust-and-grit 9.png",
+   "frame": {
+    "x": 81,
+    "y": 178,
+    "w": 81,
+    "h": 89
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 81,
+    "h": 89
+   },
+   "sourceSize": {
+    "w": 81,
+    "h": 89
+   },
+   "pivot": {
+    "x": 0.32098765432098764,
+    "y": 0.15730337078651685
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-tell-heavy-slam-dust-and-grit 10.png",
+   "frame": {
+    "x": 162,
+    "y": 178,
+    "w": 81,
+    "h": 89
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 81,
+    "h": 89
+   },
+   "sourceSize": {
+    "w": 81,
+    "h": 89
+   },
+   "pivot": {
+    "x": 0.32098765432098764,
+    "y": 0.15730337078651685
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-tell-heavy-slam-dust-and-grit 11.png",
+   "frame": {
+    "x": 243,
+    "y": 178,
+    "w": 81,
+    "h": 89
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 81,
+    "h": 89
+   },
+   "sourceSize": {
+    "w": 81,
+    "h": 89
+   },
+   "pivot": {
+    "x": 0.32098765432098764,
+    "y": 0.15730337078651685
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hollow-road-tell-heavy-slam-dust-and-grit.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 324,
+   "h": 267
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 26,
+   "y": 14
+  },
+  "frameTags": [
+   {
+    "name": "hollow-road-tell-heavy-slam-dust-and-grit",
+    "from": 0,
+    "to": 11,
+    "direction": "forward"
+   }
+  ]
+ }
+}

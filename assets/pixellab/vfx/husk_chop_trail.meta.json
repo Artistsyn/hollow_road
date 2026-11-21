@@ -1,0 +1,30 @@
+{
+ "name": "husk_chop_trail",
+ "for": "husk (and its elites/risen) - chop / late chop / cleave (side.rs HUSK_CHOP reach 0.2-1.6 m, height 0-2.2 m; road fight.rs chop reach 2.9 m)",
+ "px_per_m": 61.7,
+ "anchor": "feet",
+ "anchor_px": [
+  121,
+  147
+ ],
+ "faces": "left (as the husk w_chop clip is drawn; mirror with the sprite)",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": [
+  0.0,
+  2.2
+ ],
+ "reach_m": [
+  0.2,
+  1.6
+ ],
+ "fps": 12,
+ "start_on": "first live tick of the blow (w_chop frame 9)",
+ "pixellab_effect_id": "f3d273a0-ad62-4dbd-a451-7f5158df231c",
+ "notes": "Doubled cleaver whoosh over the head from behind to the ground in front at the true reach; leading rim brightest, tail reeled in and crumbling; a cold glint on the blade at the peak; grit and a dust breath where the edge passes the ground. anchor_px = foe middle (sprite canvas centre x) on the ground row, in this frame. px_per_m from idle figure 111 px / 1.8 m.",
+ "frames": 9,
+ "frame_px": [
+  146,
+  155
+ ]
+}

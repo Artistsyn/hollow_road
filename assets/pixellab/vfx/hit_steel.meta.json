@@ -1,0 +1,21 @@
+{
+ "name": "hit_steel",
+ "for": "any blade or weapon parried/blocked on steel (hero parry, shieldbearer block, armoured bosses)",
+ "px_per_m": 63,
+ "anchor": "centre",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": null,
+ "pixellab_effect_id": "d3b148a1-538a-4f86-8e62-782ee284c522",
+ "notes": "Hot white-yellow sparks with a cold steel glint; they arc out (biased up and toward +x), fall, bounce and skitter on the floor, cooling to dark red. Anchor = the clash point. The floor the sparks land on is baked 74 px (1.17 m) below the anchor, so play it at about chest height; mirror x when the blow comes from the right. Built at the hero's density (117 px / 1.85 m). 12 frames @ 12 fps, 1 s.",
+ "frame_size": [
+  115,
+  91
+ ],
+ "frames": 12,
+ "fps": 12,
+ "anchor_px": [
+  54,
+  13
+ ]
+}

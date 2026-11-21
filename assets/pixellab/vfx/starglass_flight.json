@@ -1,0 +1,235 @@
+{
+ "frames": [
+  {
+   "filename": "hr-shots-starglass-flight 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 61,
+    "h": 17
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 61,
+    "h": 17
+   },
+   "sourceSize": {
+    "w": 61,
+    "h": 17
+   },
+   "pivot": {
+    "x": 0.6721311475409836,
+    "y": 0.47058823529411764
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-starglass-flight 1.png",
+   "frame": {
+    "x": 61,
+    "y": 0,
+    "w": 61,
+    "h": 17
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 61,
+    "h": 17
+   },
+   "sourceSize": {
+    "w": 61,
+    "h": 17
+   },
+   "pivot": {
+    "x": 0.6721311475409836,
+    "y": 0.47058823529411764
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-starglass-flight 2.png",
+   "frame": {
+    "x": 122,
+    "y": 0,
+    "w": 61,
+    "h": 17
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 61,
+    "h": 17
+   },
+   "sourceSize": {
+    "w": 61,
+    "h": 17
+   },
+   "pivot": {
+    "x": 0.6721311475409836,
+    "y": 0.47058823529411764
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-starglass-flight 3.png",
+   "frame": {
+    "x": 0,
+    "y": 17,
+    "w": 61,
+    "h": 17
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 61,
+    "h": 17
+   },
+   "sourceSize": {
+    "w": 61,
+    "h": 17
+   },
+   "pivot": {
+    "x": 0.6721311475409836,
+    "y": 0.47058823529411764
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-starglass-flight 4.png",
+   "frame": {
+    "x": 61,
+    "y": 17,
+    "w": 61,
+    "h": 17
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 61,
+    "h": 17
+   },
+   "sourceSize": {
+    "w": 61,
+    "h": 17
+   },
+   "pivot": {
+    "x": 0.6721311475409836,
+    "y": 0.47058823529411764
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-starglass-flight 5.png",
+   "frame": {
+    "x": 122,
+    "y": 17,
+    "w": 61,
+    "h": 17
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 61,
+    "h": 17
+   },
+   "sourceSize": {
+    "w": 61,
+    "h": 17
+   },
+   "pivot": {
+    "x": 0.6721311475409836,
+    "y": 0.47058823529411764
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-starglass-flight 6.png",
+   "frame": {
+    "x": 0,
+    "y": 34,
+    "w": 61,
+    "h": 17
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 61,
+    "h": 17
+   },
+   "sourceSize": {
+    "w": 61,
+    "h": 17
+   },
+   "pivot": {
+    "x": 0.6721311475409836,
+    "y": 0.47058823529411764
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-starglass-flight 7.png",
+   "frame": {
+    "x": 61,
+    "y": 34,
+    "w": 61,
+    "h": 17
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 61,
+    "h": 17
+   },
+   "sourceSize": {
+    "w": 61,
+    "h": 17
+   },
+   "pivot": {
+    "x": 0.6721311475409836,
+    "y": 0.47058823529411764
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hr-shots-starglass-flight.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 183,
+   "h": 51
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 41,
+   "y": 8
+  },
+  "frameTags": [
+   {
+    "name": "hr-shots-starglass-flight",
+    "from": 0,
+    "to": 7,
+    "direction": "forward"
+   }
+  ]
+ }
+}

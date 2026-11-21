@@ -1,0 +1,235 @@
+{
+ "frames": [
+  {
+   "filename": "hr-shots-chains-flight 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 111,
+    "h": 31
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 111,
+    "h": 31
+   },
+   "sourceSize": {
+    "w": 111,
+    "h": 31
+   },
+   "pivot": {
+    "x": 0.9369369369369369,
+    "y": 0.8387096774193549
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-chains-flight 1.png",
+   "frame": {
+    "x": 111,
+    "y": 0,
+    "w": 111,
+    "h": 31
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 111,
+    "h": 31
+   },
+   "sourceSize": {
+    "w": 111,
+    "h": 31
+   },
+   "pivot": {
+    "x": 0.9369369369369369,
+    "y": 0.8387096774193549
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-chains-flight 2.png",
+   "frame": {
+    "x": 222,
+    "y": 0,
+    "w": 111,
+    "h": 31
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 111,
+    "h": 31
+   },
+   "sourceSize": {
+    "w": 111,
+    "h": 31
+   },
+   "pivot": {
+    "x": 0.9369369369369369,
+    "y": 0.8387096774193549
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-chains-flight 3.png",
+   "frame": {
+    "x": 0,
+    "y": 31,
+    "w": 111,
+    "h": 31
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 111,
+    "h": 31
+   },
+   "sourceSize": {
+    "w": 111,
+    "h": 31
+   },
+   "pivot": {
+    "x": 0.9369369369369369,
+    "y": 0.8387096774193549
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-chains-flight 4.png",
+   "frame": {
+    "x": 111,
+    "y": 31,
+    "w": 111,
+    "h": 31
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 111,
+    "h": 31
+   },
+   "sourceSize": {
+    "w": 111,
+    "h": 31
+   },
+   "pivot": {
+    "x": 0.9369369369369369,
+    "y": 0.8387096774193549
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-chains-flight 5.png",
+   "frame": {
+    "x": 222,
+    "y": 31,
+    "w": 111,
+    "h": 31
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 111,
+    "h": 31
+   },
+   "sourceSize": {
+    "w": 111,
+    "h": 31
+   },
+   "pivot": {
+    "x": 0.9369369369369369,
+    "y": 0.8387096774193549
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-chains-flight 6.png",
+   "frame": {
+    "x": 0,
+    "y": 62,
+    "w": 111,
+    "h": 31
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 111,
+    "h": 31
+   },
+   "sourceSize": {
+    "w": 111,
+    "h": 31
+   },
+   "pivot": {
+    "x": 0.9369369369369369,
+    "y": 0.8387096774193549
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-chains-flight 7.png",
+   "frame": {
+    "x": 111,
+    "y": 62,
+    "w": 111,
+    "h": 31
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 111,
+    "h": 31
+   },
+   "sourceSize": {
+    "w": 111,
+    "h": 31
+   },
+   "pivot": {
+    "x": 0.9369369369369369,
+    "y": 0.8387096774193549
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hr-shots-chains-flight.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 333,
+   "h": 93
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 104,
+   "y": 26
+  },
+  "frameTags": [
+   {
+    "name": "hr-shots-chains-flight",
+    "from": 0,
+    "to": 7,
+    "direction": "forward"
+   }
+  ]
+ }
+}

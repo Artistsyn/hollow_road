@@ -1,0 +1,30 @@
+{
+ "name": "husk_sweep_trail",
+ "for": "husk - sweep (side.rs HUSK_SWEEP reach -0.3-1.8 m, height 0-0.7 m; Debt Collector sweep -0.3-2.0 m; road fight.rs sweep reach 2.8 m across two lanes)",
+ "px_per_m": 61.7,
+ "anchor": "feet",
+ "anchor_px": [
+  133,
+  40
+ ],
+ "faces": "left (as the husk w_sweep clip; mirror with the sprite)",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": [
+  0.0,
+  0.7
+ ],
+ "reach_m": [
+  -0.3,
+  1.8
+ ],
+ "fps": 12,
+ "start_on": "first live tick (w_sweep frame 5)",
+ "pixellab_effect_id": "8aa648ed-7021-4e0d-b640-38942f0a0758",
+ "notes": "A flat doubled cleaver skim at shin height from behind the husk to 1.8 m in front, a rolling wall of dust and kicked grit following the edge along the ground: reads as low, jump it. Trail top sits at ~0.55 m, inside the 0.7 m band. Canvas bottom row ~ ground +8 px for settling grit.",
+ "frames": 9,
+ "frame_px": [
+  160,
+  48
+ ]
+}

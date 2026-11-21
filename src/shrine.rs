@@ -14,6 +14,7 @@ use crate::fight::{Fight, Stats};
 use crate::gear::{Arms, Grade, ATTRIBUTES, ITEMS, SHOWN, SLOTS};
 use crate::lore::Lore;
 use crate::profile::Slot;
+use crate::settings::{Row, Settings};
 use crate::voices::Speaker;
 use crate::world::{Note, World};
 
@@ -92,6 +93,12 @@ pub enum Front {
     Callings(usize, usize),
     /// The calling chosen (by index): with the prologue first (0) or without it (1).
     Prologue(usize, usize, usize),
+    /// Sound and graphics (`settings::Row`, by index), opened from the pause menu (true) or the
+    /// list of pilgrimages, with the settings as they are being changed.
+    Settings(usize, bool, Settings),
+    /// The combo list (`combo::list`, the row chosen), from the pause menu, the hero's weapon swung
+    /// as the class given.
+    Combos(usize, crate::gear::Class),
 }
 
 /// What the title has decided.
@@ -109,11 +116,19 @@ pub enum Begin {
     Profile,
     /// Quit the game entirely.
     Quit,
+    /// Open the settings (the pause menu's or the list's).
+    Settings,
+    /// Open the combo list, from the pause menu.
+    Combos,
+    /// The settings changed: hear and draw them, and keep them.
+    Set(Settings),
 }
 
 const KEPT: [&str; 3] = ["Carry on", "Forget this pilgrimage", "Back"];
 const FORGET: [&str; 2] = ["Keep it", "Forget it for good"];
-const PAUSE: [&str; 3] = ["Resume", "Change profile", "Quit game"];
+const PAUSE: [&str; 5] = ["Resume", "Settings", "Combos", "Change profile", "Quit game"];
+/// Where the combo list sits in the pause menu, which it goes back to.
+const PAUSE_COMBOS: usize = 2;
 const PROLOGUE: [&str; 2] = ["Begin with the prologue", "Skip it: straight to the pilgrimage"];
 
 impl Front {
@@ -124,13 +139,16 @@ impl Front {
 
     /// A key, with the slots as they stand; what has been decided, once it is.
     pub fn press(&mut self, k: Key, slots: &[Slot]) -> Option<Begin> {
-        let last = slots.len().saturating_sub(1);
+        // The list's last row, after the slots, opens the settings.
+        let last = slots.len();
+        if let Front::Settings(row, paused, set) = *self { return self.press_settings(k, (row, paused, set), slots.len()); }
         match (*self, k) {
             // A first launch, nothing kept: straight to choosing a calling in the first place.
             (Front::Title, Key::Use) if slots.iter().all(|s| *s == Slot::Empty) => *self = Front::Callings(0, 0),
             (Front::Title, Key::Use) => *self = Front::profiles(slots),
             (Front::Profiles(i), Key::Up | Key::Left) => *self = Front::Profiles(i.saturating_sub(1)),
             (Front::Profiles(i), Key::Down | Key::Right) => *self = Front::Profiles((i + 1).min(last)),
+            (Front::Profiles(i), Key::Use) if i == slots.len() => return Some(Begin::Settings),
             (Front::Profiles(i), Key::Use) => match slots.get(i) {
                 Some(Slot::Kept(_)) => *self = Front::Kept(i, 0),
                 Some(Slot::Empty) => *self = Front::Callings(i, 0),
@@ -143,11 +161,17 @@ impl Front {
             (Front::Pause(i), Key::Use) => {
                 return match i {
                     0 => Some(Begin::Resume),
-                    1 => Some(Begin::Profile),
+                    1 => Some(Begin::Settings),
+                    PAUSE_COMBOS => Some(Begin::Combos),
+                    3 => Some(Begin::Profile),
                     _ => Some(Begin::Quit),
                 };
             }
             (Front::Pause(_), Key::Back) => return Some(Begin::Resume),
+            (Front::Combos(i, c), Key::Up | Key::Left) => *self = Front::Combos(i.saturating_sub(1), c),
+            (Front::Combos(i, c), Key::Down | Key::Right) => *self = Front::Combos((i + 1).min(crate::combo::list(c).len()), c),
+            (Front::Combos(i, c), Key::Use) if i < crate::combo::list(c).len() => *self = Front::Combos(i, c),
+            (Front::Combos(..), Key::Use | Key::Back) => *self = Front::Pause(PAUSE_COMBOS),
             (Front::Kept(i, c), Key::Up | Key::Left) => *self = Front::Kept(i, c.saturating_sub(1)),
             (Front::Kept(i, c), Key::Down | Key::Right) => *self = Front::Kept(i, (c + 1).min(KEPT.len() - 1)),
             (Front::Kept(i, 0), Key::Use) => return Some(Begin::Continue(i)),
@@ -170,6 +194,26 @@ impl Front {
         None
     }
 
+    /// A key on the settings page (`row`, whether opened from the pause menu, the settings):
+    /// back to where it was opened from, or the settings changed.
+    fn press_settings(&mut self, k: Key, (row, paused, mut set): (usize, bool, Settings), list: usize) -> Option<Begin> {
+        let leave = if paused { Front::Pause(1) } else { Front::Profiles(list) };
+        let at = Row::ALL[row.min(Row::ALL.len() - 1)];
+        match k {
+            Key::Up => *self = Front::Settings(row.saturating_sub(1), paused, set),
+            Key::Down => *self = Front::Settings((row + 1).min(Row::ALL.len() - 1), paused, set),
+            Key::Back => *self = leave,
+            Key::Use if at == Row::Back => *self = leave,
+            Key::Left | Key::Right | Key::Use if at != Row::Back => {
+                set.step(at, k != Key::Left, k == Key::Use);
+                *self = Front::Settings(row, paused, set);
+                return Some(Begin::Set(set));
+            }
+            _ => {}
+        }
+        None
+    }
+
     pub fn panel(&self, slots: &[Slot]) -> Panel {
         let kept = |i: usize| match slots.get(i) { Some(Slot::Kept(k)) => k.line(), _ => String::new() };
         match *self {
@@ -186,7 +230,7 @@ impl Front {
                     Slot::Kept(k) => (format!("{}.  {}", n + 1, k.line()), true),
                     Slot::Empty => (format!("{}.  free: begin a new pilgrimage", n + 1), true),
                     Slot::Unreadable => (format!("{}.  kept by another version of the game", n + 1), false),
-                }).collect(),
+                }).chain(std::iter::once(("Settings: sound and graphics".to_owned(), true))).collect(),
                 choice: i,
                 hint: "W/S choose   E open   Esc back".into(),
             },
@@ -217,6 +261,20 @@ impl Front {
                 options: Calling::ALL.iter().map(|c| (if c.playable() { c.name().to_owned() } else { format!("{}  (not yet)", c.name()) }, c.playable())).collect(),
                 choice: i,
                 hint: "W/S choose   E begin   Esc back".into(),
+            },
+            Front::Settings(row, _, set) => Panel {
+                title: "Settings".into(),
+                text: "Lower graphics draw less grass, glow and drifting leaves, and the road in larger pixels: for older or slower devices.".into(),
+                options: Row::ALL.iter().map(|r| (set.line(*r), true)).collect(),
+                choice: row,
+                hint: "W/S choose   A/D or E change   Esc back".into(),
+            },
+            Front::Combos(row, class) => Panel {
+                title: "Combos".into(),
+                text: "Press the next as the strike before recovers. Strike is the light blow, heavy the heavy.".into(),
+                options: crate::combo::list(class).into_iter().chain(std::iter::once("Back".to_owned())).map(|o| (o, true)).collect(),
+                choice: row,
+                hint: "W/S look through   Esc back".into(),
             },
             Front::Prologue(_, i, c) => Panel {
                 title: format!("{}: a prologue first?", Calling::ALL[i].name()),

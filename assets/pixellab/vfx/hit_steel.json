@@ -1,0 +1,339 @@
+{
+ "frames": [
+  {
+   "filename": "hollow-road-hit-steel-on-steel 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 115,
+    "h": 91
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 115,
+    "h": 91
+   },
+   "sourceSize": {
+    "w": 115,
+    "h": 91
+   },
+   "pivot": {
+    "x": 0.46956521739130436,
+    "y": 0.14285714285714285
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-hit-steel-on-steel 1.png",
+   "frame": {
+    "x": 115,
+    "y": 0,
+    "w": 115,
+    "h": 91
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 115,
+    "h": 91
+   },
+   "sourceSize": {
+    "w": 115,
+    "h": 91
+   },
+   "pivot": {
+    "x": 0.46956521739130436,
+    "y": 0.14285714285714285
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-hit-steel-on-steel 2.png",
+   "frame": {
+    "x": 230,
+    "y": 0,
+    "w": 115,
+    "h": 91
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 115,
+    "h": 91
+   },
+   "sourceSize": {
+    "w": 115,
+    "h": 91
+   },
+   "pivot": {
+    "x": 0.46956521739130436,
+    "y": 0.14285714285714285
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-hit-steel-on-steel 3.png",
+   "frame": {
+    "x": 345,
+    "y": 0,
+    "w": 115,
+    "h": 91
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 115,
+    "h": 91
+   },
+   "sourceSize": {
+    "w": 115,
+    "h": 91
+   },
+   "pivot": {
+    "x": 0.46956521739130436,
+    "y": 0.14285714285714285
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-hit-steel-on-steel 4.png",
+   "frame": {
+    "x": 0,
+    "y": 91,
+    "w": 115,
+    "h": 91
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 115,
+    "h": 91
+   },
+   "sourceSize": {
+    "w": 115,
+    "h": 91
+   },
+   "pivot": {
+    "x": 0.46956521739130436,
+    "y": 0.14285714285714285
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-hit-steel-on-steel 5.png",
+   "frame": {
+    "x": 115,
+    "y": 91,
+    "w": 115,
+    "h": 91
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 115,
+    "h": 91
+   },
+   "sourceSize": {
+    "w": 115,
+    "h": 91
+   },
+   "pivot": {
+    "x": 0.46956521739130436,
+    "y": 0.14285714285714285
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-hit-steel-on-steel 6.png",
+   "frame": {
+    "x": 230,
+    "y": 91,
+    "w": 115,
+    "h": 91
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 115,
+    "h": 91
+   },
+   "sourceSize": {
+    "w": 115,
+    "h": 91
+   },
+   "pivot": {
+    "x": 0.46956521739130436,
+    "y": 0.14285714285714285
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-hit-steel-on-steel 7.png",
+   "frame": {
+    "x": 345,
+    "y": 91,
+    "w": 115,
+    "h": 91
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 115,
+    "h": 91
+   },
+   "sourceSize": {
+    "w": 115,
+    "h": 91
+   },
+   "pivot": {
+    "x": 0.46956521739130436,
+    "y": 0.14285714285714285
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-hit-steel-on-steel 8.png",
+   "frame": {
+    "x": 0,
+    "y": 182,
+    "w": 115,
+    "h": 91
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 115,
+    "h": 91
+   },
+   "sourceSize": {
+    "w": 115,
+    "h": 91
+   },
+   "pivot": {
+    "x": 0.46956521739130436,
+    "y": 0.14285714285714285
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-hit-steel-on-steel 9.png",
+   "frame": {
+    "x": 115,
+    "y": 182,
+    "w": 115,
+    "h": 91
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 115,
+    "h": 91
+   },
+   "sourceSize": {
+    "w": 115,
+    "h": 91
+   },
+   "pivot": {
+    "x": 0.46956521739130436,
+    "y": 0.14285714285714285
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-hit-steel-on-steel 10.png",
+   "frame": {
+    "x": 230,
+    "y": 182,
+    "w": 115,
+    "h": 91
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 115,
+    "h": 91
+   },
+   "sourceSize": {
+    "w": 115,
+    "h": 91
+   },
+   "pivot": {
+    "x": 0.46956521739130436,
+    "y": 0.14285714285714285
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-hit-steel-on-steel 11.png",
+   "frame": {
+    "x": 345,
+    "y": 182,
+    "w": 115,
+    "h": 91
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 115,
+    "h": 91
+   },
+   "sourceSize": {
+    "w": 115,
+    "h": 91
+   },
+   "pivot": {
+    "x": 0.46956521739130436,
+    "y": 0.14285714285714285
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hollow-road-hit-steel-on-steel.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 460,
+   "h": 273
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 54,
+   "y": 13
+  },
+  "frameTags": [
+   {
+    "name": "hollow-road-hit-steel-on-steel",
+    "from": 0,
+    "to": 11,
+    "direction": "forward"
+   }
+  ]
+ }
+}

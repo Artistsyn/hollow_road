@@ -1,0 +1,11 @@
+{
+ "name": "bile_splash",
+ "for": "road bloater belch (where the gout lands)",
+ "px_per_m": 55.4,
+ "anchor": "feet",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": null,
+ "pixellab_effect_id": "d3f9d7d1-f295-4e2b-aef9-30852ce4b77c",
+ "notes": "The gout hits the floor: a crown of thick bile tongues splays up (~0.35 m) and collapses, droplets and dark chunks fly and land, then it spreads into a lumpy puddle ~0.8 m wide with a faint sickly fume and glints. Anchor = landing point on the ground (feet). Ends on the full puddle so bile_pool can take over seamlessly."
+}

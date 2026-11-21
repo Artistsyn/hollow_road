@@ -1,0 +1,261 @@
+{
+ "frames": [
+  {
+   "filename": "hollow-road-fog-horror-tendril-lash 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 130,
+    "h": 119
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 130,
+    "h": 119
+   },
+   "sourceSize": {
+    "w": 130,
+    "h": 119
+   },
+   "pivot": {
+    "x": 0.8538461538461538,
+    "y": 0.42857142857142855
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-fog-horror-tendril-lash 1.png",
+   "frame": {
+    "x": 130,
+    "y": 0,
+    "w": 130,
+    "h": 119
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 130,
+    "h": 119
+   },
+   "sourceSize": {
+    "w": 130,
+    "h": 119
+   },
+   "pivot": {
+    "x": 0.8538461538461538,
+    "y": 0.42857142857142855
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-fog-horror-tendril-lash 2.png",
+   "frame": {
+    "x": 260,
+    "y": 0,
+    "w": 130,
+    "h": 119
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 130,
+    "h": 119
+   },
+   "sourceSize": {
+    "w": 130,
+    "h": 119
+   },
+   "pivot": {
+    "x": 0.8538461538461538,
+    "y": 0.42857142857142855
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-fog-horror-tendril-lash 3.png",
+   "frame": {
+    "x": 0,
+    "y": 119,
+    "w": 130,
+    "h": 119
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 130,
+    "h": 119
+   },
+   "sourceSize": {
+    "w": 130,
+    "h": 119
+   },
+   "pivot": {
+    "x": 0.8538461538461538,
+    "y": 0.42857142857142855
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-fog-horror-tendril-lash 4.png",
+   "frame": {
+    "x": 130,
+    "y": 119,
+    "w": 130,
+    "h": 119
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 130,
+    "h": 119
+   },
+   "sourceSize": {
+    "w": 130,
+    "h": 119
+   },
+   "pivot": {
+    "x": 0.8538461538461538,
+    "y": 0.42857142857142855
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-fog-horror-tendril-lash 5.png",
+   "frame": {
+    "x": 260,
+    "y": 119,
+    "w": 130,
+    "h": 119
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 130,
+    "h": 119
+   },
+   "sourceSize": {
+    "w": 130,
+    "h": 119
+   },
+   "pivot": {
+    "x": 0.8538461538461538,
+    "y": 0.42857142857142855
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-fog-horror-tendril-lash 6.png",
+   "frame": {
+    "x": 0,
+    "y": 238,
+    "w": 130,
+    "h": 119
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 130,
+    "h": 119
+   },
+   "sourceSize": {
+    "w": 130,
+    "h": 119
+   },
+   "pivot": {
+    "x": 0.8538461538461538,
+    "y": 0.42857142857142855
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-fog-horror-tendril-lash 7.png",
+   "frame": {
+    "x": 130,
+    "y": 238,
+    "w": 130,
+    "h": 119
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 130,
+    "h": 119
+   },
+   "sourceSize": {
+    "w": 130,
+    "h": 119
+   },
+   "pivot": {
+    "x": 0.8538461538461538,
+    "y": 0.42857142857142855
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-fog-horror-tendril-lash 8.png",
+   "frame": {
+    "x": 260,
+    "y": 238,
+    "w": 130,
+    "h": 119
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 130,
+    "h": 119
+   },
+   "sourceSize": {
+    "w": 130,
+    "h": 119
+   },
+   "pivot": {
+    "x": 0.8538461538461538,
+    "y": 0.42857142857142855
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hollow-road-fog-horror-tendril-lash.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 390,
+   "h": 357
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 111,
+   "y": 51
+  },
+  "frameTags": [
+   {
+    "name": "hollow-road-fog-horror-tendril-lash",
+    "from": 0,
+    "to": 8,
+    "direction": "forward"
+   }
+  ]
+ }
+}

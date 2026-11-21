@@ -1,0 +1,287 @@
+{
+ "frames": [
+  {
+   "filename": "hollow-road-leap-take-off-light-hound-wretch 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 71,
+    "h": 32
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 71,
+    "h": 32
+   },
+   "sourceSize": {
+    "w": 71,
+    "h": 32
+   },
+   "pivot": {
+    "x": 0.9436619718309859,
+    "y": 0.8125
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-leap-take-off-light-hound-wretch 1.png",
+   "frame": {
+    "x": 71,
+    "y": 0,
+    "w": 71,
+    "h": 32
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 71,
+    "h": 32
+   },
+   "sourceSize": {
+    "w": 71,
+    "h": 32
+   },
+   "pivot": {
+    "x": 0.9436619718309859,
+    "y": 0.8125
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-leap-take-off-light-hound-wretch 2.png",
+   "frame": {
+    "x": 142,
+    "y": 0,
+    "w": 71,
+    "h": 32
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 71,
+    "h": 32
+   },
+   "sourceSize": {
+    "w": 71,
+    "h": 32
+   },
+   "pivot": {
+    "x": 0.9436619718309859,
+    "y": 0.8125
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-leap-take-off-light-hound-wretch 3.png",
+   "frame": {
+    "x": 213,
+    "y": 0,
+    "w": 71,
+    "h": 32
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 71,
+    "h": 32
+   },
+   "sourceSize": {
+    "w": 71,
+    "h": 32
+   },
+   "pivot": {
+    "x": 0.9436619718309859,
+    "y": 0.8125
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-leap-take-off-light-hound-wretch 4.png",
+   "frame": {
+    "x": 0,
+    "y": 32,
+    "w": 71,
+    "h": 32
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 71,
+    "h": 32
+   },
+   "sourceSize": {
+    "w": 71,
+    "h": 32
+   },
+   "pivot": {
+    "x": 0.9436619718309859,
+    "y": 0.8125
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-leap-take-off-light-hound-wretch 5.png",
+   "frame": {
+    "x": 71,
+    "y": 32,
+    "w": 71,
+    "h": 32
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 71,
+    "h": 32
+   },
+   "sourceSize": {
+    "w": 71,
+    "h": 32
+   },
+   "pivot": {
+    "x": 0.9436619718309859,
+    "y": 0.8125
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-leap-take-off-light-hound-wretch 6.png",
+   "frame": {
+    "x": 142,
+    "y": 32,
+    "w": 71,
+    "h": 32
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 71,
+    "h": 32
+   },
+   "sourceSize": {
+    "w": 71,
+    "h": 32
+   },
+   "pivot": {
+    "x": 0.9436619718309859,
+    "y": 0.8125
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-leap-take-off-light-hound-wretch 7.png",
+   "frame": {
+    "x": 213,
+    "y": 32,
+    "w": 71,
+    "h": 32
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 71,
+    "h": 32
+   },
+   "sourceSize": {
+    "w": 71,
+    "h": 32
+   },
+   "pivot": {
+    "x": 0.9436619718309859,
+    "y": 0.8125
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-leap-take-off-light-hound-wretch 8.png",
+   "frame": {
+    "x": 0,
+    "y": 64,
+    "w": 71,
+    "h": 32
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 71,
+    "h": 32
+   },
+   "sourceSize": {
+    "w": 71,
+    "h": 32
+   },
+   "pivot": {
+    "x": 0.9436619718309859,
+    "y": 0.8125
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-leap-take-off-light-hound-wretch 9.png",
+   "frame": {
+    "x": 71,
+    "y": 64,
+    "w": 71,
+    "h": 32
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 71,
+    "h": 32
+   },
+   "sourceSize": {
+    "w": 71,
+    "h": 32
+   },
+   "pivot": {
+    "x": 0.9436619718309859,
+    "y": 0.8125
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hollow-road-leap-take-off-light-hound-wretch.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 284,
+   "h": 96
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 67,
+   "y": 26
+  },
+  "frameTags": [
+   {
+    "name": "hollow-road-leap-take-off-light-hound-wretch",
+    "from": 0,
+    "to": 9,
+    "direction": "forward"
+   }
+  ]
+ }
+}

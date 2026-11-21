@@ -72,7 +72,7 @@ pub enum Out {
 
 /// What is held now: the stick's way, a run, the guard.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct Held { pub up: bool, pub down: bool, pub left: bool, pub right: bool, pub run: bool, pub guard: bool }
+pub struct Held { pub up: bool, pub down: bool, pub left: bool, pub right: bool, pub run: bool, pub guard: bool, pub heavy: bool, pub loose: bool }
 
 impl Held {
     /// Whether way `w` ('w', 'a', 's', 'd') is held.
@@ -204,7 +204,7 @@ impl Pad {
     /// What is held now; and a way newly held this tick is pressed, as a key would be (a lane
     /// stepped across on the road).
     pub fn tick(&mut self, out: &mut Vec<Out>) -> Held {
-        let mut h = Held { guard: self.pressed(Btn::Guard), ..Held::default() };
+        let mut h = Held { guard: self.pressed(Btn::Guard), heavy: self.pressed(Btn::Heavy), loose: self.pressed(Btn::Loose), ..Held::default() };
         if let Some((mid, at)) = self.stick() {
             let (dx, dy) = (at.0 - mid.0, at.1 - mid.1);
             // The way the thumb leans most; aside only when pushed well aside and more aside than

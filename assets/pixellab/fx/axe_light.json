@@ -1,7 +1,7 @@
 {
  "frames": [
   {
-   "filename": "hollow-road-axe-light 0.png",
+   "filename": "hollow-road-hero-axe-light-v3-bows-toward-the-foe 0.png",
    "frame": {
     "x": 0,
     "y": 0,
@@ -27,7 +27,7 @@
    "duration": 50
   },
   {
-   "filename": "hollow-road-axe-light 1.png",
+   "filename": "hollow-road-hero-axe-light-v3-bows-toward-the-foe 1.png",
    "frame": {
     "x": 112,
     "y": 0,
@@ -53,7 +53,7 @@
    "duration": 50
   },
   {
-   "filename": "hollow-road-axe-light 2.png",
+   "filename": "hollow-road-hero-axe-light-v3-bows-toward-the-foe 2.png",
    "frame": {
     "x": 224,
     "y": 0,
@@ -79,7 +79,7 @@
    "duration": 50
   },
   {
-   "filename": "hollow-road-axe-light 3.png",
+   "filename": "hollow-road-hero-axe-light-v3-bows-toward-the-foe 3.png",
    "frame": {
     "x": 0,
     "y": 120,
@@ -105,7 +105,7 @@
    "duration": 50
   },
   {
-   "filename": "hollow-road-axe-light 4.png",
+   "filename": "hollow-road-hero-axe-light-v3-bows-toward-the-foe 4.png",
    "frame": {
     "x": 112,
     "y": 120,
@@ -131,7 +131,7 @@
    "duration": 50
   },
   {
-   "filename": "hollow-road-axe-light 5.png",
+   "filename": "hollow-road-hero-axe-light-v3-bows-toward-the-foe 5.png",
    "frame": {
     "x": 224,
     "y": 120,
@@ -157,7 +157,7 @@
    "duration": 50
   },
   {
-   "filename": "hollow-road-axe-light 6.png",
+   "filename": "hollow-road-hero-axe-light-v3-bows-toward-the-foe 6.png",
    "frame": {
     "x": 0,
     "y": 240,
@@ -185,7 +185,7 @@
  ],
  "meta": {
   "app": "PixelLab VFX Creator",
-  "image": "hollow-road-axe-light.png",
+  "image": "hollow-road-hero-axe-light-v3-bows-toward-the-foe.png",
   "format": "RGBA8888",
   "size": {
    "w": 336,
@@ -199,7 +199,7 @@
   },
   "frameTags": [
    {
-    "name": "hollow-road-axe-light",
+    "name": "hollow-road-hero-axe-light-v3-bows-toward-the-foe",
     "from": 0,
     "to": 6,
     "direction": "forward"

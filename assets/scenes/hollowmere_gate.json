@@ -337,7 +337,7 @@
       "kind": "Rain",
       "cover": 0.9,
       "count": 10,
-      "drift": 1.0,
+      "drift": 0.15,
       "scale": 1.0,
       "opacity": 0.8,
       "tint": [
@@ -356,7 +356,7 @@
         "kind": "Cirrus",
         "cover": 0.45,
         "count": 10,
-        "drift": 1.0,
+        "drift": 0.04,
         "scale": 1.0,
         "opacity": 0.4,
         "tint": [

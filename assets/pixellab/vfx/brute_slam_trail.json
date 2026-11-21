@@ -1,0 +1,287 @@
+{
+ "frames": [
+  {
+   "filename": "hollow-road-brute-maul-slam-trail 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 204,
+    "h": 158
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 204,
+    "h": 158
+   },
+   "sourceSize": {
+    "w": 204,
+    "h": 158
+   },
+   "pivot": {
+    "x": 0.44607843137254904,
+    "y": 0.35443037974683544
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-brute-maul-slam-trail 1.png",
+   "frame": {
+    "x": 204,
+    "y": 0,
+    "w": 204,
+    "h": 158
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 204,
+    "h": 158
+   },
+   "sourceSize": {
+    "w": 204,
+    "h": 158
+   },
+   "pivot": {
+    "x": 0.44607843137254904,
+    "y": 0.35443037974683544
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-brute-maul-slam-trail 2.png",
+   "frame": {
+    "x": 408,
+    "y": 0,
+    "w": 204,
+    "h": 158
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 204,
+    "h": 158
+   },
+   "sourceSize": {
+    "w": 204,
+    "h": 158
+   },
+   "pivot": {
+    "x": 0.44607843137254904,
+    "y": 0.35443037974683544
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-brute-maul-slam-trail 3.png",
+   "frame": {
+    "x": 612,
+    "y": 0,
+    "w": 204,
+    "h": 158
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 204,
+    "h": 158
+   },
+   "sourceSize": {
+    "w": 204,
+    "h": 158
+   },
+   "pivot": {
+    "x": 0.44607843137254904,
+    "y": 0.35443037974683544
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-brute-maul-slam-trail 4.png",
+   "frame": {
+    "x": 0,
+    "y": 158,
+    "w": 204,
+    "h": 158
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 204,
+    "h": 158
+   },
+   "sourceSize": {
+    "w": 204,
+    "h": 158
+   },
+   "pivot": {
+    "x": 0.44607843137254904,
+    "y": 0.35443037974683544
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-brute-maul-slam-trail 5.png",
+   "frame": {
+    "x": 204,
+    "y": 158,
+    "w": 204,
+    "h": 158
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 204,
+    "h": 158
+   },
+   "sourceSize": {
+    "w": 204,
+    "h": 158
+   },
+   "pivot": {
+    "x": 0.44607843137254904,
+    "y": 0.35443037974683544
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-brute-maul-slam-trail 6.png",
+   "frame": {
+    "x": 408,
+    "y": 158,
+    "w": 204,
+    "h": 158
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 204,
+    "h": 158
+   },
+   "sourceSize": {
+    "w": 204,
+    "h": 158
+   },
+   "pivot": {
+    "x": 0.44607843137254904,
+    "y": 0.35443037974683544
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-brute-maul-slam-trail 7.png",
+   "frame": {
+    "x": 612,
+    "y": 158,
+    "w": 204,
+    "h": 158
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 204,
+    "h": 158
+   },
+   "sourceSize": {
+    "w": 204,
+    "h": 158
+   },
+   "pivot": {
+    "x": 0.44607843137254904,
+    "y": 0.35443037974683544
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-brute-maul-slam-trail 8.png",
+   "frame": {
+    "x": 0,
+    "y": 316,
+    "w": 204,
+    "h": 158
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 204,
+    "h": 158
+   },
+   "sourceSize": {
+    "w": 204,
+    "h": 158
+   },
+   "pivot": {
+    "x": 0.44607843137254904,
+    "y": 0.35443037974683544
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-brute-maul-slam-trail 9.png",
+   "frame": {
+    "x": 204,
+    "y": 316,
+    "w": 204,
+    "h": 158
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 204,
+    "h": 158
+   },
+   "sourceSize": {
+    "w": 204,
+    "h": 158
+   },
+   "pivot": {
+    "x": 0.44607843137254904,
+    "y": 0.35443037974683544
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hollow-road-brute-maul-slam-trail.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 816,
+   "h": 474
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 91,
+   "y": 56
+  },
+  "frameTags": [
+   {
+    "name": "hollow-road-brute-maul-slam-trail",
+    "from": 0,
+    "to": 9,
+    "direction": "forward"
+   }
+  ]
+ }
+}

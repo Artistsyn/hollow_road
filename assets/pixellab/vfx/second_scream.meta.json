@@ -1,0 +1,20 @@
+{
+ "name": "second_scream",
+ "for": "Hollowmere Screamer: second scream",
+ "px_per_m": 28.3,
+ "anchor": "feet",
+ "loop": true,
+ "travels": true,
+ "hit_band_m": [
+  0.0,
+  2.2
+ ],
+ "pixellab_effect_id": "52e94e14-2759-490e-bbe4-c3d117354538",
+ "ground_y_px": 67,
+ "front_x_px": 99,
+ "notes": "The answering scream: same band and grammar as scream but hoarser: thinner, more broken waveform, one echo, a little less mire thrown up, more ragged tears streaming back. Facing +x, exported in place (12 frames @ 12 fps, seamless loop). Feet anchor: ground is canvas row 67; the front's leading edge is at canvas x 99; place that point on the ring's position.",
+ "anchor_px": [
+  99,
+  67
+ ]
+}

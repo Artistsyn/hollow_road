@@ -1,0 +1,14 @@
+{
+ "name": "starglass_impact",
+ "for": "radiant_construct starglass, hit",
+ "px_per_m": 38.4,
+ "anchor": "centre",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": [
+  1.0,
+  1.9
+ ],
+ "pixellab_effect_id": "d8be39bd-2270-43d2-a8df-fdf04a11bfbf",
+ "notes": "The shard shatters: a hard 8-ray star flash, a ring of glints thrown out, glass slivers and chips tumbling (any-angle spin), bouncing and settling on the floor 54 px (1.4 m) below the anchor, a few glints on the settled glass. Anchor = hit point in the air at ~1.4 m (the shot's flight height); if the shot hits at another height the debris floor is off by the difference."
+}

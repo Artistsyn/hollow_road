@@ -1,0 +1,14 @@
+{
+ "name": "light_spear_flight_archangel",
+ "for": "the_archangel spear of light / low spear (Motion::Shot 12/TPS)",
+ "px_per_m": 45.8,
+ "anchor": "centre",
+ "loop": true,
+ "travels": true,
+ "hit_band_m": [
+  0.7,
+  2.4
+ ],
+ "pixellab_effect_id": "9d9d4130-0eab-4b60-a723-56b71840b7ba",
+ "notes": "Same winged spear of light as light_spear_flight, redrawn at 68 px for the archangel sprite (183 px visible incl. wings / 4.0 m = 45.8 px/m; the priest is 53.3, 14% apart). Low spear (0.0-0.6 m) uses the same clip at its own height. Anchor = spear centre."
+}

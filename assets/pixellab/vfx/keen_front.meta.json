@@ -1,0 +1,31 @@
+{
+ "name": "keen_front",
+ "for": "Keening Cage: keen (refit of the approved pilot)",
+ "px_per_m": 37.5,
+ "anchor": "feet",
+ "loop": true,
+ "travels": true,
+ "hit_band_m": [
+  0.0,
+  2.4
+ ],
+ "pixellab_effect_id": "419a4ad9-35a1-42f6-8af2-3f8c52625063",
+ "ground_y_px": 98,
+ "front_x_px": 87,
+ "notes": "The approved pilot unchanged in look, refitted: the pilot was drawn at 45 px/m (3.3 m) but side.rs draws the Keening Cage at 3.6 m (idle 135 px = 37.5 px/m), so its ~112 px front stood ~3.0 m against a 2.4 m band. Scaled 0.8 about its foot to ~88 px, reference sprite removed, canvas trimmed from 300x172 to 94x109, see-through dust/wisps made solid (pilot sheet had 94 colours, this has few). Facing +x, exported in place (12 frames @ 12 fps, seamless loop). Feet anchor: ground is canvas row 98; the front's leading edge is at canvas x 87; place that point on the ring's position.",
+ "anchor_px": [
+  87,
+  98
+ ],
+ "light": {
+  "rgb": [
+   170,
+   120,
+   240
+  ],
+  "intensity": 0.55,
+  "radius": 3.5,
+  "y": 1.2
+ },
+ "faces": null
+}

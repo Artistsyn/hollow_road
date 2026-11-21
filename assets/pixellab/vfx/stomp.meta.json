@@ -1,0 +1,20 @@
+{
+ "name": "stomp",
+ "for": "Statue Archangel: stomp",
+ "px_per_m": 40.7,
+ "anchor": "feet",
+ "loop": true,
+ "travels": true,
+ "hit_band_m": [
+  0.0,
+  0.55
+ ],
+ "pixellab_effect_id": "c5531521-82c2-4669-9930-a0f9bca80ec7",
+ "ground_y_px": 40,
+ "front_x_px": 60,
+ "notes": "The yard heaving: grey-blue stone shards (the statue's stone) burst up one after another to 22 px at the front, tip back and sink as the wave passes; stone chips and moss bits thrown up, bouncing and settling; a dark crack splitting the floor; dust kicked up at the front and rolling behind. Low: jump it. Facing +x, exported in place (12 frames @ 12 fps, seamless loop). Feet anchor: ground is canvas row 40; the front's leading edge is at canvas x 60; place that point on the ring's position.",
+ "anchor_px": [
+  60,
+  40
+ ]
+}

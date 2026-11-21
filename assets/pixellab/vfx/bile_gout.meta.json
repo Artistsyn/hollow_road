@@ -1,0 +1,15 @@
+{
+ "name": "bile_gout",
+ "for": "road bloater belch (Motion::Strike, reach 0.2-2.4 m, band 0.4-1.9 m; side.rs BLOATER and fight.rs BLOATER belch)",
+ "px_per_m": 55.4,
+ "anchor": "centre",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": [
+  0.4,
+  1.9
+ ],
+ "pixellab_effect_id": "d6bf6c4b-98dd-4fd9-a421-644a181191e0",
+ "notes": "A thick, lumpy rope of yellow-green bile (lit top, dark olive underside, sprite's own lime for highlights) spewed from the mouth with a spurt of droplets, arcing 2.4 m forward and down to the floor (lands ~133 px ahead, 77 px below the anchor = mouth height ~1.4 m), dark chunks and droplets flung along it, drips falling from its underside; the tail detaches and drains into the landing point. Anchor = the mouth. Play bile_splash (anchor feet) at the landing point from frame 5.",
+ "hit_frame": 5
+}

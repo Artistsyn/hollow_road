@@ -1,0 +1,261 @@
+{
+ "frames": [
+  {
+   "filename": "hollow-road-hit-crush 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 153,
+    "h": 148
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 153,
+    "h": 148
+   },
+   "sourceSize": {
+    "w": 153,
+    "h": 148
+   },
+   "pivot": {
+    "x": 0.49019607843137253,
+    "y": 0.8851351351351351
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-hit-crush 1.png",
+   "frame": {
+    "x": 153,
+    "y": 0,
+    "w": 153,
+    "h": 148
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 153,
+    "h": 148
+   },
+   "sourceSize": {
+    "w": 153,
+    "h": 148
+   },
+   "pivot": {
+    "x": 0.49019607843137253,
+    "y": 0.8851351351351351
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-hit-crush 2.png",
+   "frame": {
+    "x": 306,
+    "y": 0,
+    "w": 153,
+    "h": 148
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 153,
+    "h": 148
+   },
+   "sourceSize": {
+    "w": 153,
+    "h": 148
+   },
+   "pivot": {
+    "x": 0.49019607843137253,
+    "y": 0.8851351351351351
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-hit-crush 3.png",
+   "frame": {
+    "x": 0,
+    "y": 148,
+    "w": 153,
+    "h": 148
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 153,
+    "h": 148
+   },
+   "sourceSize": {
+    "w": 153,
+    "h": 148
+   },
+   "pivot": {
+    "x": 0.49019607843137253,
+    "y": 0.8851351351351351
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-hit-crush 4.png",
+   "frame": {
+    "x": 153,
+    "y": 148,
+    "w": 153,
+    "h": 148
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 153,
+    "h": 148
+   },
+   "sourceSize": {
+    "w": 153,
+    "h": 148
+   },
+   "pivot": {
+    "x": 0.49019607843137253,
+    "y": 0.8851351351351351
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-hit-crush 5.png",
+   "frame": {
+    "x": 306,
+    "y": 148,
+    "w": 153,
+    "h": 148
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 153,
+    "h": 148
+   },
+   "sourceSize": {
+    "w": 153,
+    "h": 148
+   },
+   "pivot": {
+    "x": 0.49019607843137253,
+    "y": 0.8851351351351351
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-hit-crush 6.png",
+   "frame": {
+    "x": 0,
+    "y": 296,
+    "w": 153,
+    "h": 148
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 153,
+    "h": 148
+   },
+   "sourceSize": {
+    "w": 153,
+    "h": 148
+   },
+   "pivot": {
+    "x": 0.49019607843137253,
+    "y": 0.8851351351351351
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-hit-crush 7.png",
+   "frame": {
+    "x": 153,
+    "y": 296,
+    "w": 153,
+    "h": 148
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 153,
+    "h": 148
+   },
+   "sourceSize": {
+    "w": 153,
+    "h": 148
+   },
+   "pivot": {
+    "x": 0.49019607843137253,
+    "y": 0.8851351351351351
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hollow-road-hit-crush 8.png",
+   "frame": {
+    "x": 306,
+    "y": 296,
+    "w": 153,
+    "h": 148
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 153,
+    "h": 148
+   },
+   "sourceSize": {
+    "w": 153,
+    "h": 148
+   },
+   "pivot": {
+    "x": 0.49019607843137253,
+    "y": 0.8851351351351351
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hollow-road-hit-crush.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 459,
+   "h": 444
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 75,
+   "y": 131
+  },
+  "frameTags": [
+   {
+    "name": "hollow-road-hit-crush",
+    "from": 0,
+    "to": 8,
+    "direction": "forward"
+   }
+  ]
+ }
+}

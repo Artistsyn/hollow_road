@@ -1,0 +1,14 @@
+{
+ "name": "violet_breath_impact",
+ "for": "warped_drake violet breath: hit",
+ "px_per_m": 42.6,
+ "anchor": "centre",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": [
+  0.4,
+  1.8
+ ],
+ "pixellab_effect_id": "638fac1c-8942-4303-b376-ca49390c5a72",
+ "notes": "One-shot at the hit point: a hard violet-white flash, crackles snapping out, sparks bursting back toward the drake, the vapour washing over and flaring up and down round the body (+x), then breaking apart in blocks while motes rise. Anchor = hit point (pivot)."
+}

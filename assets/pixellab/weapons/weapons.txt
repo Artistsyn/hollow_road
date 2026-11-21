@@ -4,11 +4,11 @@ husk_cleaver 8 21 55 21
 executioner_greatsword 21 14.5 108 14.5
 wayfarer_sword 6 7 63 7
 rimed_sabre 6 10 62 8
-gravewarden_slab 38 23.5 189 23.5
-bell_hammer 14 23.5 121 23.5
+gravewarden_slab 38 23.5 189 23.5 0.3
+bell_hammer 14 23.5 121 23.5 0.65
 drowned_wail 10 11.5 69 11.5
 chieftains_cleaver 8 24.5 61 22
-gavel_of_sentence 15 25 57 21.5
+gavel_of_sentence 15 25 57 21.5 0.8
 reapers_glaive 12 15.5 123 15.5
 lance_of_light 3.5 11.5 91 11.5
 stoneheart_greatsword 18 22 188 22
@@ -19,5 +19,5 @@ krix_axe 20 11.5 110 9
 lurz_spear 24 15 122 15.5
 rippers_tendril 22 15.5 120 15
 rune_marked_blade 22 15.5 122 15.5
-starglass_maul 14 23.5 121 23.5
+starglass_maul 14 23.5 121 23.5 0.65
 warped_fang 24 21.5 123 20.5

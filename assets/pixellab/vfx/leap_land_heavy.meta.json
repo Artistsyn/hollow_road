@@ -1,0 +1,21 @@
+{
+ "name": "leap_land_heavy",
+ "for": "boss slam / dive landing (the same leaps landing; also heavy overhead slams like the Construct's)",
+ "px_per_m": 45,
+ "anchor": "feet",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": null,
+ "pixellab_effect_id": "50731fb2-d85c-477e-8dd7-af50e8eb0b81",
+ "notes": "A heavy landing about 3.5 m across: debris burst with a 2-frame hit-stop at the impact, a central dust burst, dust clouds rolling out to both sides, five dark cracks racing out on the ground, rocks thrown up that bounce and settle, grit. 15 frames @ 12 fps (1.25 s).",
+ "frame_size": [
+  169,
+  55
+ ],
+ "frames": 15,
+ "fps": 12,
+ "anchor_px": [
+  78,
+  39
+ ]
+}

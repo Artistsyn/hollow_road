@@ -1,0 +1,25 @@
+{
+ "name": "rune_keening_cage_bone_thicket",
+ "for": "Keening Cage 'bone thicket' / 'thicket again' (side.rs KEENER_BLOWS, Motion::Rune, reach -0.9..0.9 m, height 0..2.2 m)",
+ "px_per_m": 40,
+ "anchor": "feet",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": [
+  0.0,
+  2.2
+ ],
+ "pixellab_effect_id": "26b0fc5c-48e6-4d96-a742-ea4649f814ac",
+ "notes": "Ground patch (~2 m) shows heaving soil and bone flecks first, then a violet crack seeping across it (KC's core violet) with chips hopping (frames 1-14), frame 15 the thicket bursts up (the hit): seven barbed bone spikes, dark at the root and pale at the tip, the tallest ~2.2 m, leaning out in a fan, with bone chips, dust and violet wisps; they crumble in blocks and sink by frame 23. Built at about 40 px/m (Keening Cage 135-147 px / 3.6 m). 24 frames @ 12 fps.",
+ "frame_size": [
+  102,
+  103
+ ],
+ "frames": 24,
+ "fps": 12,
+ "anchor_px": [
+  49,
+  89
+ ],
+ "hit_frame": 14
+}

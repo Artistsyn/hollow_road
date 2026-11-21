@@ -1,0 +1,235 @@
+{
+ "frames": [
+  {
+   "filename": "hr-shots-light-spear-flight 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 106,
+    "h": 20
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 106,
+    "h": 20
+   },
+   "sourceSize": {
+    "w": 106,
+    "h": 20
+   },
+   "pivot": {
+    "x": 0.5943396226415094,
+    "y": 0.5
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-light-spear-flight 1.png",
+   "frame": {
+    "x": 106,
+    "y": 0,
+    "w": 106,
+    "h": 20
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 106,
+    "h": 20
+   },
+   "sourceSize": {
+    "w": 106,
+    "h": 20
+   },
+   "pivot": {
+    "x": 0.5943396226415094,
+    "y": 0.5
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-light-spear-flight 2.png",
+   "frame": {
+    "x": 212,
+    "y": 0,
+    "w": 106,
+    "h": 20
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 106,
+    "h": 20
+   },
+   "sourceSize": {
+    "w": 106,
+    "h": 20
+   },
+   "pivot": {
+    "x": 0.5943396226415094,
+    "y": 0.5
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-light-spear-flight 3.png",
+   "frame": {
+    "x": 0,
+    "y": 20,
+    "w": 106,
+    "h": 20
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 106,
+    "h": 20
+   },
+   "sourceSize": {
+    "w": 106,
+    "h": 20
+   },
+   "pivot": {
+    "x": 0.5943396226415094,
+    "y": 0.5
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-light-spear-flight 4.png",
+   "frame": {
+    "x": 106,
+    "y": 20,
+    "w": 106,
+    "h": 20
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 106,
+    "h": 20
+   },
+   "sourceSize": {
+    "w": 106,
+    "h": 20
+   },
+   "pivot": {
+    "x": 0.5943396226415094,
+    "y": 0.5
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-light-spear-flight 5.png",
+   "frame": {
+    "x": 212,
+    "y": 20,
+    "w": 106,
+    "h": 20
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 106,
+    "h": 20
+   },
+   "sourceSize": {
+    "w": 106,
+    "h": 20
+   },
+   "pivot": {
+    "x": 0.5943396226415094,
+    "y": 0.5
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-light-spear-flight 6.png",
+   "frame": {
+    "x": 0,
+    "y": 40,
+    "w": 106,
+    "h": 20
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 106,
+    "h": 20
+   },
+   "sourceSize": {
+    "w": 106,
+    "h": 20
+   },
+   "pivot": {
+    "x": 0.5943396226415094,
+    "y": 0.5
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-light-spear-flight 7.png",
+   "frame": {
+    "x": 106,
+    "y": 40,
+    "w": 106,
+    "h": 20
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 106,
+    "h": 20
+   },
+   "sourceSize": {
+    "w": 106,
+    "h": 20
+   },
+   "pivot": {
+    "x": 0.5943396226415094,
+    "y": 0.5
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hr-shots-light-spear-flight.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 318,
+   "h": 60
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 63,
+   "y": 10
+  },
+  "frameTags": [
+   {
+    "name": "hr-shots-light-spear-flight",
+    "from": 0,
+    "to": 7,
+    "direction": "forward"
+   }
+  ]
+ }
+}

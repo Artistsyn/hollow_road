@@ -1,0 +1,287 @@
+{
+ "frames": [
+  {
+   "filename": "hr-shots-violet-breath-impact 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 66,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.48484848484848486,
+    "y": 0.5384615384615384
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-violet-breath-impact 1.png",
+   "frame": {
+    "x": 66,
+    "y": 0,
+    "w": 66,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 66,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.48484848484848486,
+    "y": 0.5384615384615384
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-violet-breath-impact 2.png",
+   "frame": {
+    "x": 132,
+    "y": 0,
+    "w": 66,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 66,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.48484848484848486,
+    "y": 0.5384615384615384
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-violet-breath-impact 3.png",
+   "frame": {
+    "x": 198,
+    "y": 0,
+    "w": 66,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 66,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.48484848484848486,
+    "y": 0.5384615384615384
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-violet-breath-impact 4.png",
+   "frame": {
+    "x": 0,
+    "y": 65,
+    "w": 66,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 66,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.48484848484848486,
+    "y": 0.5384615384615384
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-violet-breath-impact 5.png",
+   "frame": {
+    "x": 66,
+    "y": 65,
+    "w": 66,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 66,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.48484848484848486,
+    "y": 0.5384615384615384
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-violet-breath-impact 6.png",
+   "frame": {
+    "x": 132,
+    "y": 65,
+    "w": 66,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 66,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.48484848484848486,
+    "y": 0.5384615384615384
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-violet-breath-impact 7.png",
+   "frame": {
+    "x": 198,
+    "y": 65,
+    "w": 66,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 66,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.48484848484848486,
+    "y": 0.5384615384615384
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-violet-breath-impact 8.png",
+   "frame": {
+    "x": 0,
+    "y": 130,
+    "w": 66,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 66,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.48484848484848486,
+    "y": 0.5384615384615384
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-violet-breath-impact 9.png",
+   "frame": {
+    "x": 66,
+    "y": 130,
+    "w": 66,
+    "h": 65
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 66,
+    "h": 65
+   },
+   "sourceSize": {
+    "w": 66,
+    "h": 65
+   },
+   "pivot": {
+    "x": 0.48484848484848486,
+    "y": 0.5384615384615384
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hr-shots-violet-breath-impact.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 264,
+   "h": 195
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 32,
+   "y": 35
+  },
+  "frameTags": [
+   {
+    "name": "hr-shots-violet-breath-impact",
+    "from": 0,
+    "to": 9,
+    "direction": "forward"
+   }
+  ]
+ }
+}

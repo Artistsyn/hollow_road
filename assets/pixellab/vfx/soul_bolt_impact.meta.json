@@ -1,0 +1,14 @@
+{
+ "name": "soul_bolt_impact",
+ "for": "wraith_lord soul bolt: hit (hero or shield)",
+ "px_per_m": 47.1,
+ "anchor": "centre",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": [
+  0.8,
+  2.2
+ ],
+ "pixellab_effect_id": "468dc3a1-46a5-452e-a438-51e4d1931449",
+ "notes": "The soul breaks on the hit: the skull shows for one frame, a cold white flash, then its ectoplasm splashes forward and up in eight wavering strands that drift upward and wear away, bone-white shards fall, a thin blue mist rises and cold motes blink out. Anchor = hit point. 10 frames @12 fps. Also fine for the low bolt hit."
+}

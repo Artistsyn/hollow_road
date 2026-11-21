@@ -1,0 +1,14 @@
+{
+ "name": "chains_flight",
+ "for": "hollow_magistrate chains (Motion::Shot 7/TPS, low, GuardBreak)",
+ "px_per_m": 50.8,
+ "anchor": "feet",
+ "loop": true,
+ "travels": true,
+ "hit_band_m": [
+  0.0,
+  0.6
+ ],
+ "pixellab_effect_id": "ccb7f761-4764-4f5c-a3d6-d04006f34d10",
+ "notes": "An open iron manacle leading ~1 m of heavy chain (magistrate's own link size and iron palette) skipping along the floor: the cuff hops up to ~0.3 m and slams down (orange scrape sparks on the contact frames), a slither wave runs back down the chain, links rattle, grit and low dust kicked up behind. Anchor = the ground point under the manacle (feet). Low enough to jump."
+}

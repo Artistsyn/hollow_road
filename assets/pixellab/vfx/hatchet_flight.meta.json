@@ -1,0 +1,14 @@
+{
+ "name": "hatchet_flight",
+ "for": "bandit_chief hatchet (Motion::Shot 9/TPS)",
+ "px_per_m": 55.2,
+ "anchor": "centre",
+ "loop": true,
+ "travels": true,
+ "hit_band_m": [
+  0.6,
+  1.9
+ ],
+ "pixellab_effect_id": "68ed31c5-c7f6-4ab0-8636-4e688850456d",
+ "notes": "A bearded hand-hatchet (steel bit with bright edge and blood streaks, wrapped wooden haft) tumbling end over end, one whole clockwise turn per 8-frame loop (1.5 turns/s), a tapered air smear trailing the blade and a faint arc off the haft end. 27 px long = 0.49 m. Anchor = spin pivot (near the head). Drawn facing +x (spins forward when moving +x; mirror for a left throw)."
+}

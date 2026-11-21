@@ -1,0 +1,287 @@
+{
+ "frames": [
+  {
+   "filename": "hr-shots-soul-bolt-impact 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 45,
+    "h": 61
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 45,
+    "h": 61
+   },
+   "sourceSize": {
+    "w": 45,
+    "h": 61
+   },
+   "pivot": {
+    "x": 0.5111111111111111,
+    "y": 0.47540983606557374
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-soul-bolt-impact 1.png",
+   "frame": {
+    "x": 45,
+    "y": 0,
+    "w": 45,
+    "h": 61
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 45,
+    "h": 61
+   },
+   "sourceSize": {
+    "w": 45,
+    "h": 61
+   },
+   "pivot": {
+    "x": 0.5111111111111111,
+    "y": 0.47540983606557374
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-soul-bolt-impact 2.png",
+   "frame": {
+    "x": 90,
+    "y": 0,
+    "w": 45,
+    "h": 61
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 45,
+    "h": 61
+   },
+   "sourceSize": {
+    "w": 45,
+    "h": 61
+   },
+   "pivot": {
+    "x": 0.5111111111111111,
+    "y": 0.47540983606557374
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-soul-bolt-impact 3.png",
+   "frame": {
+    "x": 135,
+    "y": 0,
+    "w": 45,
+    "h": 61
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 45,
+    "h": 61
+   },
+   "sourceSize": {
+    "w": 45,
+    "h": 61
+   },
+   "pivot": {
+    "x": 0.5111111111111111,
+    "y": 0.47540983606557374
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-soul-bolt-impact 4.png",
+   "frame": {
+    "x": 0,
+    "y": 61,
+    "w": 45,
+    "h": 61
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 45,
+    "h": 61
+   },
+   "sourceSize": {
+    "w": 45,
+    "h": 61
+   },
+   "pivot": {
+    "x": 0.5111111111111111,
+    "y": 0.47540983606557374
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-soul-bolt-impact 5.png",
+   "frame": {
+    "x": 45,
+    "y": 61,
+    "w": 45,
+    "h": 61
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 45,
+    "h": 61
+   },
+   "sourceSize": {
+    "w": 45,
+    "h": 61
+   },
+   "pivot": {
+    "x": 0.5111111111111111,
+    "y": 0.47540983606557374
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-soul-bolt-impact 6.png",
+   "frame": {
+    "x": 90,
+    "y": 61,
+    "w": 45,
+    "h": 61
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 45,
+    "h": 61
+   },
+   "sourceSize": {
+    "w": 45,
+    "h": 61
+   },
+   "pivot": {
+    "x": 0.5111111111111111,
+    "y": 0.47540983606557374
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-soul-bolt-impact 7.png",
+   "frame": {
+    "x": 135,
+    "y": 61,
+    "w": 45,
+    "h": 61
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 45,
+    "h": 61
+   },
+   "sourceSize": {
+    "w": 45,
+    "h": 61
+   },
+   "pivot": {
+    "x": 0.5111111111111111,
+    "y": 0.47540983606557374
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-soul-bolt-impact 8.png",
+   "frame": {
+    "x": 0,
+    "y": 122,
+    "w": 45,
+    "h": 61
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 45,
+    "h": 61
+   },
+   "sourceSize": {
+    "w": 45,
+    "h": 61
+   },
+   "pivot": {
+    "x": 0.5111111111111111,
+    "y": 0.47540983606557374
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-soul-bolt-impact 9.png",
+   "frame": {
+    "x": 45,
+    "y": 122,
+    "w": 45,
+    "h": 61
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 45,
+    "h": 61
+   },
+   "sourceSize": {
+    "w": 45,
+    "h": 61
+   },
+   "pivot": {
+    "x": 0.5111111111111111,
+    "y": 0.47540983606557374
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hr-shots-soul-bolt-impact.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 180,
+   "h": 183
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 23,
+   "y": 29
+  },
+  "frameTags": [
+   {
+    "name": "hr-shots-soul-bolt-impact",
+    "from": 0,
+    "to": 9,
+    "direction": "forward"
+   }
+  ]
+ }
+}

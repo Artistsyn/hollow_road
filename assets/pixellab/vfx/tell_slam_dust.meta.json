@@ -1,0 +1,23 @@
+{
+ "name": "tell_slam_dust",
+ "for": "tell before a heavy slam: brute slam / late slam (and any held overhead slam: statue falling statue, butcher cleave if wanted), at Blow.tell / Attack tell",
+ "px_per_m": 45.6,
+ "anchor": "feet",
+ "anchor_px": [
+  48,
+  79
+ ],
+ "anchor_note": "anchor_px = the brute middle on the ground (w_slam frame 4); the trickle falls from the raised maul head at (12,5), 1.6 m up and 0.8 m in front",
+ "faces": "left (as brute w_slam; mirror with the sprite)",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": null,
+ "pixellab_effect_id": "ebec6784-4de0-4f43-8630-2c483e2cd7df",
+ "fps": 12,
+ "notes": "Dust and grains trickle off the raised maul head down to the ground, and the grit round its feet shivers in two hops (the ground tensing under the weight), with a faint dust breath. 1 s; for a late slam held longer, hold the last 6 frames on a loop (frames 6-11 repeat cleanly enough) or replay. Small, earth-coloured, no glow: reads as weight about to fall.",
+ "frames": 12,
+ "frame_px": [
+  81,
+  89
+ ]
+}

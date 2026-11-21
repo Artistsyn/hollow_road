@@ -1,0 +1,11 @@
+{
+ "name": "light_spear_launch",
+ "for": "angel_priest lance of light / the_archangel spear of light, the throw at the hand (art throw)",
+ "px_per_m": 53.3,
+ "anchor": "centre",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": null,
+ "pixellab_effect_id": "f2bf7ad2-eec4-44ff-901f-7eb2d7f20824",
+ "notes": "One-shot at the throwing hand: gold motes gather into the palm (frames 1-3), a hard white-gold cross flash with a long tapered spike of light shooting forward (+x) along the throw line, two or three pale feathers shed and drifting down, sparkles blinking out. Drawn at the priest's 53.3 px/m; for the archangel (45.8) draw at x0.86 or as is."
+}

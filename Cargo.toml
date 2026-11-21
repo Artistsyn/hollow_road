@@ -38,14 +38,14 @@ theme = "@android:style/Theme.NoTitleBar.Fullscreen"
 [package.metadata.android.application.activity]
 orientation = "landscape"
 
-# The SDK's standard debug keystore (password "android"), for test builds only: Google Play
-# refuses anything signed with it. `build_android.sh` copies it in.
+# The SDK's standard debug keystore (password "android"), for `build_android.sh` installs only;
+# `tools/package_android.sh` re-signs the packaged APK with the game's release key.
 [package.metadata.android.signing.release]
 path = "debug.keystore"
 keystore_password = "android"
 
 [package.metadata.android.sdk]
-min_sdk_version = 33
+min_sdk_version = 26
 target_sdk_version = 33
 
 # PathForge draws on the GPU, but its CPU side (and the CPU fallback) is slow unoptimised.

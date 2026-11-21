@@ -1,0 +1,25 @@
+{
+ "name": "rune_screamer_mire_spit",
+ "for": "Hollowmere Screamer 'mire spit' (side.rs SCREAMER_BLOWS, Motion::Rune, reach -1.0..1.0 m, height 0..2.0 m)",
+ "px_per_m": 28,
+ "anchor": "feet",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": [
+  0.0,
+  2.0
+ ],
+ "pixellab_effect_id": "69c8c208-1a56-4c56-9a53-6d0d80ca4d65",
+ "notes": "A dark bog patch (~60 px = 2.1 m) spreads on the ground with bubbles welling up and popping and ripple rings (frames 1-12), the mire heaves up into a swelling dome (frames 13-15), then bursts (frame 16, the hit) into a spout of mud and bog water ~2.2 m tall with gobs and spray that fall back and splat, collapsing by frame 21. Built at the Screamer's density (102 px / 3.6 m). 24 frames @ 12 fps.",
+ "frame_size": [
+  79,
+  84
+ ],
+ "frames": 24,
+ "fps": 12,
+ "anchor_px": [
+  34,
+  65
+ ],
+ "hit_frame": 15
+}

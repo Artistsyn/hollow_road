@@ -1,0 +1,14 @@
+{
+ "name": "violet_breath_cone",
+ "for": "warped_drake violet breath: the breath pouring from the mouth while it lasts",
+ "px_per_m": 42.6,
+ "anchor": "centre",
+ "loop": true,
+ "travels": false,
+ "hit_band_m": [
+  0.4,
+  1.8
+ ],
+ "pixellab_effect_id": "ea3ed2be-0af4-4572-a09a-e060d98dfe2f",
+ "notes": "Loop at the mouth (pivot = mouth): a cone of churning violet vapour pouring +x and 20 deg down, a bright core and waving energy tongues along its axis, short violet-white crackles flickering on twos, motes and hard sparks streaming out, billows rolling at the far end where it is ~1.4 m tall (~2.9 m long). NOTE: the warped_drake breath sprite frames already carry a flat white blob at the mouth; it should be removed from the sprite or hidden under this clip."
+}

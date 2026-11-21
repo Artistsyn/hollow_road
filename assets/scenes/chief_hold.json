@@ -319,7 +319,7 @@
       "kind": "Overcast",
       "cover": 0.45,
       "count": 10,
-      "drift": 1.0,
+      "drift": 0.06,
       "scale": 1.0,
       "opacity": 0.4,
       "tint": [

@@ -1,0 +1,17 @@
+{
+ "name": "hit_crush",
+ "for": "a fully gathered heavy landing on any enemy (road and side): the blow lands extra hard and the foe is knocked reeling",
+ "px_per_m": 66,
+ "anchor": "centre",
+ "anchor_px": [72, 60],
+ "anchor_note": "anchor_px = the impact core (the star's centre); built around a husk (119 px visible = 1.8 m)",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": null,
+ "pixellab_effect_id": "0d36c7de-a9e2-43fe-9952-bd70951e8c03",
+ "fps": 12,
+ "frames": 9,
+ "frame_px": [153, 148],
+ "light": {"rgb": [255, 200, 140], "intensity": 1.2, "radius": 3.5, "y": 0.0},
+ "notes": "PixelLab vfx_workbench: crit_hit (ring removed, x2.16) for the hot four-point core, spark streaks and bits; blood_splat x2.25 thrown back off the body in heavy drops that arc down. 0.75 s, no dither, no outline ring."
+}

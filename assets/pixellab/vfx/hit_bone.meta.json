@@ -1,0 +1,21 @@
+{
+ "name": "hit_bone",
+ "for": "a blow on bone (Keening Cage, gravecaller, skeletal foes, the Statue's cracked bone parts)",
+ "px_per_m": 63,
+ "anchor": "centre",
+ "loop": false,
+ "travels": false,
+ "hit_band_m": null,
+ "pixellab_effect_id": "d64a8170-33ce-43fc-a53b-f485c33b6d98",
+ "notes": "A pale crack-flash, then bone chips and splinters thrown up and out that bounce and settle on the floor 74 px below the anchor, a puff of bone dust and drifting powder. Chips fade out on the last frames. 12 frames @ 12 fps.",
+ "frame_size": [
+  82,
+  104
+ ],
+ "frames": 12,
+ "fps": 12,
+ "anchor_px": [
+  32,
+  24
+ ]
+}

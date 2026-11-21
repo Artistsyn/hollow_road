@@ -1,0 +1,235 @@
+{
+ "frames": [
+  {
+   "filename": "hr-shots-void-bolt-flight 0.png",
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 40
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 40
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 40
+   },
+   "pivot": {
+    "x": 0.6111111111111112,
+    "y": 0.475
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-void-bolt-flight 1.png",
+   "frame": {
+    "x": 54,
+    "y": 0,
+    "w": 54,
+    "h": 40
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 40
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 40
+   },
+   "pivot": {
+    "x": 0.6111111111111112,
+    "y": 0.475
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-void-bolt-flight 2.png",
+   "frame": {
+    "x": 108,
+    "y": 0,
+    "w": 54,
+    "h": 40
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 40
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 40
+   },
+   "pivot": {
+    "x": 0.6111111111111112,
+    "y": 0.475
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-void-bolt-flight 3.png",
+   "frame": {
+    "x": 0,
+    "y": 40,
+    "w": 54,
+    "h": 40
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 40
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 40
+   },
+   "pivot": {
+    "x": 0.6111111111111112,
+    "y": 0.475
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-void-bolt-flight 4.png",
+   "frame": {
+    "x": 54,
+    "y": 40,
+    "w": 54,
+    "h": 40
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 40
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 40
+   },
+   "pivot": {
+    "x": 0.6111111111111112,
+    "y": 0.475
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-void-bolt-flight 5.png",
+   "frame": {
+    "x": 108,
+    "y": 40,
+    "w": 54,
+    "h": 40
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 40
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 40
+   },
+   "pivot": {
+    "x": 0.6111111111111112,
+    "y": 0.475
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-void-bolt-flight 6.png",
+   "frame": {
+    "x": 0,
+    "y": 80,
+    "w": 54,
+    "h": 40
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 40
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 40
+   },
+   "pivot": {
+    "x": 0.6111111111111112,
+    "y": 0.475
+   },
+   "duration": 83
+  },
+  {
+   "filename": "hr-shots-void-bolt-flight 7.png",
+   "frame": {
+    "x": 54,
+    "y": 80,
+    "w": 54,
+    "h": 40
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 40
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 40
+   },
+   "pivot": {
+    "x": 0.6111111111111112,
+    "y": 0.475
+   },
+   "duration": 83
+  }
+ ],
+ "meta": {
+  "app": "PixelLab VFX Creator",
+  "image": "hr-shots-void-bolt-flight.png",
+  "format": "RGBA8888",
+  "size": {
+   "w": 162,
+   "h": 120
+  },
+  "scale": "1",
+  "anchor": {
+   "kind": "origin",
+   "x": 33,
+   "y": 19
+  },
+  "frameTags": [
+   {
+    "name": "hr-shots-void-bolt-flight",
+    "from": 0,
+    "to": 7,
+    "direction": "forward"
+   }
+  ]
+ }
+}
