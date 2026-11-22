@@ -20,6 +20,8 @@ pub const LANE_W: f32 = 1.4;
 /// Walking pace forward and stepping back, m/s.
 pub const WALK: f32 = 2.2;
 pub const BACK: f32 = 1.1;
+/// The share of a walk's pace kept behind a raised guard (the road and the yard alike).
+pub const GUARD_PACE: f32 = 0.5;
 /// Walking forward stops this far short of an enemy standing in the way, metres.
 pub const ENGAGE: f32 = 2.3;
 /// Outside a roll (the road putting the hero back in the middle at a fork) the hero eases
@@ -44,6 +46,10 @@ const REGEN: f32 = 55.0 / 60.0;
 const REGEN_DELAY: u32 = 30;
 /// A press waits this many ticks for the hero to be free, then is dropped. Only the last is kept.
 pub const BUFFER: u32 = 18;
+/// Ticks a strike pressed in a strike's swing may wait for that swing's recovery to cut it short
+/// (`Hero::waits`): long enough for two taps in quick succession, short enough that a press given
+/// up on (the foe winding up) does not commit the hero long after.
+pub const CHAIN_HOLD: u32 = 30;
 pub const FLASKS: u32 = 3;
 /// Arrows pulled back out of each foe felled while a bow is held (a crossbow's, one bolt), and what
 /// an archer felled leaves of its own: arrows and bolts.
@@ -341,7 +347,7 @@ pub const LIGHT_REST: f32 = 0.95;
 pub const LIGHT_HARM: f32 = 0.85;
 /// Lights in a string (`Spec::chained`): each pressed in the one before's recovery cuts it short.
 pub const CHAIN: u8 = 3;
-/// Ticks into a light's recovery before the next of a string may cut it short (half of it).
+/// Ticks into a light's recovery before the next of a string may cut it short.
 pub const CHAIN_FROM: u32 = 7;
 
 impl Spec {
@@ -1379,6 +1385,8 @@ pub struct Hero {
     pub next_link: u8,
     /// The route the next heavy takes, once one cut a strike's recovery short.
     pub next_route: crate::combo::Route,
+    /// A strike queued behind the one waiting, and the strike just ended (`combo::ChainMemory`).
+    pub chain: crate::combo::ChainMemory<Move>,
 }
 
 impl Hero {
@@ -1387,11 +1395,16 @@ impl Hero {
     pub fn mend(&mut self) { self.hp = (self.hp + self.stats.kit.capped.mend * self.stats.max_hp()).min(self.stats.max_hp()); }
     /// Whole, with these levels: as they rise from a shrine.
     pub fn with(stats: Stats) -> Hero {
-        Hero { stats, hp: stats.max_hp(), stamina: stats.max_stamina(), rested: REGEN_DELAY, flasks: FLASKS + stats.kit.flasks, lane: 0, x: 0.0, act: None, guarding: false, reeling: 0, reel: Reel::None, poise: stats.poise(), poise_wait: 0, buffer: None, dead: false, quiver: Quiver::default(), charges: stats.max_charges(), bulwark: Bulwark::default(), art: 0.0, stone: 0, mark: None, pierced: 0, drawn: false, follow: None, next_link: 0, next_route: crate::combo::Route::Plain }
+        Hero { stats, hp: stats.max_hp(), stamina: stats.max_stamina(), rested: REGEN_DELAY, flasks: FLASKS + stats.kit.flasks, lane: 0, x: 0.0, act: None, guarding: false, reeling: 0, reel: Reel::None, poise: stats.poise(), poise_wait: 0, buffer: None, dead: false, quiver: Quiver::default(), charges: stats.max_charges(), bulwark: Bulwark::default(), art: 0.0, stone: 0, mark: None, pierced: 0, drawn: false, follow: None, next_link: 0, next_route: crate::combo::Route::Plain, chain: crate::combo::ChainMemory::default() }
     }
     /// Whole again with the same levels (as at a shrine), keeping what is carried to shoot.
     pub fn renewed(&self) -> Hero { Hero { quiver: Quiver { imbued: 0, ..self.quiver }, ..Hero::with(self.stats) } }
     fn free(&self) -> bool { self.act.is_none() && self.reeling == 0 && !self.dead }
+    /// Whether `m` follows on from the strike under way: pressed before its recovery is far enough
+    /// on to cut short, it waits for that, up to `CHAIN_HOLD`.
+    fn waits(&self, m: Move) -> bool {
+        self.act.is_some_and(|a| crate::combo::Route::follows((a.mv, a.route, a.link), m).is_some())
+    }
     /// Whether there is a shot of `r` to give: an arrow or a bolt, a charge.
     pub fn can_shoot(&self, r: Option<crate::gear::Ranged>) -> bool {
         match r {
@@ -1478,7 +1491,7 @@ impl Fight {
                 _ => return 0.0,
             }
         }
-        let k = if input.guard { 0.5 } else { 1.0 };
+        let k = if input.guard { GUARD_PACE } else { 1.0 };
         if input.back { return -BACK * k; }
         if !input.forward { return 0.0; }
         match self.in_the_way(walked) {
@@ -1578,21 +1591,33 @@ impl Fight {
         // Poise comes back once the hits stop.
         h.poise_wait = h.poise_wait.saturating_add(1);
         if h.poise_wait > POISE_DELAY { h.poise = (h.poise + POISE_REGEN).min(h.stats.poise()); }
-        // Presses wait in the buffer for the hero to be free.
-        if let Some(m) = input.press() { (h.buffer, h.follow) = (Some((m, 0)), None); }
+        // Presses wait in the buffer for the hero to be free. The other strike pressed while one
+        // waits to cut the swing short queues behind it instead of replacing it.
+        h.chain.tick();
+        if h.buffer.is_none() { h.chain.queued = None; }
+        if let Some(m) = input.press() {
+            // The same strike again only freshens the one waiting (mashing adds no swing).
+            let behind = h.buffer.is_some_and(|(b, _)| h.waits(b) && b != m) && matches!(m, Move::Light | Move::Heavy);
+            // Anything but a strike is a change of mind: nothing queued is still wanted.
+            if behind { h.chain.queued = Some(m); } else { (h.buffer, h.follow, h.chain.queued) = (Some((m, 0)), None, None); }
+        }
         // What waited on the bow comes once it is drawn or away; a guard puts the bow away first.
         if h.free() && h.buffer.is_none() { h.buffer = h.follow.take().map(|m| (m, 0)); }
         if input.guard && h.drawn && h.free() && h.buffer.is_none() { h.buffer = Some((Move::Stow, 0)); }
         // A doorway's walls close the side lanes: whoever stands in one steps into the middle.
         let edge = if self.doorway { 0 } else { 1 };
         if edge == 0 && h.lane != 0 && h.free() && h.buffer.is_none() { h.buffer = Some((Move::Lane(-h.lane.signum()), 0)); }
-        if let Some((m, age)) = h.buffer { h.buffer = (age < BUFFER).then_some((m, age + 1)); }
+        if let Some((m, age)) = h.buffer { h.buffer = (age < if h.waits(m) { CHAIN_HOLD } else { BUFFER }).then_some((m, age + 1)); }
         h.guarding = input.guard && h.free() && !h.drawn;
         h.bulwark.tick(h.guarding, calm);
-        // A strike pressed in a strike's recovery cuts the rest short: the next of its string.
-        if let (Some(a), Some((m, _))) = (h.act, h.buffer) {
-            let next = crate::combo::Route::follows((a.mv, a.route, a.link), m).filter(|_| a.spec.chains_at(a.t));
-            if let Some(next) = next { (h.act, (h.next_link, h.next_route)) = (None, next.parts()); }
+        // A strike pressed in a strike's recovery cuts the rest short: the next of its string; and
+        // pressed just after the recovery ran out, it still follows on.
+        let prev = match h.act {
+            Some(a) => a.spec.chains_at(a.t).then_some((a.mv, a.route, a.link)),
+            None => h.chain.after(),
+        };
+        if let (Some(prev), Some((m, _))) = (prev, h.buffer) {
+            if let Some(next) = crate::combo::Route::follows(prev, m) { (h.act, (h.next_link, h.next_route)) = (None, next.parts()); }
         }
         if h.free() && h.buffer.is_none() { (h.next_link, h.next_route) = (0, crate::combo::Route::Plain); }
         if h.free() {
@@ -1627,7 +1652,8 @@ impl Fight {
                     // No stepping off the road's edge, nor further out where a doorway narrows it.
                     h.buffer = None;
                 } else {
-                    h.buffer = None;
+                    h.buffer = h.chain.queued.take().map(|q| (q, 0));
+                    h.chain.began();
                     h.spend(cost);
                     if follow.is_some() { h.follow = follow; }
                     if matches!(m, Move::Draw | Move::Stow) { h.drawn = m == Move::Draw; }
@@ -1734,6 +1760,7 @@ impl Fight {
         if !a.charge.holding { a.t += 1; }
         let (w, act, _) = spec.frames;
         if a.mv.strikes() && a.t == w + act && !a.landed { out.push(Event::Whiffed(a.mv)); }
+        if a.t >= a.total() { self.hero.chain.ended((a.mv, a.route, a.link)); }
         self.hero.act = (a.t < a.total()).then_some(a);
     }
 
@@ -2695,12 +2722,43 @@ mod tests {
         }
         f.tick(&idle(), 0.0);
         assert_eq!(f.hero.act.map(|a| a.mv), Some(Move::Light), "buffered light ran");
-        // One pressed too early is dropped.
+        // Something that does not follow on from the heavy, pressed too early, is dropped.
         let mut g = Fight::new(vec![dummy(1.0, 0)]);
         g.tick(&Input { heavy: true, ..idle() }, 0.0);
-        g.tick(&Input { light: true, ..idle() }, 0.0);
+        g.tick(&Input { flask: true, ..idle() }, 0.0);
         for _ in 0..total { g.tick(&idle(), 0.0); }
         assert!(g.hero.act.is_none(), "{:?}", g.hero.act);
+    }
+
+    /// Strikes pressed close together all come, as the string they make: one pressed early in a
+    /// swing waits for its recovery instead of running out, a second pressed while the first waits
+    /// comes after it instead of replacing it, and one pressed just after a recovery ran out still
+    /// follows on.
+    #[test]
+    fn strikes_pressed_close_together_all_come_as_their_string() {
+        use crate::combo::Route;
+        let target = || Fight::new(vec![Enemy { hp: 1e5, ..dummy(1.0, 0) }]);
+        let begun = |f: &mut Fight, presses: &[(u32, bool)], ticks: u32| {
+            let mut began = Vec::new();
+            for t in 0..ticks {
+                for e in &mut f.enemies { e.stance = 1e4; }
+                let press = presses.iter().find(|p| p.0 == t).map(|p| p.1);
+                let out = f.tick(&Input { light: press == Some(false), heavy: press == Some(true), ..idle() }, 0.0);
+                for e in out {
+                    if let Event::Began(m @ (Move::Light | Move::Heavy)) = e { began.push((m, f.hero.act.map_or(0, |a| a.link), f.hero.act.map_or(Route::Plain, |a| a.route))); }
+                }
+            }
+            began
+        };
+        // A light tapped on the first light's second tick, long before its recovery: it comes.
+        assert_eq!(begun(&mut target(), &[(0, false), (2, false)], 80).len(), 2, "the early light came");
+        // Light, light, heavy tapped in quick succession: two lights then the finisher.
+        let made = begun(&mut target(), &[(0, false), (3, false), (5, true)], 200);
+        assert_eq!(made, vec![(Move::Light, 0, Route::Plain), (Move::Light, 1, Route::Plain), (Move::Heavy, 0, Route::Finisher)], "{made:?}");
+        // A light pressed a few ticks after a light's recovery ran out is the second of the string.
+        let light = Move::Light.spec().frames;
+        let made = begun(&mut target(), &[(0, false), (light.0 + light.1 + light.2 + 4, false)], 120);
+        assert_eq!(made.get(1).map(|m| m.1), Some(1), "{made:?}");
     }
 
     #[test]

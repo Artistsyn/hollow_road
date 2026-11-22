@@ -108,6 +108,12 @@ CLIPS = {
     # Up from the carry into the guard, held on the last frame.
     "guard": dict(frames={"north-east": 5, "east": 5}, keys=[
         k(0, "carry"), k(1, "guard", "guard", lean=4, step=0.03, drop=0.01, twist=-10)]),
+    # Edging forward (or back) behind the raised guard: short, flat-footed steps, knees bent, the
+    # guard held still while the legs work under it (the game plays it at half the walk's pace).
+    "guard_walk": dict(frames={"north": 8, "east": 8}, gait=True, creep=True, keys=[
+        k(0, "guard", "guard", lean=4, step=0.03, drop=0.01, twist=-10), k(1, "guard", "guard", lean=4, step=0.03, drop=0.01, twist=-10)],
+        # Straight behind, the gait's own lowered hips are the crouch.
+        view_keys={"north": [k(0, "guard", "guard", lean=5, step=0.03, twist=-10), k(1, "guard", "guard", lean=5, step=0.03, twist=-10)]}),
     # Standing ready side-on, breathing.
     "idle": dict(frames={"east": 4, "north": 6}, loop=True, view_keys={"north": [
         # Straight behind, at ease with the weapon carried low, breathing and shifting its weight.
@@ -172,6 +178,10 @@ GAIT3 = {
     # it. twist: the shoulders' turn (degrees). arm/free: the weapon arm's and the free arm's swing.
     "walk": dict(duty=0.62, front=0.12, back=0.13, track=0.045, clear=0.04, heel=0.022, hip=0.300,
                  bob=0.011, sway=0.016, twist=6.0, arm=7.0, free=22.0),
+    # Behind a guard: short steps, a foot down most of the time, low hips that hardly ride, the
+    # guard and the shield arm kept nearly still.
+    "guard": dict(duty=0.7, front=0.095, back=0.095, track=0.05, clear=0.025, heel=0.012, hip=0.291,
+                  bob=0.005, sway=0.012, twist=2.0, arm=1.5, free=3.0),
     "run": dict(duty=0.38, front=0.08, back=0.18, track=0.03, clear=0.13, heel=0.03, hip=0.284,
                 bob=-0.018, sway=0.008, twist=12.0, arm=14.0, free=34.0),
 }
@@ -271,6 +281,7 @@ def frames(clip, n, family, view=None):
             f = blend(a, b, mv.ease((t - t0) / (t1 - t0)))
         f["gait"] = t if clip.get("gait") else None
         f["run"] = bool(clip.get("run"))
+        f["creep"] = bool(clip.get("creep"))
         out.append(f)
     return out
 
@@ -291,7 +302,7 @@ def place_left(j, view, target, left_sh_3d, sh2d):
 
 def pose(base, view, f, family, shared):
     arm, twist, left = f["arm"], f["twist"], f["left"]
-    g3 = GAIT3["run" if f.get("run") else "walk"] if view == "north" and f["gait"] is not None else None
+    g3 = GAIT3["run" if f.get("run") else "guard" if f.get("creep") else "walk"] if view == "north" and f["gait"] is not None else None
     if g3:
         # The arms swing against the legs (the right arm back as the right heel lands at 0), the
         # shoulders turning with them.
@@ -311,6 +322,9 @@ def pose(base, view, f, family, shared):
         gait3d(j, dep, track, g3, f["gait"])
     elif f["gait"] is not None:
         g = GAIT[view]
+        if f.get("creep"):
+            # Behind a guard: shorter, lower steps, the free fist held up in the guard.
+            g = dict(step=(0.6 * g["step"][0], 0.6 * g["step"][1]), lift=0.6 * g["lift"], swing=(0.0, 0.0), bob=0.6 * g["bob"])
         ph = 2 * math.pi * f["gait"]
         rise = g["bob"] * math.cos(2 * ph)
         for side, a in (("RIGHT", ph), ("LEFT", ph + math.pi)):

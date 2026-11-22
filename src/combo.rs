@@ -45,6 +45,18 @@ pub enum Finish {
     Quake,
 }
 
+/// What a string remembers between presses: the other strike pressed while one already waits to
+/// cut the swing short (a heavy after a light plays next, where it used to replace the light), and
+/// the strike that just ended with the ticks since (a press within `CHAIN_GRACE` still follows on).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ChainMemory<P: Copy> {
+    pub queued: Option<P>,
+    ended: Option<((Move, Route, u8), u32)>,
+}
+
+/// Ticks after a strike's recovery in which a press still follows on as the next of its string.
+pub const CHAIN_GRACE: u32 = 10;
+
 /// How much longer a pinned or swept foe stays off balance than a plain gathered blow leaves it.
 const LONG_REEL: f32 = 1.6;
 /// How much further than its reach an ultra greatsword's slam carries, metres.
@@ -122,6 +134,25 @@ pub fn list(held: Class) -> Vec<String> {
     rows.push("Hold a heavy\tgather\nHeld at the top of its swing, a heavy gathers up to twice its blow.".to_owned());
     rows.push("Hold the shot (a bow)\tfull draw\nA bow held drawn gathers up to twice the arrow; a crossbow and a spell go as soon as they are ready.".to_owned());
     rows
+}
+
+impl<P: Copy> Default for ChainMemory<P> {
+    fn default() -> Self { Self { queued: None, ended: None } }
+}
+
+impl<P: Copy> ChainMemory<P> {
+    /// One tick on: what ended longer ago than `CHAIN_GRACE` is forgotten.
+    pub fn tick(&mut self) {
+        self.ended = self.ended.filter(|e| e.1 < CHAIN_GRACE).map(|(strike, age)| (strike, age + 1));
+    }
+    /// `strike` (its move, route and link) has run to the end of its recovery.
+    pub fn ended(&mut self, strike: (Move, Route, u8)) {
+        if matches!(strike.0, Move::Light | Move::Heavy) { self.ended = Some((strike, 0)); }
+    }
+    /// The strike a press now would follow on from, the hero being free.
+    pub fn after(&self) -> Option<(Move, Route, u8)> { self.ended.map(|e| e.0) }
+    /// A new move began: nothing is left to follow on from.
+    pub fn began(&mut self) { self.ended = None; }
 }
 
 impl Next {
@@ -216,6 +247,18 @@ mod tests {
         assert!(f.damage > heavy.damage && f.frames.2 > heavy.frames.2);
         assert!(Route::Finisher.gathers() && !Route::Breaker.gathers() && !Route::FollowThrough.gathers());
         assert!(Route::Plain.holds(Move::Loose, Some(Ranged::Longbow)) && !Route::Plain.holds(Move::Loose, Some(Ranged::BloodCrossbow)));
+    }
+
+    #[test]
+    fn a_strike_just_ended_is_followed_on_from_for_a_moment_then_forgotten() {
+        let mut memory = ChainMemory::<Move>::default();
+        memory.ended((Move::Light, Route::Plain, 1));
+        for _ in 0..CHAIN_GRACE { memory.tick(); }
+        assert_eq!(memory.after(), Some((Move::Light, Route::Plain, 1)));
+        memory.tick();
+        assert_eq!(memory.after(), None, "past the grace it is gone");
+        memory.ended((Move::Parry, Route::Plain, 0));
+        assert_eq!(memory.after(), None, "only a strike is followed on from");
     }
 
     #[test]

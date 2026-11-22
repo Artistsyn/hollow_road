@@ -877,6 +877,21 @@ fn boss_moves() {
     }
 }
 
+/// The top left on the road with way-finding on and the phone's buttons: the HUD line, the way
+/// line under it, and the bars under both (the health bar used to cover the way line).
+/// `HR_SCREEN=2712x1220 cargo test --release hud_bars_clear_the_way_line -- --ignored` writes
+/// target/shots/hud_way.png.
+#[test]
+#[ignore]
+fn hud_bars_clear_the_way_line() {
+    let mut p = Play::started();
+    p.game().touch_ui = true;
+    p.game().settings.show_way = true;
+    // Past the arrival's banner and fade.
+    p.ticks(400);
+    p.shot("hud_way");
+}
+
 /// The game played by touch alone, as on a phone: the title and the pilgrimage begun by taps on
 /// the choices; on the road, a thumb on the stick walking on and stepping a lane while another
 /// strikes and guards (a touch's mouse twin is no strike); the map and the pause menu opened and
@@ -1429,29 +1444,98 @@ fn thrusts() {
     }
 }
 
+/// The hero walking Ridge Camp's winding road, a frame every half second: the hero's shadow (and
+/// every prop's) keeps the sun's way in the world through the bends instead of swinging with them.
+/// `cargo test --release winding_shadows -- --ignored` writes target/shots/ws_*.png.
+#[test]
+#[ignore]
+fn winding_shadows() {
+    let mut p = Play::started();
+    p.warp("ridge_camp@pine_road");
+    p.ticks(30);
+    p.key("w", KeyboardState::Pressed);
+    for k in 0..10 {
+        for _ in 0..30 { p.fell_all(); p.ticks(1); }
+        p.shot(&format!("ws_{k:02}"));
+    }
+    p.key("w", KeyboardState::Released);
+}
+
+/// The hero edging forward behind a raised guard, then backing off behind it, a frame every six
+/// ticks: `cargo test --release guard_walk_frames -- --ignored` writes target/shots/gw_*.png.
+#[test]
+#[ignore]
+fn guard_walk_frames() {
+    let mut p = Play::started();
+    p.ticks(240);
+    for e in p.game().fight.enemies.iter_mut() { e.ai = crate::fight::Ai::Dead; }
+    p.mouse(prism::event::MouseButton::Right, MouseState::Pressed);
+    for (way, ch) in [("fwd", "w"), ("back", "s")] {
+        p.key(ch, KeyboardState::Pressed);
+        p.ticks(12);
+        for k in 0..8 {
+            p.ticks(6);
+            p.shot(&format!("gw_{way}_{k}"));
+        }
+        p.key(ch, KeyboardState::Released);
+    }
+    p.mouse(prism::event::MouseButton::Right, MouseState::Released);
+}
+
+/// One weapon's heavy on the road drawn tick by tick from wind-up to recovery (the Bell-Hammer;
+/// `HR_WEAPON` names another): `cargo test --release swing_frames -- --ignored` writes
+/// target/shots/sw_<art>_<tick>.png.
+#[test]
+#[ignore]
+fn swing_frames() {
+    use crate::fight::{Act, Move};
+    let name = std::env::var("HR_WEAPON").unwrap_or_else(|_| "Bell-Hammer".to_owned());
+    let mut p = Play::started();
+    p.ticks(240);
+    let g = p.game();
+    let i = crate::gear::find(&name);
+    g.world.gear.gain(i);
+    assert!(g.world.gear.wear(0, Some(i)), "{name} would not go on");
+    g.fight.hero.stats.kit = g.world.gear.kit();
+    for e in g.fight.enemies.iter_mut() { e.ai = crate::fight::Ai::Dead; }
+    let arms = g.fight.hero.stats.kit.arms;
+    let spec = Move::Heavy.spec_for(arms.class, None);
+    let all = spec.frames.0 + spec.frames.1 + spec.frames.2;
+    for t in (0..all).step_by(2) {
+        let h = &mut p.game().fight.hero;
+        h.act = Some(Act { mv: Move::Heavy, spec, t, landed: true, from_lane: h.lane, from_x: h.x, link: 0, charge: crate::fight::Charge::default(), route: crate::combo::Route::Plain });
+        p.ticks(1);
+        p.shot(&format!("sw_{}_{t:02}", arms.art));
+    }
+    p.game().fight.hero.act = None;
+}
+
 /// Each weapon's light and heavy caught at four frames of its strike effect, a picture each:
-/// `cargo test --release strike_effects -- --ignored` writes target/shots/fx_<weapon>_<move>_<k>.png.
+/// `cargo test --release strike_effects -- --ignored` writes target/shots/fx_<weapon>_<move>_<k>.png
+/// (`fx_<weapon>_1h_...` for a two-hander held in one hand, swung as a sword).
 #[test]
 #[ignore]
 fn strike_effects() {
     use crate::fight::{Act, Move};
     let mut p = Play::started();
     p.ticks(240);
-    for name in ["Wayfarer's Sword", "Duelist's Rapier", "Lancer's Shortspear", "Husk Cleaver", "Executioner's Greatsword", "Gravewarden's Slab"] {
+    let weapons = ["Wayfarer's Sword", "Duelist's Rapier", "Lancer's Shortspear", "Husk Cleaver", "Executioner's Greatsword", "Gravewarden's Slab", "Bell-Hammer"];
+    for (name, one_hand) in weapons.into_iter().map(|n| (n, false)).chain([("Bell-Hammer", true)]) {
         let g = p.game();
         let i = crate::gear::find(name);
         g.world.gear.gain(i);
         assert!(g.world.gear.wear(0, Some(i)), "{name} would not go on");
-        g.fight.hero.stats.kit = g.world.gear.kit();
+        g.fight.hero.stats.kit = crate::gear::Kit { one_hand, ..g.world.gear.kit() };
         for e in g.fight.enemies.iter_mut() { e.ai = crate::fight::Ai::Dead; }
-        let class = g.fight.hero.stats.kit.arms.class;
+        let (class, art) = (g.fight.hero.stats.kit.arms.class, g.fight.hero.stats.kit.arms.art);
+        let art = if one_hand { format!("{art}_1h") } else { art.to_owned() };
         for (mv, label) in [(Move::Light, "light"), (Move::Heavy, "heavy")] {
             let spec = mv.spec_for(class, None);
             for k in 0..4 {
                 let h = &mut p.game().fight.hero;
                 h.act = Some(Act { mv, spec, t: spec.frames.0 + 3 * k + 1, landed: true, from_lane: h.lane, from_x: h.x, link: 0, charge: crate::fight::Charge::default(), route: crate::combo::Route::Plain });
                 p.ticks(1);
-                p.shot(&format!("fx_{}_{label}_{k}", class.slug()));
+                p.shot(&format!("fx_{art}_{label}_{k}"));
             }
         }
         p.game().fight.hero.act = None;

@@ -173,14 +173,15 @@ impl SideFight {
 
     /// Whom foe `i` means its next blow for, `roll` one of a hundred: the hero, or the standing
     /// ally whose hurt it feels most, by shares of what each has done to it lately. One much
-    /// nearer than the hero draws it more. (`look_round` never lets it be three running.)
+    /// nearer than the hero draws it twice as much: a hero hanging back behind a guard leaves the
+    /// foe to the one fighting it. (`look_round` never lets it be three running.)
     pub(crate) fn eyes_for(&self, i: usize, roll: u32) -> Option<usize> {
         let foe = &self.foes[i];
         let unit = 0.04 * foe.top.max(1.0);
         let hero = 1.0 + self.heat / unit;
         let near = |x: f32| (x - foe.s).abs() + 1.5 < (self.hero.s - foe.s).abs();
         let (k, pull) = self.allies.iter().enumerate().filter(|(_, ally)| ally.standing())
-            .map(|(k, ally)| (k, (0.6 + ally.heat / unit) * if near(ally.at) { 1.5 } else { 1.0 }))
+            .map(|(k, ally)| (k, (0.6 + ally.heat / unit) * if near(ally.at) { 2.0 } else { 1.0 }))
             .max_by(|x, y| x.1.total_cmp(&y.1))?;
         ((roll as f32) < 100.0 * pull / (pull + hero)).then_some(k)
     }

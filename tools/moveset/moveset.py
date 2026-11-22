@@ -479,6 +479,92 @@ TYPES = {
                           dict(upper=(0.92, -0.15, -0.35), fore=(0.91, 0.00, -0.40), blade=(0.99, -0.12, 0.00), lean=20, step=0.16, drop=0.1, twist=20),
                           dict(upper=(0.87, -0.40, -0.16), fore=(0.95, -0.15, -0.25), blade=(0.98, -0.16, -0.05), lean=18, step=0.16, drop=0.1, twist=18)],
     }},
+    # A two-handed hammer (Bell-Hammer, Starglass Maul): the weight is all in the head, so every blow
+    # is carried by it, hauled up and let fall, and follows on down. From the road a swing in the
+    # plane straight ahead and up lies along one line on screen, haft and head together, so the head
+    # reads as a post: every road blow comes down on a slant, the head's cross showing.
+    "hammer": {"off": -0.055, "moves": {
+        # A short diagonal chop from over the right shoulder down to low left.
+        "light": [dict(upper=(0.35, -0.90, -0.15), fore=(0.85, 0.05, -0.50), blade=(0.70, 0.65, -0.20)),
+                  dict(upper=(0.15, 0.45, 0.88), fore=(-0.05, 0.90, -0.40), blade=(-0.55, 0.65, 0.50), lean=-6, twist=-20),
+                  dict(mid=True, upper=(0.55, 0.45, 0.70), fore=(0.55, 0.75, -0.35), blade=(0.30, 0.90, 0.30), lean=2, step=0.04, drop=0.02, twist=-2),
+                  dict(upper=(0.85, -0.30, -0.40), fore=(0.82, -0.30, -0.48), blade=(0.70, -0.55, -0.45), lean=10, step=0.07, drop=0.04, twist=22),
+                  dict(upper=(0.45, -0.85, -0.30), fore=(0.40, -0.62, -0.68), blade=(0.30, -0.80, -0.52), lean=8, step=0.07, drop=0.04, twist=25)],
+        "light@north": [dict(upper=(0.35, -0.90, -0.15), fore=(0.85, 0.05, -0.50), blade=(0.70, 0.65, -0.20)),
+                        dict(upper=(0.15, 0.45, 0.88), fore=(-0.05, 0.90, -0.40), blade=(-0.55, 0.65, 0.50), lean=-6, twist=-20),
+                        dict(mid=True, upper=(0.55, 0.45, 0.70), fore=(0.55, 0.75, -0.35), blade=(0.30, 0.90, 0.30), lean=2, step=0.04, drop=0.02, twist=-2),
+                        dict(upper=(0.86, -0.45, -0.20), fore=(0.80, -0.40, -0.45), blade=(0.62, -0.62, -0.48), lean=10, step=0.07, drop=0.04, twist=25),
+                        dict(upper=(0.58, -0.80, -0.15), fore=(0.62, -0.62, -0.45), blade=(0.25, -0.85, -0.45), lean=8, step=0.07, drop=0.04, twist=30)],
+        # The heavy: hauled up until the head hangs down the back, then slammed down to the ground
+        # ahead, the body dropping in behind it.
+        "heavy": [dict(upper=(0.35, -0.90, -0.15), fore=(0.85, 0.05, -0.50), blade=(0.70, 0.65, -0.20)),
+                  dict(upper=(0.05, 0.70, 0.71), fore=(-0.25, 0.85, -0.46), blade=(-0.90, -0.35, 0.10), lean=-16, drop=0.03, twist=-15),
+                  dict(mid=True, upper=(0.55, 0.70, 0.40), fore=(0.45, 0.85, -0.30), blade=(0.05, 0.99, 0.00), lean=0, step=0.06, drop=0.04, twist=2),
+                  dict(upper=(0.85, -0.45, -0.25), fore=(0.70, -0.65, -0.30), blade=(0.55, -0.83, -0.05), lean=22, step=0.13, drop=0.10, twist=15),
+                  dict(upper=(0.65, -0.72, -0.20), fore=(0.50, -0.80, -0.30), blade=(0.45, -0.88, -0.10), lean=20, step=0.13, drop=0.11, twist=12)],
+        # From the road the head hanging down the back shows below the hips, as if the hammer were
+        # held upside down: the road's wind-up raises it over the right shoulder instead, the head
+        # up behind, then brings it down on a slant to the ground ahead and right, the head's cross
+        # showing, and its weight carries it on by the right foot.
+        "heavy@north": [dict(upper=(0.35, -0.90, -0.15), fore=(0.85, 0.05, -0.50), blade=(0.70, 0.65, -0.20)),
+                        dict(upper=(0.20, 0.60, 0.75), fore=(-0.10, 0.80, -0.60), blade=(-0.60, 0.70, 0.40), lean=-12, drop=0.03, twist=-15),
+                        dict(mid=True, upper=(0.55, 0.70, 0.40), fore=(0.45, 0.85, -0.30), blade=(0.05, 0.99, 0.00), lean=0, step=0.06, drop=0.04, twist=2),
+                        dict(upper=(0.85, -0.35, -0.20), fore=(0.70, -0.55, -0.45), blade=(0.45, -0.75, 0.48), lean=20, step=0.13, drop=0.09, twist=15),
+                        dict(upper=(0.50, -0.80, 0.30), fore=(0.45, -0.80, 0.40), blade=(0.15, -0.80, 0.58), lean=22, step=0.13, drop=0.11, twist=20)],
+        # The third strike of a string, a flat sweep at the waist from the right round to the left,
+        # the head leading.
+        "third": [dict(upper=(0.35, -0.90, -0.15), fore=(0.85, 0.05, -0.50), blade=(0.70, 0.65, -0.20)),
+                 dict(upper=(-0.3, -0.8, 0.5), fore=(-0.3, -0.2, 0.93), blade=(-0.7, 0.0, 0.7), lean=-4, drop=0.04, twist=-40),
+                 dict(upper=(0.4, -0.7, 0.6), fore=(0.7, -0.1, 0.7), blade=(0.4, 0.05, 0.9), mid=True, lean=2, step=0.04, drop=0.04, twist=-10),
+                 dict(upper=(0.85, -0.4, -0.3), fore=(0.8, -0.1, -0.6), blade=(0.6, 0.0, -0.8), lean=8, step=0.08, drop=0.04, twist=30),
+                 dict(upper=(0.4, -0.6, -0.7), fore=(0.2, -0.2, -0.95), blade=(-0.2, 0.0, -0.97), lean=6, step=0.08, drop=0.03, twist=45)],
+        "third@north": [dict(upper=(0.35, -0.90, -0.15), fore=(0.85, 0.05, -0.50), blade=(0.70, 0.65, -0.20)),
+                       dict(upper=(-0.30, -0.80, 0.50), fore=(-0.30, -0.20, 0.93), blade=(-0.70, 0.00, 0.70), lean=-4, drop=0.04, twist=-40),
+                       dict(upper=(0.40, -0.70, 0.60), fore=(0.70, -0.10, 0.70), blade=(0.40, 0.05, 0.90), mid=True, lean=2, step=0.04, drop=0.04, twist=-10),
+                       dict(upper=(0.88, -0.40, -0.20), fore=(0.88, -0.10, -0.47), blade=(0.70, 0.00, -0.72), lean=8, step=0.08, drop=0.04, twist=30),
+                       dict(upper=(0.81, -0.60, 0.04), fore=(0.94, -0.20, -0.25), blade=(0.55, -0.10, -0.83), lean=6, step=0.08, drop=0.03, twist=45)],
+        # A breaker, a rising uppercut: the head trailed low behind the right hip, then driven up
+        # through the front under the guard to above the head.
+        "breaker": [dict(upper=(0.35, -0.90, -0.15), fore=(0.85, 0.05, -0.50), blade=(0.70, 0.65, -0.20)),
+                   dict(upper=(-0.35, -0.80, 0.48), fore=(-0.40, -0.45, 0.80), blade=(-0.75, -0.45, 0.48), lean=-4, drop=0.08, twist=-45),
+                   dict(mid=True, upper=(0.50, -0.80, 0.33), fore=(0.85, -0.10, 0.50), blade=(0.70, -0.25, 0.67), lean=4, step=0.08, drop=0.06, twist=-10),
+                   dict(upper=(0.85, -0.30, -0.25), fore=(0.85, 0.30, -0.40), blade=(0.62, 0.40, -0.67), lean=10, step=0.14, drop=0.04, twist=20),
+                   dict(upper=(0.45, 0.55, -0.70), fore=(0.10, 0.85, -0.52), blade=(-0.20, 0.90, -0.40), lean=-2, step=0.14, twist=40)],
+        # From the road the uppercut stays on the ground: carried up with the hips still low, it does
+        # not lift the hero off their feet (with the hips forward and not dropped, the legs drew a leap).
+        "breaker@north": [dict(upper=(0.35, -0.90, -0.15), fore=(0.85, 0.05, -0.50), blade=(0.70, 0.65, -0.20)),
+                          dict(upper=(-0.35, -0.80, 0.48), fore=(-0.40, -0.45, 0.80), blade=(-0.75, -0.45, 0.48), lean=-4, drop=0.08, twist=-45),
+                          dict(mid=True, upper=(0.50, -0.80, 0.33), fore=(0.85, -0.10, 0.50), blade=(0.70, -0.25, 0.67), lean=4, step=0.08, drop=0.06, twist=-10),
+                          dict(upper=(0.85, -0.30, -0.25), fore=(0.85, 0.30, -0.40), blade=(0.62, 0.40, -0.67), lean=10, step=0.12, drop=0.06, twist=20),
+                          dict(upper=(0.45, 0.55, -0.70), fore=(0.10, 0.85, -0.52), blade=(-0.20, 0.90, -0.40), lean=0, step=0.12, drop=0.06, twist=40)],
+        # A follow-through, the backhand: from over the left shoulder down across to the low right.
+        "follow": [dict(upper=(0.35, -0.90, -0.15), fore=(0.85, 0.05, -0.50), blade=(0.70, 0.65, -0.20)),
+                  dict(upper=(0.3, 0.6, -0.75), fore=(-0.2, 0.85, -0.5), blade=(-0.7, 0.6, -0.4), lean=-8, twist=30),
+                  dict(upper=(0.6, 0.55, 0.0), fore=(0.5, 0.8, 0.1), blade=(0.1, 0.99, 0.0), mid=True, lean=0, step=0.05, drop=0.04, twist=5),
+                  dict(upper=(0.85, -0.3, 0.3), fore=(0.8, -0.4, 0.45), blade=(0.65, -0.45, 0.62), lean=12, step=0.1, drop=0.05, twist=-15),
+                  dict(upper=(0.4, -0.8, 0.4), fore=(0.3, -0.75, 0.6), blade=(0.55, -0.50, 0.67), lean=10, step=0.1, drop=0.05, twist=-25)],
+        "follow@north": [dict(upper=(0.35, -0.90, -0.15), fore=(0.85, 0.05, -0.50), blade=(0.70, 0.65, -0.20)),
+                        dict(upper=(0.30, 0.60, -0.75), fore=(-0.20, 0.85, -0.50), blade=(-0.70, 0.60, -0.40), lean=-8, twist=30),
+                        dict(upper=(0.60, 0.55, 0.00), fore=(0.50, 0.80, 0.10), blade=(0.10, 0.99, 0.00), mid=True, lean=0, step=0.05, drop=0.04, twist=5),
+                        dict(upper=(0.78, -0.20, -0.41), fore=(0.79, -0.35, -0.25), blade=(0.70, -0.45, 0.45), lean=12, step=0.1, drop=0.05, twist=-10),
+                        dict(upper=(0.50, -0.75, -0.24), fore=(0.54, -0.75, 0.03), blade=(0.35, -0.80, 0.48), lean=10, step=0.1, drop=0.05, twist=-20)],
+        # The finisher, the bell-ringer: up on the toes with the head hanging down the back, then the
+        # whole body thrown down behind it into a deep crouch, the head driven into the ground ahead.
+        # The raise passes overhead (`pre`), as the slab's does.
+        "finisher": [dict(upper=(0.35, -0.90, -0.15), fore=(0.85, 0.05, -0.50), blade=(0.70, 0.65, -0.20)),
+                     dict(pre=True, upper=(0.35, 0.80, 0.48), fore=(0.20, 0.95, -0.24), blade=(-0.35, 0.93, 0.10), lean=-10, twist=-5),
+                     dict(upper=(0.00, 0.85, 0.53), fore=(-0.30, 0.90, -0.31), blade=(-0.75, -0.65, 0.10), lean=-22, drop=-0.02, twist=-10),
+                     dict(mid=True, upper=(0.55, 0.75, 0.37), fore=(0.45, 0.87, -0.20), blade=(0.05, 0.99, 0.00), lean=2, step=0.07, drop=0.04, twist=2),
+                     dict(upper=(0.80, -0.55, 0.10), fore=(0.65, -0.72, 0.10), blade=(0.55, -0.80, 0.20), lean=28, step=0.15, drop=0.14, twist=15),
+                     dict(upper=(0.65, -0.73, 0.05), fore=(0.50, -0.83, 0.10), blade=(0.50, -0.82, 0.25), lean=26, step=0.15, drop=0.14, twist=12)],
+        # From the road the slam lands ahead and to the left, the other way from the heavy.
+        "finisher@north": [dict(upper=(0.35, -0.90, -0.15), fore=(0.85, 0.05, -0.50), blade=(0.70, 0.65, -0.20)),
+                          dict(pre=True, upper=(0.35, 0.80, 0.48), fore=(0.20, 0.95, -0.24), blade=(-0.35, 0.93, 0.10), lean=-10, twist=-5),
+                          dict(upper=(0.00, 0.85, 0.53), fore=(-0.30, 0.90, -0.31), blade=(-0.75, -0.65, 0.10), lean=-22, drop=-0.02, twist=-10),
+                          dict(mid=True, upper=(0.55, 0.75, 0.37), fore=(0.45, 0.87, -0.20), blade=(0.05, 0.99, 0.00), lean=2, step=0.07, drop=0.04, twist=2),
+                          dict(upper=(0.84, -0.40, -0.30), fore=(0.72, -0.50, -0.48), blade=(0.80, -0.30, -0.52), lean=28, step=0.15, drop=0.14, twist=18),
+                          dict(upper=(0.55, -0.80, -0.20), fore=(0.45, -0.80, -0.40), blade=(0.20, -0.75, -0.63), lean=30, step=0.15, drop=0.16, twist=22)],
+    }},
     # An ultra greatsword, too big to swing from the wrists: the whole body turns it. The light
     # is a flat sweep at the hip from far back on the right round to the left; the heavy hauls
     # the blade up until it hangs down the back, then drives it into the ground ahead, the body

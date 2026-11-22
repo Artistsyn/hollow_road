@@ -227,6 +227,22 @@ impl Class {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Arms { pub base: f32, pub needs: [u32; 3], pub scales: [Grade; 3], pub class: Class, pub art: &'static str }
 
+impl Arms {
+    /// The moveset it is swung with: the attack clips it plays (`<moveset>_<move>`, `e_` side-on)
+    /// and the trails they leave (`fx`). Its class's, or one drawn for its own kind: a two-handed
+    /// hammer (`HAMMERS`) carries its weight in the head, hauled up and let fall, unlike a blade.
+    pub fn moveset(&self) -> &'static str {
+        if self.class == Class::Greatsword && HAMMERS.contains(&self.art) { "hammer" } else { self.class.slug() }
+    }
+
+    /// The clip kinds it is drawn into when worn (`Sheet::arm_as`): its class's strikes, its way of
+    /// holding, and its own moveset (the same as the strikes but for a hammer's).
+    pub fn kinds(&self) -> [&'static str; 3] { [self.class.slug(), self.class.family(), self.moveset()] }
+}
+
+/// The two-handed hammers by picture: swung with the hammer's own moveset (`Arms::moveset`).
+const HAMMERS: [&str; 2] = ["bell_hammer", "starglass_maul"];
+
 /// The Wayfarer's sword: balanced, needing nothing. What a kit holds when no weapon is named.
 pub const SWORD: Arms = Arms { base: 1.0, needs: [0, 0, 0], scales: [Grade::C, Grade::C, Grade::No], class: Class::Sword, art: "wayfarer_sword" };
 
@@ -330,6 +346,9 @@ impl Kit {
             (_, c) => c,
         }
     }
+    /// The moveset its swings are drawn and trailed with (`Arms::moveset`); held in one hand, the
+    /// clips of the kind it is swung as (`swung_as`).
+    pub fn moveset(&self) -> &'static str { if self.one_hand { self.swung_as().slug() } else { self.arms.moveset() } }
 }
 
 /// The Pilgrim's Buckler: what a kit holds beside the sword when nothing is named.
@@ -923,5 +942,19 @@ mod tests {
         for k in [Archetype::Husk, Archetype::Lancer, Archetype::Shieldbearer, Archetype::Wretch] {
             for n in drops(k) { find(n); }
         }
+    }
+
+    /// The two-handed hammers swing with the hammer's own moveset; every other weapon with its
+    /// class's; a hammer held in one hand as a sword, as any greatsword is.
+    #[test]
+    fn hammers_have_a_moveset_of_their_own() {
+        let arms = |name: &str| ITEMS[find(name)].arms.expect("a weapon");
+        assert_eq!(arms("Bell-Hammer").moveset(), "hammer");
+        assert_eq!(arms("Starglass Maul").moveset(), "hammer");
+        assert_eq!(arms("Executioner's Greatsword").moveset(), "greatsword");
+        assert_eq!(arms("Gavel of Sentence").moveset(), "axe");
+        let one = Kit { one_hand: true, arms: arms("Bell-Hammer"), ..Kit::default() };
+        assert_eq!(one.moveset(), "sword");
+        assert_eq!(Kit { arms: arms("Bell-Hammer"), ..Kit::default() }.moveset(), "hammer");
     }
 }

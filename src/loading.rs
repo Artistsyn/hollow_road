@@ -22,7 +22,7 @@ pub struct Sheets {
 
 impl Sheets {
     /// Read them all now: the hero, and the foes in a few shares, side by side on threads of
-    /// their own (the hero's armed sheet is the longest, every weapon drawn into its clips).
+    /// their own (the hero's is the longest: each weapon is drawn into its clips when worn).
     pub fn read() -> Sheets {
         let kinds = Archetype::ALL;
         let share = kinds.len().div_ceil(3).max(1);

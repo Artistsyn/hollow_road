@@ -89,6 +89,13 @@ pub struct SideInput {
     pub guard: bool,
 }
 
+impl SideInput {
+    /// The strike pressed, if one was (a heavy over a light, as the hero reads them).
+    fn strike(&self) -> Option<Move> {
+        if self.heavy { Some(Move::Heavy) } else if self.light { Some(Move::Light) } else { None }
+    }
+}
+
 /// The hero's arrow or frost bolt in flight across the yard: where it is, which way it goes,
 /// how high, what loosed it, what it deals, metres left.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -208,6 +215,8 @@ pub struct SideHero {
     next_route: crate::combo::Route,
     /// A heavy's strength gathered at the top of its wind-up, or a bow's at full draw (`fight::Charge`).
     pub charge: crate::fight::Charge,
+    /// A strike queued behind the one waiting, and the strike just ended (`combo::ChainMemory`).
+    chain: crate::combo::ChainMemory<SideInput>,
 }
 
 /// How the hero is moving along the yard: the pace (m/tick, signed) carried from tick to tick,
@@ -238,6 +247,10 @@ impl SideHero {
     pub fn rise(&self) -> f32 { self.vy / JUMP_V }
     fn free(&self) -> bool { self.act.is_none() && self.reeling == 0 && !self.dead }
     /// `a` as this hero swings it: a light as the link of its string it is, a heavy by its route.
+    /// As the road's (`fight::Hero::waits`): `m` follows on from the strike under way.
+    fn waits(&self, m: Move) -> bool {
+        self.act.is_some_and(|(prev, _)| matches!(prev, Act::Light | Act::Heavy) && crate::combo::Route::follows((prev.as_move(), self.route, self.link), m).is_some())
+    }
     pub fn struck_of(&self, a: Act) -> Spec {
         let s = a.struck(&self.stats.kit);
         match a { Act::Light => s.chained(self.link), Act::Heavy => self.route.shape(s), _ => s }
@@ -745,7 +758,7 @@ const COLLECTOR_BLOWS: [Blow; 7] = [
     blow("foreclosure", (22, 5, 14), (0.2, 1.8), (0.0, 2.4), 20.0, Physical, true, 26.0, Motion::Strike).art("toll").then(1, 5, 10),
 ];
 pub static COLLECTOR: Breed = Breed {
-    rest: 40, walk: 1.5, near: 2.0, open: 96, reply: Some(5), grab: Some(2), wake: Some(6),
+    rest: 40, walk: 1.5, near: 2.0, open: 90, reply: Some(5), grab: Some(2), wake: Some(6),
     ..elite(&HUSK_BASE, "The Debt Collector", 400.0, 1.4, &COLLECTOR_BLOWS,
         |near, r, wild| match (near, r, wild) {
             (true, 0..=3, _) => 0, (true, 4..=5, _) => 3, (true, 6..=7, _) => 1, (true, 8, _) => 2, (true, _, true) => 6, (true, _, _) => 0,
@@ -1178,7 +1191,7 @@ impl SideFight {
         SideFight {
             hero: SideHero {
                 stats, hp, stamina, rested: 30, flasks, s, y: 0.0, vy: 0.0, facing: 1.0, act: None, guarding: false,
-                reel: Reel::None, reeling: 0, poise: stats.poise(), poise_wait: 0, from: 0.0, landed: false, dead: false, walking: false, buffer: None, link: 0, next_link: 0, route: crate::combo::Route::Plain, next_route: crate::combo::Route::Plain, charge: crate::fight::Charge::default(),
+                reel: Reel::None, reeling: 0, poise: stats.poise(), poise_wait: 0, from: 0.0, landed: false, dead: false, walking: false, buffer: None, link: 0, next_link: 0, route: crate::combo::Route::Plain, next_route: crate::combo::Route::Plain, charge: crate::fight::Charge::default(), chain: crate::combo::ChainMemory::default(),
                 quiver: crate::fight::Quiver::default(), charges: stats.max_charges(), bulwark: Bulwark::default(),
                 art: 0.0, stone: 0, mark: None, pierced: 0, footing: Footing::default(), drawn: false, follow: None,
             },
@@ -1280,8 +1293,18 @@ impl SideFight {
         let mut pace = 0.0;
         // Presses wait a moment for the hero to be free, as on the road.
         h.stone = h.stone.saturating_sub(1);
-        if input.roll || input.jump || input.light || input.heavy || input.parry || input.flask || input.loose || input.cast || input.art || input.swap { (h.buffer, h.follow) = (Some((*input, 0)), None); }
-        else if let Some((b, age)) = h.buffer { h.buffer = (age < crate::fight::BUFFER).then_some((b, age + 1)); }
+        // The other strike pressed while one waits to cut the swing short queues behind it.
+        h.chain.tick();
+        if h.buffer.is_none() { h.chain.queued = None; }
+        if input.roll || input.jump || input.light || input.heavy || input.parry || input.flask || input.loose || input.cast || input.art || input.swap {
+            // The same strike again only freshens the one waiting (mashing adds no swing); anything
+            // but a strike is a change of mind, so nothing queued is still wanted.
+            let waiting = h.buffer.and_then(|(b, _)| b.strike()).filter(|&m| h.waits(m));
+            if waiting.is_some() && input.strike().is_some_and(|m| Some(m) != waiting) { h.chain.queued = Some(*input); } else { (h.buffer, h.follow, h.chain.queued) = (Some((*input, 0)), None, None); }
+        } else if let Some((b, age)) = h.buffer {
+            let holds = b.strike().is_some_and(|m| h.waits(m));
+            h.buffer = (age < if holds { crate::fight::CHAIN_HOLD } else { crate::fight::BUFFER }).then_some((b, age + 1));
+        }
         let p = h.buffer.map(|b| b.0).unwrap_or_default();
         let pdir = (p.right as i8) - (p.left as i8);
         // What was pressed, if the hero is free to do it (in the air: only a strike).
@@ -1294,11 +1317,14 @@ impl SideFight {
         // The bow drawn first for a shot, or put away first for what needs the hand.
         let ready = want.and_then(|a| a.as_move().readied(&h.stats.kit, h.drawn).filter(|_| h.able(a)).map(|r| (r, a)));
         let (want, follow) = match ready { Some((r, a)) => (Some(if r == Move::Draw { Act::Draw } else { Act::Stow }), Some(a)), None => (want, None) };
-        // A strike pressed in a strike's recovery cuts the rest short: the next of its string.
-        if let (Some((prev, t)), Some(next)) = (h.act, want) {
-            let strikes = matches!(prev, Act::Light | Act::Heavy) && matches!(next, Act::Light | Act::Heavy);
-            let follows = crate::combo::Route::follows((prev.as_move(), h.route, h.link), next.as_move()).filter(|_| strikes && h.struck_of(prev).chains_at(t));
-            if let Some(n) = follows { (h.act, (h.next_link, h.next_route)) = (None, n.parts()); }
+        // A strike pressed in a strike's recovery cuts the rest short: the next of its string; and
+        // pressed just after the recovery ran out, it still follows on.
+        let prev = match h.act {
+            Some((prev, t)) => (matches!(prev, Act::Light | Act::Heavy) && h.struck_of(prev).chains_at(t)).then_some((prev.as_move(), h.route, h.link)),
+            None => h.chain.after(),
+        };
+        if let (Some(prev), Some(next)) = (prev, want.filter(|n| matches!(n, Act::Light | Act::Heavy))) {
+            if let Some(n) = crate::combo::Route::follows(prev, next.as_move()) { (h.act, (h.next_link, h.next_route)) = (None, n.parts()); }
         }
         if h.free() && h.buffer.is_none() { (h.next_link, h.next_route) = (0, crate::combo::Route::Plain); }
         if h.free() {
@@ -1330,6 +1356,8 @@ impl SideFight {
                     h.link = if a == Act::Light { h.next_link } else { 0 };
                     h.route = if a == Act::Heavy { h.next_route } else { crate::combo::Route::Plain };
                     (h.next_link, h.next_route) = (0, crate::combo::Route::Plain);
+                    h.buffer = h.chain.queued.take().map(|q| (q, 0));
+                    h.chain.began();
                     h.act = Some((a, 0));
                     h.charge = crate::fight::Charge::default();
                     (h.from, h.landed, h.pierced) = (h.s, false, 0);
@@ -1341,6 +1369,11 @@ impl SideFight {
                 h.facing = dir as f32;
                 pace = dir as f32 * WALK * if run { RUN_K } else { 1.0 };
                 if run { (h.stamina, h.rested) = ((h.stamina - crate::fight::RUN_COST).max(0.0), 0); }
+            } else if dir != 0 && !h.airborne() {
+                // Behind a guard the hero edges along at the road's guarded pace, still facing the
+                // nearest foe, so a step back keeps the guard toward it.
+                pace = dir as f32 * WALK * crate::fight::GUARD_PACE;
+                if let Some(fs) = foe_s { h.facing = if fs >= h.s { 1.0 } else { -1.0 }; }
             } else if let (0, false, Some(fs)) = (dir, h.airborne(), foe_s) {
                 // Standing, they face the nearest foe.
                 h.facing = if fs >= h.s { 1.0 } else { -1.0 };
@@ -1407,6 +1440,7 @@ impl SideFight {
             let held = if a == Act::Loose { input.loose_held } else { input.heavy_held };
             if let Some(e) = h.charge.tick(h.route.holds(a.as_move(), kit.shot(false)), (t, f.0), held) { out.push(e); }
             let next = if h.charge.holding { t } else { t + 1 };
+            if next >= f.0 + f.1 + f.2 { h.chain.ended((a.as_move(), h.route, h.link)); }
             h.act = (next < f.0 + f.1 + f.2).then_some((a, next));
             if matches!(a, Act::Light | Act::Heavy) && t >= f.0 && t < f.0 + f.1 && !h.landed { self.strike(a, out); }
             if a == Act::Art { if let Some(art) = kit.art { self.art_fires(art, t, out); } }
@@ -2479,6 +2513,22 @@ pub(crate) mod tests {
         g.tick(&SideInput { roll: true, left: true, ..idle() });
         let hurt = run(&mut g, 80, idle(), |_, e| took(e));
         assert!(!hurt, "rolled through the ring");
+    }
+
+    #[test]
+    fn a_guard_held_edges_the_hero_along_at_half_pace_still_facing_the_foe() {
+        let mut f = fight();
+        f.hero.s = 2.0;
+        f.foes[0].s = HALF - 0.5;
+        f.foes[0].ai = Ai::Wait(10_000);
+        let start = f.hero.s;
+        for _ in 0..60 { f.tick(&SideInput { guard: true, left: true, ..SideInput::default() }); }
+        let guarded = start - f.hero.s;
+        assert!(f.hero.guarding && f.hero.walking && f.hero.facing > 0.0, "backing off, the guard stays toward the foe");
+        let start = f.hero.s;
+        for _ in 0..60 { f.tick(&SideInput { left: true, ..SideInput::default() }); }
+        let walked = start - f.hero.s;
+        assert!((guarded / walked - crate::fight::GUARD_PACE).abs() < 0.1, "guarded {guarded:.2} m against {walked:.2} m walked");
     }
 
     #[test]

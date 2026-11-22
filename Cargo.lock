@@ -4790,6 +4790,7 @@ dependencies = [
  "image 0.25.10",
  "lazy_static",
  "log",
+ "naga",
  "wgpu",
 ]
 

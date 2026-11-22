@@ -58,8 +58,11 @@ enum Lie {
     /// Upright across the road where the blow lands: in the hero's lane, `ahead` metres past them
     /// and `high` up (on the ground when `ground`), its width in metres (at least the lanes the
     /// blow sweeps). The picture's point `land` (fractions of it) goes there; else its middle.
-    /// `mirror`: drawn swinging the other way from the hero's blows.
-    Across { width: f32, ahead: f32, high: f32, land: Option<(f32, f32)>, ground: bool, mirror: bool },
+    /// `mirror`: drawn swinging the other way from the hero's blows. `aside`: metres right of the
+    /// hero's lane the blow lands (a hammer's road heavy carries on down by the right foot).
+    /// `rise`: for a slam, metres right of the hero's middle its stroke starts, over the head (0)
+    /// or over the right shoulder a weapon is raised over (`RIGHT_SHOULDER`).
+    Across { width: f32, ahead: f32, high: f32, land: Option<(f32, f32)>, ground: bool, mirror: bool, aside: f32, rise: f32 },
     /// A streak straight up the hero's lane, from the hand (`from` metres past the hero) to
     /// `past` metres beyond the strike's reach, rising or falling between these heights. Drawn
     /// pointing up, its base `BASE` and its tip `TIP` of the way down the picture, in frames
@@ -67,16 +70,28 @@ enum Lie {
     Along { past: f32, from: f32, high: (f32, f32) },
 }
 
+/// How far right of the hero's lane a hammer's road heavy lands, metres: past the hit its weight
+/// carries it on down to the ground by the right foot (tools/moveset `hammer` heavy@north).
+const HAMMER_ASIDE: f32 = 0.55;
+/// How far right of the hero's middle their right shoulder is drawn, metres: where a sword's or a
+/// hammer's road heavy is raised before it comes down (tools/moveset `heavy@north`).
+const RIGHT_SHOULDER: f32 = 0.25;
+
 const TIP: f32 = 0.08;
 const BASE: f32 = 0.95;
 
-/// One kind of weapon's light or heavy strike: its frames and how they lie.
-struct Strike { clip: Clip, lie: Lie }
+/// One kind of weapon's light or heavy strike: its frames and how they lie; `slam`: stood straight
+/// as it loads (`STRAIGHTENED`) and leaned as it draws from over the hero's head to where it lands.
+struct Strike { clip: Clip, lie: Lie, slam: bool }
 
 /// Strike art drawn bulging toward the camera, turned upside down as it loads. A flat cut round
 /// the hero passes farthest from the camera straight ahead of them, so seen from behind its arc
 /// bows away, toward the foe: its middle high, its ends low.
 const UPTURNED: [&str; 1] = ["light_slash"];
+
+/// Strike art of a slam drawn bowing out to one side as it falls, stood straight as it loads: the
+/// swings it shows come straight down over the hero's head (`Strike::straightened`).
+const STRAIGHTENED: [&str; 2] = ["greatsword_heavy", "heavy_slash"];
 
 impl Strike {
     /// The effect `name` laid as `lie`; `flip` turns it upside down, so a falling swing's art draws
@@ -90,8 +105,49 @@ impl Strike {
         if let Lie::Along { .. } = lie {
             clip.frames = clip.frames.iter().map(|f| Arc::new(squared(f))).collect();
         }
+        let slam = matches!(lie, Lie::Across { land: Some(_), .. }) && STRAIGHTENED.contains(&name);
+        if let (true, Lie::Across { land: Some(land), .. }) = (slam, lie) {
+            clip.frames = Self::straightened(&clip.frames, land);
+            clip.mirrored = clip.frames.iter().map(|f| Arc::new(image::imageops::flip_horizontal(f.as_ref()))).collect();
+        }
         for f in clip.frames.iter().chain(&clip.mirrored) { quartz::set_pixel_art(f, true); }
-        Some(Strike { clip, lie })
+        Some(Strike { clip, lie, slam })
+    }
+
+    /// `frames` with a slam's stroke stood upright over where it lands (`land`, fractions of the
+    /// picture): every row above the ground moved sideways so the stroke's middle there, taken over
+    /// all the frames (the bright trail; dust and sparks are dark or warm), lies over the landing
+    /// point. Rows the stroke misses move as the nearest row it crosses; the ground is left as drawn.
+    fn straightened(frames: &[Arc<image::RgbaImage>], land: (f32, f32)) -> Vec<Arc<image::RgbaImage>> {
+        let Some(first) = frames.first() else { return Vec::new() };
+        let (width, height) = first.dimensions();
+        let ground = ((land.1 * height as f32) as u32).min(height);
+        let trail = |p: &image::Rgba<u8>| p[3] >= 128 && p[2] >= 150;
+        let middles: Vec<Option<f32>> = (0..ground).map(|y| {
+            let columns: Vec<u32> = frames.iter().flat_map(|f| (0..width).filter(move |&x| trail(f.get_pixel(x, y)))).collect();
+            (!columns.is_empty()).then(|| columns.iter().sum::<u32>() as f32 / columns.len() as f32)
+        }).collect();
+        let nearest = |y: usize| (0..middles.len()).filter_map(|k| middles[k].map(|m| (k.abs_diff(y), m))).min_by_key(|&(gap, _)| gap).map(|(_, m)| m);
+        let shifts: Vec<i64> = (0..ground as usize).map(|y| nearest(y).map_or(0, |m| (land.0 * width as f32 - m).round() as i64)).collect();
+        frames.iter().map(|frame| Arc::new(Self::shifted(frame, |y| shifts.get(y as usize).copied().unwrap_or(0)))).collect()
+    }
+
+    /// A straightened slam's `frame` leaned so its top stands `lean` picture pixels to the side of
+    /// where it lands (row `ground`), each row between moved in proportion.
+    fn leaned(frame: &image::RgbaImage, lean: i64, ground: u32) -> image::RgbaImage {
+        let ground = ground.max(1);
+        Self::shifted(frame, |y| if y < ground { (lean as f32 * (1.0 - y as f32 / ground as f32)).round() as i64 } else { 0 })
+    }
+
+    /// `frame` with each row `y` moved `shift(y)` pixels to the right.
+    fn shifted(frame: &image::RgbaImage, shift: impl Fn(u32) -> i64) -> image::RgbaImage {
+        let (width, height) = frame.dimensions();
+        let mut out = image::RgbaImage::new(width, height);
+        for (x, y, pixel) in out.enumerate_pixels_mut() {
+            let from = i64::from(x) - shift(y);
+            if (0..i64::from(width)).contains(&from) { *pixel = *frame.get_pixel(from as u32, y.min(height - 1)); }
+        }
+        out
     }
 
     /// The trail (file, lie, upside down) of a swing that ends a string (`combo::Route::clip_for`:
@@ -101,75 +157,89 @@ impl Strike {
     /// (bowing toward the camera as it falls) turned upside down climbs from low right to high
     /// left, mirrored from low left; every arc bows toward the foe. The axe's cleave and the
     /// ultra's slam come down as their heavies do.
-    fn ender(class: Class, name: &str) -> Option<(&'static str, Lie, bool)> {
-        let across = |width, ahead, high, mirror| Lie::Across { width, ahead, high, land: None, ground: false, mirror };
+    fn ender(kind: &str, name: &str) -> Option<(&'static str, Lie, bool)> {
+        let across = |width, ahead, high, mirror| Lie::Across { width, ahead, high, land: None, ground: false, mirror, aside: 0.0, rise: 0.0 };
         let along = |past, from, high| Lie::Along { past, from, high };
-        let chop = |width, mirror| Lie::Across { width, ahead: 2.0, high: 0.9, land: Some((0.55, 0.89)), ground: true, mirror };
-        let (file, lie, flip) = match (class, name) {
-            (Class::Sword, "third") => ("greatsword_rising", across(2.6, 1.8, 1.2, false), true),
-            (Class::Sword, "breaker") => ("thrust_heavy", along(1.2, 0.3, (1.2, 1.25)), false),
-            (Class::Sword, "follow") => ("light_slash", across(2.8, 1.9, 1.25, true), false),
-            (Class::Sword, "finisher") => ("light_slash", across(3.6, 1.8, 1.15, false), false),
-            (Class::Thrust, "third") => ("greatsword_light", across(2.0, 1.8, 1.1, true), false),
-            (Class::Thrust, "breaker") => ("thrust_heavy", along(1.6, 0.3, (0.8, 1.25)), false),
-            (Class::Thrust, "follow") => ("greatsword_rising", across(2.2, 1.8, 1.2, true), true),
-            (Class::Thrust, "finisher") => ("thrust_heavy", along(2.4, 0.3, (1.6, 1.0)), false),
-            (Class::Spear, "third") => ("spear_light", along(1.0, 0.2, (0.7, 1.3)), false),
-            (Class::Spear, "breaker") => ("spear_light", along(0.5, 0.2, (1.2, 1.2)), false),
-            (Class::Spear, "follow") => ("greatsword_light", across(2.2, 1.8, 1.2, true), false),
-            (Class::Spear, "finisher") => ("light_slash", across(3.8, 1.8, 0.9, false), false),
-            (Class::Axe, "third") => ("axe_light", across(1.8, 1.6, 1.0, true), false),
-            (Class::Axe, "breaker") => ("greatsword_rising", across(1.6, 1.6, 1.1, false), true),
-            (Class::Axe, "follow") => ("axe_heavy", chop(1.6, true), false),
-            (Class::Greatsword, "third") => ("light_slash", across(3.4, 1.8, 0.8, false), false),
-            (Class::Greatsword, "breaker") => ("thrust_heavy", along(1.6, 0.4, (1.2, 1.2)), false),
-            (Class::Greatsword, "follow") => ("greatsword_light", across(2.6, 1.6, 1.5, false), false),
-            (Class::Greatsword, "finisher") => ("greatsword_rising", across(3.8, 1.6, 1.3, false), true),
-            (Class::Ultra, "third") => ("greatsword_rising", across(3.8, 1.8, 1.2, true), true),
-            (Class::Ultra, "breaker") => ("thrust_heavy", along(2.0, 0.4, (1.0, 1.0)), false),
-            (Class::Ultra, "follow") => ("light_slash", across(4.2, 2.1, 0.6, true), false),
+        let chop = |width, mirror| Lie::Across { width, ahead: 2.0, high: 0.9, land: Some((0.55, 0.89)), ground: true, mirror, aside: 0.0, rise: 0.0 };
+        let (file, lie, flip) = match (kind, name) {
+            ("sword", "third") => ("greatsword_rising", across(2.6, 1.8, 1.2, false), true),
+            ("sword", "breaker") => ("thrust_heavy", along(1.2, 0.3, (1.2, 1.25)), false),
+            ("sword", "follow") => ("light_slash", across(2.8, 1.9, 1.25, true), false),
+            ("sword", "finisher") => ("light_slash", across(3.6, 1.8, 1.15, false), false),
+            ("thrust", "third") => ("greatsword_light", across(2.0, 1.8, 1.1, true), false),
+            ("thrust", "breaker") => ("thrust_heavy", along(1.6, 0.3, (0.8, 1.25)), false),
+            ("thrust", "follow") => ("greatsword_rising", across(2.2, 1.8, 1.2, true), true),
+            ("thrust", "finisher") => ("thrust_heavy", along(2.4, 0.3, (1.6, 1.0)), false),
+            ("spear", "third") => ("spear_light", along(1.0, 0.2, (0.7, 1.3)), false),
+            ("spear", "breaker") => ("spear_light", along(0.5, 0.2, (1.2, 1.2)), false),
+            ("spear", "follow") => ("greatsword_light", across(2.2, 1.8, 1.2, true), false),
+            ("spear", "finisher") => ("light_slash", across(3.8, 1.8, 0.9, false), false),
+            ("axe", "third") => ("axe_light", across(1.8, 1.6, 1.0, true), false),
+            ("axe", "breaker") => ("greatsword_rising", across(1.6, 1.6, 1.1, false), true),
+            ("axe", "follow") => ("axe_heavy", chop(1.6, true), false),
+            ("greatsword", "third") => ("light_slash", across(3.4, 1.8, 0.8, false), false),
+            ("greatsword", "breaker") => ("thrust_heavy", along(1.6, 0.4, (1.2, 1.2)), false),
+            ("greatsword", "follow") => ("greatsword_light", across(2.6, 1.6, 1.5, false), false),
+            ("greatsword", "finisher") => ("greatsword_rising", across(3.8, 1.6, 1.3, false), true),
+            ("ultra", "third") => ("greatsword_rising", across(3.8, 1.8, 1.2, true), true),
+            ("ultra", "breaker") => ("thrust_heavy", along(2.0, 0.4, (1.0, 1.0)), false),
+            ("ultra", "follow") => ("light_slash", across(4.2, 2.1, 0.6, true), false),
+            // The hammer's breaker climbs from low right to high left; its follow-through falls
+            // from high left; its finisher slams down as its heavy does.
+            ("hammer", "third") => ("light_slash", across(3.4, 1.8, 0.8, false), false),
+            ("hammer", "breaker") => ("greatsword_rising", across(2.4, 1.6, 1.2, false), true),
+            ("hammer", "follow") => ("greatsword_light", across(2.6, 1.6, 1.5, false), false),
             _ => return None,
         };
         Some((file, lie, flip))
     }
 }
 
-/// Every strike's picture and lie: (kind of weapon, heavy) -> (file, lie).
-fn strike_lie(class: Class, heavy: bool) -> (&'static str, Lie) {
-    let across = |width, ahead, high| Lie::Across { width, ahead, high, land: None, ground: false, mirror: false };
+/// Every strike's picture and lie: (moveset, heavy) -> (file, lie).
+fn strike_lie(kind: &str, heavy: bool) -> (&'static str, Lie) {
+    let across = |width, ahead, high| Lie::Across { width, ahead, high, land: None, ground: false, mirror: false, aside: 0.0, rise: 0.0 };
     // Every chop comes from overhead down in front of the hero, landing in their lane where a
     // foe stands at the blow (at its waist, or on the ground a little farther out).
-    let chop = |width, at, ground, mirror| Lie::Across { width, ahead: if ground { 2.0 } else { 1.6 }, high: 0.9, land: Some(at), ground, mirror };
-    match (class, heavy) {
-        // The sword swings in clips with the blade drawn in, so it has no hold track to follow.
-        (Class::Sword, false) => ("light_slash", across(2.6, 2.0, 1.3)),
-        (Class::Sword, true) => ("heavy_slash", across(1.4, 1.6, 1.15)),
+    let chop = |width, at, ground, mirror| Lie::Across { width, ahead: if ground { 2.0 } else { 1.6 }, high: 0.9, land: Some(at), ground, mirror, aside: 0.0, rise: 0.0 };
+    match (kind, heavy) {
         // The rapier's flick runs on well past its point; a spear's shaft is long already.
-        (Class::Thrust, false) => ("thrust_light", Lie::Along { past: 1.0, from: 0.3, high: (1.25, 1.3) }),
-        (Class::Thrust, true) => ("thrust_heavy", Lie::Along { past: 1.4, from: 0.3, high: (1.2, 1.25) }),
+        ("thrust", false) => ("thrust_light", Lie::Along { past: 1.0, from: 0.3, high: (1.25, 1.3) }),
+        ("thrust", true) => ("thrust_heavy", Lie::Along { past: 1.4, from: 0.3, high: (1.2, 1.25) }),
         // The light pushes up from the hip; the heavy drives down from over the shoulder.
-        (Class::Spear, false) => ("spear_light", Lie::Along { past: 0.8, from: 0.2, high: (1.05, 1.3) }),
-        (Class::Spear, true) => ("spear_heavy", Lie::Along { past: 1.2, from: 0.2, high: (1.6, 1.1) }),
+        ("spear", false) => ("spear_light", Lie::Along { past: 0.8, from: 0.2, high: (1.05, 1.3) }),
+        ("spear", true) => ("spear_heavy", Lie::Along { past: 1.2, from: 0.2, high: (1.6, 1.1) }),
         // A light chop's arc is centred on the lane, crossing it; the axe's comes down from over
         // the right shoulder as its swing does, the greatsword's (mirrored) from over the left.
-        (Class::Axe, false) => ("axe_light", Lie::Across { width: 1.6, ahead: 1.6, high: 1.0, land: None, ground: false, mirror: false }),
+        ("axe", false) => ("axe_light", Lie::Across { width: 1.6, ahead: 1.6, high: 1.0, land: None, ground: false, mirror: false, aside: 0.0, rise: 0.0 }),
         // The dust (0.89 down) on the ground under the bit.
-        (Class::Axe, true) => ("axe_heavy", chop(1.6, (0.55, 0.89), true, false)),
-        (Class::Greatsword, false) => ("greatsword_light", Lie::Across { width: 2.6, ahead: 1.6, high: 1.5, land: None, ground: false, mirror: true }),
+        ("axe", true) => ("axe_heavy", chop(1.6, (0.55, 0.89), true, false)),
+        ("greatsword", false) => ("greatsword_light", Lie::Across { width: 2.6, ahead: 1.6, high: 1.5, land: None, ground: false, mirror: true, aside: 0.0, rise: 0.0 }),
         // Its shockwave (0.82 down) on the ground, about as wide as the three lanes it sweeps.
-        (Class::Greatsword, true) => ("greatsword_heavy", chop(3.8, (0.53, 0.82), true, false)),
+        ("greatsword", true) => ("greatsword_heavy", chop(3.8, (0.53, 0.82), true, false)),
         // The ultra's light is a flat sweep at the hip across all three lanes; its heavy lands the
         // greatsword's shockwave, wider.
-        (Class::Ultra, false) => ("light_slash", across(4.2, 2.1, 0.6)),
-        (Class::Ultra, true) => ("greatsword_heavy", chop(4.8, (0.53, 0.82), true, false)),
+        ("ultra", false) => ("light_slash", across(4.2, 2.1, 0.6)),
+        ("ultra", true) => ("greatsword_heavy", chop(4.8, (0.53, 0.82), true, false)),
+        // The hammer's light chops down from over the right shoulder as the axe's does, wider; its
+        // heavy slams the greatsword's shockwave into the ground.
+        ("hammer", false) => ("axe_light", Lie::Across { width: 2.2, ahead: 1.6, high: 1.0, land: None, ground: false, mirror: false, aside: 0.0, rise: 0.0 }),
+        ("hammer", true) => ("greatsword_heavy", Lie::Across { width: 3.8, ahead: 2.0, high: 0.9, land: Some((0.53, 0.82)), ground: true, mirror: false, aside: HAMMER_ASIDE, rise: RIGHT_SHOULDER }),
+        // The sword (and a kind without trails of its own) swings in clips with the blade drawn
+        // in, so it has no hold track to follow.
+        (_, false) => ("light_slash", across(2.6, 2.0, 1.3)),
+        // The sword's heavy (and a two-hander's held in one hand) comes down from over the right
+        // shoulder through the middle, ahead of the body (tools/moveset `sword` heavy@north): the
+        // crescent stood up as a slam, its tip (0.92 down) at chest height dead ahead of the hero.
+        (_, true) => ("heavy_slash", Lie::Across { width: 1.4, ahead: 1.6, high: 1.1, land: Some((0.5, 0.92)), ground: false, mirror: false, aside: SHOULDER, rise: RIGHT_SHOULDER }),
     }
 }
-const CLASSES: [Class; 6] = [Class::Sword, Class::Thrust, Class::Spear, Class::Axe, Class::Greatsword, Class::Ultra];
+/// The movesets with trails of their own (`gear::Kit::moveset`), in the order `Fx` keeps them.
+const KINDS: [&str; 7] = ["sword", "thrust", "spear", "axe", "greatsword", "ultra", "hammer"];
 /// The swings that end a string with a trail of their own (`Strike::ender`), as `Route::clip_for` names them.
 const ENDERS: [&str; 4] = ["third", "breaker", "follow", "finisher"];
 
 pub struct Fx {
-    /// Per kind of weapon (`CLASSES` order), its light and its heavy.
+    /// Per moveset (`KINDS` order), its light and its heavy.
     strikes: Vec<[Option<Strike>; 2]>,
     /// Per kind of weapon, the trail of each swing that ends a string (`ENDERS` order) where it has
     /// its own.
@@ -177,6 +247,9 @@ pub struct Fx {
     /// Streak frames turned to the angle they were last drawn at, kept so a picture is not made
     /// again every tick: (kind, heavy, frame, whole degrees).
     turned: RefCell<HashMap<(usize, bool, usize, i32), Arc<image::RgbaImage>>>,
+    /// Slam frames leaned to the hero as last drawn (`Fx::slam_leaned`): (kind, heavy, frame,
+    /// mirrored) and the lean in picture pixels.
+    leaned: RefCell<HashMap<((usize, bool, usize, bool), i64), Arc<image::RgbaImage>>>,
     bursts: Vec<Burst>,
 }
 
@@ -204,19 +277,19 @@ fn squared(img: &image::RgbaImage) -> image::RgbaImage {
 impl Fx {
     pub fn load() -> Fx {
         let dir = crate::assets::path("pixellab/fx");
-        let strikes = CLASSES.iter().map(|&class| [false, true].map(|heavy| {
-            let (name, lie) = strike_lie(class, heavy);
+        let strikes = KINDS.iter().map(|&kind| [false, true].map(|heavy| {
+            let (name, lie) = strike_lie(kind, heavy);
             Strike::load(&dir, name, lie, false)
         })).collect();
-        let enders = CLASSES.iter().map(|&class| ENDERS.map(|ender| {
-            let (name, lie, flip) = Strike::ender(class, ender)?;
+        let enders = KINDS.iter().map(|&kind| ENDERS.map(|ender| {
+            let (name, lie, flip) = Strike::ender(kind, ender)?;
             Strike::load(&dir, name, lie, flip)
         })).collect();
-        Fx { strikes, enders, turned: RefCell::new(HashMap::new()), bursts: Vec::new() }
+        Fx { strikes, enders, turned: RefCell::new(HashMap::new()), leaned: RefCell::new(HashMap::new()), bursts: Vec::new() }
     }
 
     #[cfg(test)]
-    fn bare() -> Fx { Fx { strikes: Vec::new(), enders: Vec::new(), turned: RefCell::new(HashMap::new()), bursts: Vec::new() } }
+    fn bare() -> Fx { Fx { strikes: Vec::new(), enders: Vec::new(), turned: RefCell::new(HashMap::new()), leaned: RefCell::new(HashMap::new()), bursts: Vec::new() } }
 
     /// Start the bursts for what the fight just did.
     pub fn on_events(&mut self, events: &[Event], fight: &Fight, walked: f64) {
@@ -385,17 +458,17 @@ impl Fx {
         let a = fight.hero.act?;
         // A riposte is the heavy, a little larger.
         let (heavy, grow) = match a.mv { Move::Light => (false, 1.0), Move::Heavy => (true, 1.0), Move::Riposte => (true, 1.2), _ => return None };
-        let class = fight.hero.stats.kit.swung_as();
+        let moves = fight.hero.stats.kit.moveset();
         // A string's ender has its own trail, kept apart (its kind past the plain ones') in the
         // turned cache.
         let ender = matches!(a.mv, Move::Light | Move::Heavy).then(|| a.route.clip_for(a.mv, a.link)).flatten()
             .and_then(|name| ENDERS.iter().position(|e| *e == name))
-            .zip(CLASSES.iter().position(|&c| c == class))
-            .and_then(|(e, k)| Some((self.enders.get(k)?[e].as_ref()?, k + CLASSES.len() * (1 + e))));
+            .zip(KINDS.iter().position(|&k| k == moves))
+            .and_then(|(e, k)| Some((self.enders.get(k)?[e].as_ref()?, k + KINDS.len() * (1 + e))));
         let (strike, kind) = match ender {
             Some(found) => found,
             None => {
-                let kind = CLASSES.iter().position(|&c| c == class).filter(|&k| self.strikes.get(k).is_some_and(|s| s[heavy as usize].is_some())).unwrap_or(0);
+                let kind = KINDS.iter().position(|&k| k == moves).filter(|&k| self.strikes.get(k).is_some_and(|s| s[heavy as usize].is_some())).unwrap_or(0);
                 (self.strikes.get(kind)?[heavy as usize].as_ref()?, kind)
             }
         };
@@ -419,16 +492,19 @@ impl Fx {
         };
         let x = fight.hero.x;
         match strike.lie {
-            Lie::Across { width, ahead, high, land, ground, mirror } => {
+            Lie::Across { width, ahead, high, land, ground, mirror, aside, rise } => {
                 let frame = if mirror { &strike.clip.mirrored[i] } else { frame };
                 let d = HERO_D + ahead;
-                let (px, py) = pf.project_on(c, x, if ground { 0.0 } else { high }, d)?;
+                let (px, py) = pf.project_on(c, x + aside, if ground { 0.0 } else { high }, d)?;
                 let ppm = pf.scale_on(c, d)?;
-                // At the picture's own aspect, so none of it is cropped; as wide as the lanes it sweeps.
-                let wide = width.max(LANE_W * (2 * spec.wide + 1) as f32);
+                // At the picture's own aspect, so none of it is cropped; as wide as the lanes it sweeps,
+                // but for an upright slam with no ground to cover, which a wider sweep would only stretch.
+                let wide = if strike.slam && !ground { width } else { width.max(LANE_W * (2 * spec.wide + 1) as f32) };
                 let (w, h) = (wide * grow * ppm, wide * grow * ppm * frame.height() as f32 / frame.width() as f32);
                 let at = land.unwrap_or((0.5, 0.5));
-                Some((((px - at.0 * w, py - at.1 * h), (w, h)), frame.clone()))
+                let left = px - at.0 * w;
+                let frame = if strike.slam { self.slam_leaned(c, pf, (kind, heavy, i, mirror), frame, (left, w, x + rise, at))? } else { frame.clone() };
+                Some((((left, py - at.1 * h), (w, h)), frame))
             }
             Lie::Along { past, from, high } => {
                 // From the weapon's shoulder, as the point goes out.
@@ -454,6 +530,21 @@ impl Fx {
                 Some((((mid.0 - pivot.0 * k, mid.1 - pivot.1 * k), (side * k, side * k)), img))
             }
         }
+    }
+
+    /// A slam's frame leaned so its stroke runs from over the head of the hero (across the road
+    /// at `hero_x`, as the road draws them now) down to where it lands (`at`, the picture drawn from
+    /// `left` and `w` canvas units wide); kept per whole picture pixel of lean, as `turned` keeps streaks.
+    fn slam_leaned(&self, c: &Canvas, pf: &PathForgePlugin, key: (usize, bool, usize, bool), frame: &Arc<image::RgbaImage>, (left, w, hero_x, at): (f32, f32, f32, (f32, f32))) -> Option<Arc<image::RgbaImage>> {
+        // The hero is drawn a shoulder's width aside of their lane (game.rs `place`).
+        let head = pf.project_on(c, hero_x + SHOULDER, 0.0, HERO_D)?.0;
+        let lean = (((head - left) / w - at.0) * frame.width() as f32).round() as i64;
+        let ground = (at.1 * frame.height() as f32) as u32;
+        Some(self.leaned.borrow_mut().entry((key, lean)).or_insert_with(|| {
+            let img = Arc::new(Strike::leaned(frame, lean, ground));
+            quartz::set_pixel_art(&img, true);
+            img
+        }).clone())
     }
 
     /// Put the slash and the bursts where the road drawn now says they are.
@@ -573,12 +664,12 @@ mod tests {
     #[test]
     fn a_finisher_draws_its_own_trail_and_the_rising_sweep_climbs() {
         let fx = Fx::load();
-        for (k, &class) in CLASSES.iter().enumerate() {
+        for (k, &kind) in KINDS.iter().enumerate() {
             for (e, ender) in ENDERS.iter().enumerate() {
-                assert_eq!(fx.enders[k][e].is_some(), Strike::ender(class, ender).is_some(), "{class:?}'s {ender} trail did not load");
+                assert_eq!(fx.enders[k][e].is_some(), Strike::ender(kind, ender).is_some(), "{kind}'s {ender} trail did not load");
             }
         }
-        let sweep = fx.enders[CLASSES.iter().position(|&c| c == Class::Greatsword).unwrap()][3].as_ref().unwrap();
+        let sweep = fx.enders[KINDS.iter().position(|&k| k == "greatsword").unwrap()][3].as_ref().unwrap();
         let plain = effect(&crate::assets::path("pixellab/fx"), "greatsword_rising").unwrap();
         let (a, b) = (&sweep.clip.frames[1], &plain.frames[1]);
         assert!(a.as_raw() == image::imageops::flip_vertical(b.as_ref()).as_raw(), "turned upside down");
@@ -592,7 +683,41 @@ mod tests {
         let spec = Move::Heavy.spec_for(Class::Sword, None);
         fight.hero.act = Some(crate::fight::Act { mv: Move::Heavy, spec, t: spec.frames.0, landed: false, from_lane: 0, from_x: 0.0, link: 0, charge: Default::default(), route: crate::combo::Route::Finisher });
         let (_, kind, ..) = fx.strike_now(&fight).expect("a finisher's trail plays");
-        assert_eq!(kind, CLASSES.len() * 4, "the sword's finisher trail, not its heavy's");
+        assert_eq!(kind, KINDS.len() * 4, "the sword's finisher trail, not its heavy's");
+    }
+
+    /// A slam's trail drawn bowing to one side stands straight over where it lands, the ground
+    /// under it as drawn, and leans from there to wherever the hero's head is.
+    #[test]
+    fn a_slams_bowed_trail_stands_straight_and_leans_to_the_hero() {
+        let mut frame = image::RgbaImage::new(40, 20);
+        for y in 0..18 { frame.put_pixel(10 + y / 2, y, image::Rgba([200, 220, 255, 255])); }
+        frame.put_pixel(3, 19, image::Rgba([120, 90, 60, 255]));
+        let straight = Strike::straightened(&[Arc::new(frame)], (0.5, 0.9));
+        let column = |img: &image::RgbaImage, y: u32| (0..40).find(|&x| img.get_pixel(x, y)[2] >= 150);
+        assert!((0..18).all(|y| column(&straight[0], y) == Some(20)), "every row of the stroke over the landing point");
+        assert_eq!(straight[0].get_pixel(3, 19)[0], 120, "the ground below as drawn");
+        let leaned = Strike::leaned(&straight[0], 6, 18);
+        assert_eq!((column(&leaned, 0), column(&leaned, 17)), (Some(26), Some(20)), "its top over the head, its foot where it lands");
+    }
+
+    /// The sword's heavy (and a two-hander's swung as a sword) comes down over the right shoulder
+    /// through the middle: its trail stands up as a slam over where it lands, not as the crescent
+    /// bowed off to the right that it is drawn as.
+    #[test]
+    fn a_swords_heavy_trail_stands_up_as_a_slam() {
+        let fx = Fx::load();
+        let sword = KINDS.iter().position(|&k| k == "sword").unwrap();
+        let strike = fx.strikes[sword][1].as_ref().unwrap();
+        assert!(strike.slam, "the sword's heavy is not a slam");
+        let bright = |p: &image::Rgba<u8>| p[3] >= 128 && p[2] >= 150;
+        let fullest = strike.clip.frames.iter().max_by_key(|f| f.pixels().filter(|p| bright(p)).count()).unwrap();
+        let (width, height) = fullest.dimensions();
+        let middles: Vec<f32> = (0..(0.92 * height as f32) as u32).filter_map(|y| {
+            let lit: Vec<u32> = (0..width).filter(|&x| bright(fullest.get_pixel(x, y))).collect();
+            (!lit.is_empty()).then(|| lit.iter().sum::<u32>() as f32 / lit.len() as f32 / width as f32)
+        }).collect();
+        assert!(middles.len() > 40 && middles.iter().all(|m| (m - 0.5).abs() < 0.12), "the stroke leans off its landing point: {middles:?}");
     }
 
     /// Every flat or diagonal trail bows toward the foe: seen from behind, a cut round the hero is
@@ -614,12 +739,12 @@ mod tests {
                 .map(|p| (p.0 - a.0) * up.0 + (p.1 - a.1) * up.1).collect();
             middle.iter().sum::<f32>() / middle.len().max(1) as f32
         };
-        let at = |class: Class| CLASSES.iter().position(|&c| c == class).unwrap();
-        let arcs = [("sword light", &fx.strikes[at(Class::Sword)][0]), ("axe light", &fx.strikes[at(Class::Axe)][0]), ("greatsword light", &fx.strikes[at(Class::Greatsword)][0]),
-            ("sword finisher", &fx.enders[at(Class::Sword)][3]), ("greatsword finisher", &fx.enders[at(Class::Greatsword)][3])];
+        let at = |kind: &str| KINDS.iter().position(|&k| k == kind).unwrap();
+        let arcs = [("sword light", &fx.strikes[at("sword")][0]), ("axe light", &fx.strikes[at("axe")][0]), ("greatsword light", &fx.strikes[at("greatsword")][0]),
+            ("hammer light", &fx.strikes[at("hammer")][0]), ("sword finisher", &fx.enders[at("sword")][3]), ("greatsword finisher", &fx.enders[at("greatsword")][3])];
         // And every ender's flat or diagonal trail (a chop's lands on the ground: not an arc).
-        let enders = CLASSES.iter().enumerate().flat_map(|(k, &class)| ENDERS.iter().enumerate().map(move |(e, ender)| (k, e, class, *ender)))
-            .filter(|&(_, _, class, ender)| matches!(Strike::ender(class, ender), Some((_, Lie::Across { land: None, .. }, _))))
+        let enders = KINDS.iter().enumerate().flat_map(|(k, &kind)| ENDERS.iter().enumerate().map(move |(e, ender)| (k, e, kind, *ender)))
+            .filter(|&(_, _, kind, ender)| matches!(Strike::ender(kind, ender), Some((_, Lie::Across { land: None, .. }, _))))
             .map(|(k, e, ..)| ("an ender", &fx.enders[k][e]));
         for (name, strike) in arcs.into_iter().chain(enders) {
             let clip = &strike.as_ref().unwrap().clip;

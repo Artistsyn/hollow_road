@@ -255,24 +255,25 @@ const STATION_X: f32 = 3.2;
 const STATION_D: f32 = HERO_D + 2.6;
 /// Where the hero stands before a station, across.
 const BEFORE_X: f32 = 0.7;
-/// Bars: (id, x, y, width, height, colour) along the top left; the enemy's along the top middle.
+/// Bars: (id, x, y, width, height, colour) along the top left, under the HUD line and the
+/// way-finding line (`WAY`, y 118 to 174); the enemy's along the top middle.
 /// Under the stamina, a bulwark's ward: dim gold while it fills, bright once it can burst; under
 /// that (or in its place), a forged weapon's art meter: dusk blue while it fills, pale once the
 /// art is paid for.
 const BARS: [(&str, f32, f32, f32, f32, [u8; 4]); 15] = [
-    ("bar_hp_back", 60.0, 140.0, 900.0, 34.0, [30, 20, 22, 200]),
-    ("bar_hp", 60.0, 140.0, 900.0, 34.0, [176, 36, 40, 255]),
-    ("bar_st_back", 60.0, 186.0, 700.0, 22.0, [20, 26, 22, 200]),
-    ("bar_st", 60.0, 186.0, 700.0, 22.0, [70, 150, 80, 255]),
-    ("bar_ward_back", 60.0, 218.0, 500.0, 16.0, [24, 22, 16, 200]),
-    ("bar_ward", 60.0, 218.0, 500.0, 16.0, [150, 132, 84, 255]),
-    ("bar_ward_ready", 60.0, 218.0, 500.0, 16.0, [255, 236, 170, 255]),
-    ("bar_art_back", 60.0, 218.0, 500.0, 16.0, [16, 18, 30, 200]),
-    ("bar_art", 60.0, 218.0, 500.0, 16.0, [92, 108, 196, 255]),
-    ("bar_art_ready", 60.0, 218.0, 500.0, 16.0, [190, 210, 255, 255]),
+    ("bar_hp_back", 60.0, 190.0, 900.0, 34.0, [30, 20, 22, 200]),
+    ("bar_hp", 60.0, 190.0, 900.0, 34.0, [176, 36, 40, 255]),
+    ("bar_st_back", 60.0, 236.0, 700.0, 22.0, [20, 26, 22, 200]),
+    ("bar_st", 60.0, 236.0, 700.0, 22.0, [70, 150, 80, 255]),
+    ("bar_ward_back", 60.0, 268.0, 500.0, 16.0, [24, 22, 16, 200]),
+    ("bar_ward", 60.0, 268.0, 500.0, 16.0, [150, 132, 84, 255]),
+    ("bar_ward_ready", 60.0, 268.0, 500.0, 16.0, [255, 236, 170, 255]),
+    ("bar_art_back", 60.0, 268.0, 500.0, 16.0, [16, 18, 30, 200]),
+    ("bar_art", 60.0, 268.0, 500.0, 16.0, [92, 108, 196, 255]),
+    ("bar_art_ready", 60.0, 268.0, 500.0, 16.0, [190, 210, 255, 255]),
 // Whoever was called to a boss, under the hero's, while they stand.
-("bar_ally_back", 60.0, 272.0, 420.0, 14.0, [26, 22, 18, 200]),
-("bar_ally", 60.0, 272.0, 420.0, 14.0, [206, 154, 84, 255]),
+("bar_ally_back", 60.0, 322.0, 420.0, 14.0, [26, 22, 18, 200]),
+("bar_ally", 60.0, 322.0, 420.0, 14.0, [206, 154, 84, 255]),
     // The foe's, top right, mirroring the hero's, its name over it (`FOE_NAME`).
     ("bar_foe_back", 2580.0, 140.0, 1200.0, 26.0, [30, 20, 22, 200]),
     ("bar_foe", 2580.0, 140.0, 1200.0, 26.0, [150, 40, 44, 255]),
@@ -1286,31 +1287,30 @@ pub(crate) fn load_sheet(name: &str) -> Option<Sheet> {
     Sheet::load(&crate::assets::path("pixellab").join(name))
 }
 
-/// A sheet whose bare-handed clips have been given every weapon there is art for.
+/// A sheet holding every weapon there is art for, ready to be drawn into its bare-handed clips
+/// when worn (`Sheet::arm_as`), and every offhand and held bow or focus.
 pub fn armed_sheet(name: &str) -> Option<Sheet> {
-    let mut s = load_sheet(name)?;
+    let mut sheet = load_sheet(name)?;
     let dir = crate::assets::path("pixellab/weapons");
+    // Every weapon kept, none drawn in: each is drawn into its clips when worn (`dress_hero`), as
+    // all of them drawn at once come to some 6 GB of frames.
     for a in crate::gear::ITEMS.iter().filter_map(|i| i.arms).chain([crate::gear::SWORD]) {
-        if let Some(w) = crate::anim::Weapon::load(&dir, a.art) {
-            s.arm(a.art, a.class.slug(), &w);
-            s.arm(a.art, a.class.family(), &w);
-        }
+        if let Some(w) = crate::anim::Weapon::load(&dir, a.art) { sheet.keep_weapon(a.art, &w); }
     }
     // The hand the Hatchet has left (`in_hand`): the axe's clips with nothing in them.
     let empty = crate::anim::Weapon { image: image::RgbaImage::new(1, 1), grip: (0.0, 0.0), tip: (1.0, 0.0), depth: crate::anim::Weapon::THIN };
-    s.arm(EMPTY_HAND, crate::gear::Class::Axe.slug(), &empty);
-    s.arm(EMPTY_HAND, crate::gear::Class::Axe.family(), &empty);
+    sheet.keep_weapon(EMPTY_HAND, &empty);
     // The offhands, drawn on when worn (`Sheet::dress`).
     let dir = crate::assets::path("pixellab/offhand");
     for o in crate::gear::ITEMS.iter().filter_map(|i| i.off) {
-        if let Some(sh) = crate::anim::Shield::load(&dir, o.art) { s.shields.insert(o.art.to_owned(), std::sync::Arc::new(sh)); }
+        if let Some(sh) = crate::anim::Shield::load(&dir, o.art) { sheet.shields.insert(o.art.to_owned(), std::sync::Arc::new(sh)); }
     }
     // Bows, crossbows and catalysts, gripped in the fist.
     let helds = crate::gear::ITEMS.iter().filter_map(|i| i.ranged.map(crate::gear::Ranged::art).or(i.catalyst.map(|c| c.art)));
     for art in helds {
-        if let Some(g) = crate::anim::Held::load(&dir, art) { s.helds.insert(art.to_owned(), std::sync::Arc::new(g)); }
+        if let Some(g) = crate::anim::Held::load(&dir, art) { sheet.helds.insert(art.to_owned(), std::sync::Arc::new(g)); }
     }
-    Some(s)
+    Some(sheet)
 }
 
 /// The art name of an empty weapon hand (`armed_sheet`).
@@ -1358,16 +1358,24 @@ const CONTACT: Contact = Contact { road_light: (6, 7), road_heavy: (8, 9), side_
 /// (tools/moveset/stances.py GAIT3) at the road's pace, a little long for so short a body.
 const WALK_STRIDE: f32 = 1.4;
 const RUN_STRIDE: f32 = 2.0;
+/// The guard walk's shorter steps (stances.py GAIT3 `guard`: 0.19 of reach against the walk's 0.25).
+const GUARD_STRIDE: f32 = 1.05;
+/// Ground covered over one stride side-on: the walk's, and the guard walk's shorter steps.
+const SIDE_WALK_STRIDE: f32 = 1.6;
+const SIDE_GUARD_STRIDE: f32 = 1.0;
 
 fn worn<'a>(s: &'a Sheet, kit: &crate::gear::Kit, name: &str) -> Option<&'a Clip> {
     let (pre, rest) = name.strip_prefix("e_").map_or(("", name), |r| ("e_", r));
     kitted(s, kit, &format!("{pre}{}_{rest}", kit.swung_as().family())).or_else(|| s.clip(name))
 }
 
-/// The `<prefix><move>` clip as the weapon held swings it: its type's own clip with what is worn
-/// in hand (`<prefix><type>_<move>`, `kitted`) where there is one, else the sword's.
+/// The `<prefix><move>` clip as the weapon held swings it: its moveset's own clip with what is
+/// worn in hand (`<prefix><moveset>_<move>`, `kitted`, `Kit::moveset`) where there is one, else
+/// its type's, else the sword's.
 fn held<'a>(s: &'a Sheet, kit: &crate::gear::Kit, prefix: &str, mv: &str) -> Option<&'a Clip> {
-    kitted(s, kit, &format!("{prefix}{}_{mv}", kit.swung_as().slug())).or_else(|| s.clip(&format!("{prefix}{mv}")))
+    kitted(s, kit, &format!("{prefix}{}_{mv}", kit.moveset()))
+        .or_else(|| kitted(s, kit, &format!("{prefix}{}_{mv}", kit.swung_as().slug())))
+        .or_else(|| s.clip(&format!("{prefix}{mv}")))
 }
 
 /// The frame of `clip` for tick `t` of a move with `frames` (wind-up, live, recovery): the
@@ -1990,26 +1998,33 @@ impl Pilgrimage {
         self.hero_clip_frame(sheet, walked).or_else(idle).or_else(stand)
     }
 
-    /// Draw the offhand worn onto the hero's clips if it is not yet (`Sheet::dress`, once a pair):
-    /// what the loadout holds, and what the hero fighting holds (drawn from), should they differ.
+    /// Draw what is worn into the hero's clips if it is not yet (`Sheet::arm_as`, `Sheet::dress`,
+    /// once a pair), and let go of the weapons no longer worn: what the loadout holds, and what the
+    /// hero fighting holds (drawn from), should they differ.
     fn dress_hero(&mut self) {
         let wanted = (self.world.kit(), self.fight.hero.stats.kit);
         if self.dressed_for == Some(wanted) { return; }
+        let Some(sheet) = self.hero_sheet.as_mut() else { return };
         self.dressed_for = Some(wanted);
-        let Some(s) = self.hero_sheet.as_mut() else { return };
-        // Each with the bow on the back and drawn (`in_hand`).
-        let kits = [self.world.kit(), self.fight.hero.stats.kit].into_iter().flat_map(|k| [in_hand(&k, false, false), in_hand(&k, false, true)]);
-        for kit in kits {
-            // Held in one hand, a weapon made for both is drawn into the one-handed clips.
-            if kit.one_hand {
-                s.arm_as(kit.arms.art, kit.swung_as().slug());
-                s.arm_as(kit.arms.art, kit.swung_as().family());
-            }
-            if let Some(o) = off_art(&kit) {
-                s.dress(kit.arms.art, o);
-                if kit.art == Some(crate::arts::WeaponArt::Hatchet) { s.dress(EMPTY_HAND, o); }
-            }
+        // Each with the bow on the back and drawn, and with its Hatchet thrown (`in_hand`).
+        let kits: Vec<crate::gear::Kit> = [wanted.0, wanted.1].into_iter().flat_map(|kit| {
+            let throws = kit.art == Some(crate::arts::WeaponArt::Hatchet);
+            [(false, false), (false, true), (throws, false), (throws, true)].map(|(thrown, drawn)| in_hand(&kit, thrown, drawn))
+        }).collect();
+        let arts: Vec<&str> = kits.iter().map(|kit| kit.arms.art).collect();
+        sheet.release_all_but(&arts);
+        for kit in &kits { Self::wield(sheet, kit); }
+    }
+
+    /// `kit`'s weapon drawn into the clips it is swung and held with, then its offhand onto those.
+    fn wield(sheet: &mut Sheet, kit: &crate::gear::Kit) {
+        for kind in kit.arms.kinds() { sheet.arm_as(kit.arms.art, kind); }
+        // Held in one hand, a weapon made for both is drawn into the one-handed clips.
+        if kit.one_hand {
+            sheet.arm_as(kit.arms.art, kit.swung_as().slug());
+            sheet.arm_as(kit.arms.art, kit.swung_as().family());
         }
+        if let Some(off) = off_art(kit) { sheet.dress(kit.arms.art, off); }
     }
 
     /// Where three points on the road fall in the frame: the same while the road's camera has
@@ -2070,7 +2085,7 @@ impl Pilgrimage {
         if let Some(a) = h.act {
             let spec = a.spec;
             let (w, b, r) = spec.frames;
-            let ender = |name: Option<&str>| name.and_then(|n| kitted(s, &kit, &format!("{}_{n}", kit.swung_as().slug())));
+            let ender = |name: Option<&str>| name.and_then(|n| kitted(s, &kit, &format!("{}_{n}", kit.moveset())).or_else(|| kitted(s, &kit, &format!("{}_{n}", kit.swung_as().slug()))));
             return match a.mv {
                 // The blow lands on its contact drawing (`CONTACT`); the buckler flashes on 3 to 5.
                 // A string's last light and every heavy that ends one swing their own clip.
@@ -2161,7 +2176,11 @@ impl Pilgrimage {
             let k = 1.0 - self.flourish as f32 / FLOURISH_T as f32;
             return parry().map(|(c, _)| c.at((0.45 + 0.5 * k).min(0.999), false).clone());
         }
-        if h.guarding { return clip("guard").map(|c| c.at(1.0, false).clone()); }
+        if h.guarding {
+            // Edging along behind it, the guard walk strides with the road (backing off, in reverse).
+            let edging = if self.last_speed != 0.0 { clip("guard_walk") } else { None };
+            return edging.map(|c| c.at(self.stride, false).clone()).or_else(|| clip("guard").map(|c| c.at(1.0, false).clone()));
+        }
         // Walking or running strides with the road (`stride`); standing is the walk's first frame.
         if self.fight.speed(&self.pending, walked) != 0.0 || self.last_speed != 0.0 {
             let gait = if self.last_speed > 0.5 * (crate::fight::WALK + crate::fight::RUN) { clip("run").or_else(|| clip("walk")) } else { clip("walk") };
@@ -3137,7 +3156,7 @@ impl Pilgrimage {
         let at = |n: &str, k: f32| worn(s, &kit, n).map(|c| c.at(k.clamp(0.0, 0.999), mirror).clone());
         let total = |f: (u32, u32, u32)| (f.0 + f.1 + f.2).max(1) as f32;
         // A string's last light and every heavy that ends one swing their own clip.
-        let ender = |name: Option<&str>| name.and_then(|n| kitted(s, &kit, &format!("e_{}_{n}", kit.swung_as().slug())));
+        let ender = |name: Option<&str>| name.and_then(|n| kitted(s, &kit, &format!("e_{}_{n}", kit.moveset())).or_else(|| kitted(s, &kit, &format!("e_{}_{n}", kit.swung_as().slug()))));
         use side::Act;
         if h.dead { return at("e_death", 1.0); }
         if h.reel == Reel::Down {
@@ -3173,8 +3192,10 @@ impl Pilgrimage {
                 let pose = if rise > 0.55 { 5 } else if rise > 0.2 { 6 } else if rise > -0.2 { 7 } else if h.y > 0.45 { 6 } else { 5 };
                 worn(s, &kit, "e_jump").map(|c| c.at((pose as f32 + 0.5) / c.frames.len() as f32, mirror).clone())
             }
+            // Strides count ground covered the way the hero faces, so a step back plays in reverse.
+            None if h.guarding && h.walking => at("e_guard_walk", (h.s * h.facing / SIDE_GUARD_STRIDE).rem_euclid(1.0)).or_else(|| at("e_guard", 1.0)),
             None if h.guarding => at("e_guard", 1.0),
-            None if h.walking => at("e_walk", (h.s / 1.6).rem_euclid(1.0)),
+            None if h.walking => at("e_walk", (h.s * h.facing / SIDE_WALK_STRIDE).rem_euclid(1.0)),
             // Down into the knees and back up out of a landing (the clip's crouch, 4 then 3).
             None if h.footing.landing > 0 => {
                 let pose = if h.footing.landing > side::LAND_T / 2 { 4 } else { 3 };
@@ -3383,7 +3404,7 @@ impl Pilgrimage {
             .filter(|e| e.alive() && e.gap(walked) < 6.0 && e.gap(walked) > -0.5)
             .min_by(|a, b| a.gap(walked).total_cmp(&b.gap(walked)));
         // The art meter sits under the ward when there is one, in its place when not.
-        let y = if h.stats.kit.ward.is_some() { 242.0 } else { 218.0 };
+        let y = if h.stats.kit.ward.is_some() { 292.0 } else { 268.0 };
         for id in ["bar_art_back", "bar_art", "bar_art_ready"] { if let Some(o) = c.get_game_object_mut(id) { o.position.1 = y; } }
         let full = |id: &str| BARS.iter().find(|b| b.0 == id).map(|b| (b.3, b.4)).unwrap();
         let mut set = |id: &str, k: Option<f32>| {
@@ -4741,7 +4762,8 @@ impl QuartzPlugin for Pilgrimage {
         self.last_speed = speed;
         // The stride lengthens with the pace, so the feet keep to the ground through a pick-up.
         let pace = ((speed.abs() - crate::fight::WALK) / (crate::fight::RUN - crate::fight::WALK)).clamp(0.0, 1.0);
-        self.stride = (self.stride + speed / 60.0 / (WALK_STRIDE + (RUN_STRIDE - WALK_STRIDE) * pace)).rem_euclid(1.0);
+        let length = if self.fight.hero.guarding { GUARD_STRIDE } else { WALK_STRIDE + (RUN_STRIDE - WALK_STRIDE) * pace };
+        self.stride = (self.stride + speed / 60.0 / length).rem_euclid(1.0);
         // The prologue's lesson, judged on what the fight just did.
         let lesson_was = self.prologue.as_ref().map(|p| p.lesson);
         if let Some(p) = self.prologue.as_mut().filter(|_| matches!(self.mode, Mode::Play | Mode::Side(_))) {
@@ -4881,8 +4903,64 @@ impl QuartzPlugin for Pilgrimage {
 
 #[cfg(test)]
 mod armed {
+    /// The hero's sheet with every weapon drawn in, for captures that show them all (the game
+    /// draws in only what is worn, `Pilgrimage::dress_hero`).
+    fn every_weapon_drawn() -> crate::anim::Sheet {
+        let mut sheet = super::armed_sheet("wayfarer_ne").expect("hero sheet");
+        for arms in crate::gear::ITEMS.iter().filter_map(|i| i.arms).chain([crate::gear::SWORD]) {
+            for kind in arms.kinds() { sheet.arm_as(arms.art, kind); }
+        }
+        for kind in [crate::gear::Class::Axe.slug(), crate::gear::Class::Axe.family()] { sheet.arm_as(super::EMPTY_HAND, kind); }
+        sheet
+    }
+
+    /// A weapon is drawn into the hero's clips only once worn, let go when put away (about 200 MB
+    /// of frames each: all of them at once filled a phone's memory), and drawn again when worn again.
+    #[test]
+    fn only_the_weapons_worn_stay_drawn() {
+        let mut sheet = super::armed_sheet("wayfarer_ne").expect("hero sheet");
+        let kit = |name: &str| crate::gear::Kit { arms: crate::gear::ITEMS[crate::gear::find(name)].arms.expect("a weapon"), off: None, ..Default::default() };
+        let drawn = |sheet: &crate::anim::Sheet| sheet.clips.keys().filter(|name| name.ends_with("@bell_hammer")).count();
+        assert_eq!(drawn(&sheet), 0, "drawn before it was worn");
+        let (hammer, sword) = (kit("Bell-Hammer"), kit("Executioner's Greatsword"));
+        super::Pilgrimage::wield(&mut sheet, &hammer);
+        let worn = drawn(&sheet);
+        assert!(worn > 0, "not drawn when worn");
+        let glints = sheet.glints.len();
+        sheet.release_all_but(&[sword.arms.art]);
+        super::Pilgrimage::wield(&mut sheet, &sword);
+        assert_eq!(drawn(&sheet), 0, "kept after it was put away");
+        assert!(sheet.armed.iter().all(|(art, _)| art != "bell_hammer") && sheet.glints.len() < glints, "its marks kept");
+        super::Pilgrimage::wield(&mut sheet, &hammer);
+        assert_eq!(drawn(&sheet), worn, "not drawn again when worn again");
+    }
+
     /// Held in one hand, a two-hander is drawn into the one-handed clips once: drawn again
     /// every frame, a Bell-Hammer beside a Bulwark took each tick from 9 ms to 147.
+    /// A two-handed hammer plays the hammer's own clips (`Kit::moveset`), road and side-on, every
+    /// one of them armed with it; a weapon without such clips keeps its class's.
+    #[test]
+    fn a_hammer_swings_its_own_clips() {
+        let mut s = super::armed_sheet("wayfarer_ne").expect("hero sheet");
+        let kit = crate::gear::Kit { arms: crate::gear::ITEMS[crate::gear::find("Bell-Hammer")].arms.expect("a weapon"), off: None, ..Default::default() };
+        super::Pilgrimage::wield(&mut s, &kit);
+        for prefix in ["", "e_"] {
+            for mv in ["light", "heavy"] {
+                let played = super::held(&s, &kit, prefix, mv).expect("a swing");
+                let own = s.clip(&format!("{prefix}hammer_{mv}@bell_hammer")).expect("the hammer's own clip, armed");
+                assert!(std::sync::Arc::ptr_eq(&played.frames[0], &own.frames[0]), "{prefix}{mv}: the hammer's clip");
+            }
+            for ender in ["third", "breaker", "follow", "finisher"] {
+                assert!(s.clip(&format!("{prefix}hammer_{ender}@bell_hammer")).is_some(), "{prefix}hammer_{ender} armed");
+            }
+        }
+        let sword = crate::gear::Kit { arms: crate::gear::ITEMS[crate::gear::find("Executioner's Greatsword")].arms.expect("a weapon"), off: None, ..Default::default() };
+        super::Pilgrimage::wield(&mut s, &sword);
+        let played = super::held(&s, &sword, "", "heavy").expect("a swing");
+        let class = s.clip("greatsword_heavy@executioner_greatsword").expect("the greatsword's clip");
+        assert!(std::sync::Arc::ptr_eq(&played.frames[0], &class.frames[0]));
+    }
+
     #[test]
     fn a_weapon_is_drawn_into_one_handed_clips_once() {
         let mut s = super::armed_sheet("wayfarer_ne").expect("hero sheet");
@@ -4903,7 +4981,7 @@ mod armed {
     #[test]
     #[ignore]
     fn armed_sheet() {
-        let mut s = super::armed_sheet("wayfarer_ne").expect("hero sheet");
+        let mut s = every_weapon_drawn();
         // `OFFHAND=<art>`: every one-handed weapon dressed with that offhand too.
         if let Ok(off) = std::env::var("OFFHAND") {
             for a in crate::gear::ITEMS.iter().filter_map(|i| i.arms).chain([crate::gear::SWORD]).filter(|a| !a.class.two_handed()) { s.dress(a.art, &off); }
@@ -4933,7 +5011,7 @@ mod armed {
     fn combo_strips() {
         use crate::combo::Route;
         use crate::fight::Move;
-        let s = super::armed_sheet("wayfarer_ne").expect("hero sheet");
+        let s = every_weapon_drawn();
         let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("target/shots/strips");
         let _ = std::fs::create_dir_all(&dir);
         let strip = |frames: &[std::sync::Arc<image::RgbaImage>]| Strip::of(frames);
@@ -4944,7 +5022,8 @@ mod armed {
         for weapon in ["Wayfarer's Sword", "Duelist's Rapier", "Lancer's Shortspear", "Husk Cleaver", "Executioner's Greatsword", "Gravewarden's Slab", "Bell-Hammer"] {
             let arms = crate::gear::ITEMS[crate::gear::find(weapon)].arms.expect("a weapon");
             for ((label, mv, route), (side, (light, heavy))) in moves.iter().flat_map(|m| views.iter().map(move |v| (*m, *v))) {
-                let name = format!("{side}{}_{label}@{}", arms.class.slug(), arms.art);
+                let own = format!("{side}{}_{label}@{}", arms.moveset(), arms.art);
+                let name = if s.clips.contains_key(&own) { own } else { format!("{side}{}_{label}@{}", arms.class.slug(), arms.art) };
                 let Some(played) = s.clips.get(&name) else { continue };
                 let spec = if mv == Move::Heavy { route.shape(mv.spec_for(arms.class, None)) } else { mv.spec_for(arms.class, None) };
                 let keys = if mv == Move::Light { light } else { heavy };
@@ -4997,7 +5076,7 @@ mod armed {
     #[ignore]
     fn defence_strips() {
         use crate::fight::{Move, Reel};
-        let mut s = super::armed_sheet("wayfarer_ne").expect("hero sheet");
+        let mut s = every_weapon_drawn();
         let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("target/shots/defence");
         let _ = std::fs::create_dir_all(&dir);
         let shields = [("Pilgrim's Buckler", "pilgrim_buckler", crate::gear::Guard::Buckler), ("Kite Shield", "kite_shield", crate::gear::Guard::Kite),
@@ -5014,8 +5093,8 @@ mod armed {
             let parry = if set == "weapon" { "parry_weapon" } else { "parry" };
             let spec = Move::Parry.spec_for(arms.class, guard).frames;
             let keys = if set == "weapon" { (2, 5) } else { (3, 6) };
-            for (side, mv, bare) in [("", "guard", "guard"), ("", "parry", parry), ("", "block", "block_hit"), ("", "guard break", "guard_break"),
-                                     ("e_", "guard", "guard"), ("e_", "parry", parry), ("e_", "block", "block_hit"), ("e_", "guard break", "guard_break")] {
+            for (side, mv, bare) in [("", "guard", "guard"), ("", "guard walk", "guard_walk"), ("", "parry", parry), ("", "block", "block_hit"), ("", "guard break", "guard_break"),
+                                     ("e_", "guard", "guard"), ("e_", "guard walk", "guard_walk"), ("e_", "parry", parry), ("e_", "block", "block_hit"), ("e_", "guard break", "guard_break")] {
                 let suffix = if off_art.is_empty() { format!("@{}", arms.art) } else { format!("@{}+{off_art}", arms.art) };
                 let name = format!("{side}{family}_{bare}{suffix}");
                 let Some(played) = s.clips.get(&name) else { continue };
@@ -5025,6 +5104,8 @@ mod armed {
                 // block's jolt and the guard break as their reels pick drawings.
                 let (phases, shown): ((u32, u32, u32), Vec<usize>) = match (side, mv) {
                     (_, "guard") => ((0, 5 * n as u32, 30), (0..n).flat_map(|k| [k; 5]).chain([n - 1; 30]).collect()),
+                    // A stride of the guard walk, each drawing a few ticks.
+                    (_, "guard walk") => ((0, 6 * n as u32, 0), (0..n).flat_map(|k| [k; 6]).collect()),
                     ("", "parry") => (spec, (0..spec.0 + spec.1 + spec.2).map(|t| {
                         let drawn = super::phased(played, spec, t, keys, false);
                         played.frames.iter().position(|frame| std::sync::Arc::ptr_eq(frame, &drawn)).unwrap_or(0)
