@@ -989,9 +989,9 @@ pub(crate) enum Mode {
     /// Turning to look down a side path (-1 left, 1 right), `t` ticks in, before walking down it.
     Peek(u32, i8),
     /// Turning round on the road, `t` ticks in: the view swings to the side as the hero walks back
-    /// past it (`TURN_T`), then a short dark hides the cut to the road walked the other way. Not
-    /// swung (false) during a crossing, which keeps its own camera: the hero turns where they stand.
-    Turn(u32, bool),
+    /// past it (`TURN_T`), then a short dark hides the cut to the road walked the other way. In a
+    /// crossing or fork too: PathForge swings every world of it alike.
+    Turn(u32),
     /// Back from that dark, `t` ticks in (`TURNED_T`): the view swings in behind the hero.
     Turned(u32),
     /// Stepping through the veil before a standing boss, `t` ticks in (`CROSS_T`), then its fight.
@@ -1013,7 +1013,7 @@ pub(crate) enum Why { Boss, Ambush(usize), Prologue }
 
 /// What a fade to black leads to.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum Next { Start, Prologue, Resume, Sanctum, Road, Respawn, Detour(i8), Back, Turn(bool), Opening(bool) }
+pub(crate) enum Next { Start, Prologue, Resume, Sanctum, Road, Respawn, Detour(i8), Back, Turn, Opening(bool) }
 /// What comes after a cutscene played on its own: a pilgrimage begun (through the prologue or
 /// not), or the pilgrimage's end.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -2067,7 +2067,7 @@ impl Pilgrimage {
             Mode::Peek(t, side) => return clip("e_walk").or_else(|| clip("walk")).map(|c| c.at((t as f32 / 36.0).rem_euclid(1.0), side < 0).clone()),
             Mode::Out(Next::Detour(side)) => return clip("e_walk").or_else(|| clip("walk")).map(|c| c.at(((PEEK_T as f32 + 24.0 * self.fade.0) / 36.0).rem_euclid(1.0), side < 0).clone()),
             // Turning round: side-on, walking back across the side view and on along the new way.
-            Mode::Turn(..) | Mode::Out(Next::Turn(_)) | Mode::Cut(After::Turned) => return clip("e_walk").or_else(|| clip("walk")).map(|c| c.at((self.ticks as f32 / 36.0).rem_euclid(1.0), false).clone()),
+            Mode::Turn(_) | Mode::Out(Next::Turn) | Mode::Cut(After::Turned) => return clip("e_walk").or_else(|| clip("walk")).map(|c| c.at((self.ticks as f32 / 36.0).rem_euclid(1.0), false).clone()),
             Mode::Turned(t) if t < TURNED_T / 2 => return clip("e_walk").or_else(|| clip("walk")).map(|c| c.at((self.ticks as f32 / 36.0).rem_euclid(1.0), false).clone()),
             Mode::Sanctum(_) => {
                 let target = self.fight.hero.lane as f32 * BEFORE_X;
@@ -3364,16 +3364,12 @@ impl Pilgrimage {
     fn turning_d(&self, hd: f32) -> Option<f32> {
         let smooth = |k: f32| { let k = k.clamp(0.0, 1.0); k * k * (3.0 - 2.0 * k) };
         match self.mode {
-            Mode::Turn(t, true) => Some(hd * (1.0 - smooth(t as f32 / TURN_T as f32))),
-            Mode::Out(Next::Turn(true)) | Mode::Cut(After::Turned) => Some(0.0),
+            Mode::Turn(t) => Some(hd * (1.0 - smooth(t as f32 / TURN_T as f32))),
+            Mode::Out(Next::Turn) | Mode::Cut(After::Turned) => Some(0.0),
             Mode::Turned(t) => Some(hd * smooth(t as f32 / TURNED_T as f32)),
             _ => None,
         }
     }
-
-    /// Whether there is a road to swing the camera of (PathForge swings it in a crossing or fork
-    /// as well, on top of the walk's own camera).
-    fn swing_free(canvas: &Canvas) -> bool { canvas.get_plugin::<PathForgePlugin>().is_some() }
 
     /// The road's shrine, stood in the world by PathForge in the look its place gives it: lit,
     /// shadowed, hidden by what stands in front and settled into the ground as the place's own
@@ -3905,7 +3901,7 @@ impl Pilgrimage {
         let (now, to) = self.fade;
         if now == to { return; }
         // Turning round dips to dark and back twice as quickly.
-        let step = if matches!(self.mode, Mode::Out(Next::Turn(_)) | Mode::Cut(After::Turned) | Mode::Turned(_)) { 2.0 * FADE_STEP } else { FADE_STEP };
+        let step = if matches!(self.mode, Mode::Out(Next::Turn) | Mode::Cut(After::Turned) | Mode::Turned(_)) { 2.0 * FADE_STEP } else { FADE_STEP };
         let next = if to > now { (now + step).min(to) } else { (now - step).max(to) };
         self.fade.0 = next;
         if let Some(o) = c.get_game_object_mut(FADE) {
@@ -4452,12 +4448,11 @@ impl QuartzPlugin for Pilgrimage {
             Mode::Map if pressed_m || keys.contains(&shrine::Key::Back) => Mode::Play,
             Mode::Map => Mode::Map,
             Mode::Play if pressed_t && self.world.can_turn(&self.fight, ahead) => {
-                let swung = Self::swing_free(c);
-                if swung { Self::swing(c, TURN_VIEW); }
-                Mode::Turn(0, swung)
+                Self::swing(c, TURN_VIEW);
+                Mode::Turn(0)
             }
-            Mode::Turn(t, swung) if t >= if swung { TURN_T } else { TURN_T / 3 } => { self.fade.1 = 1.0; Mode::Out(Next::Turn(swung)) }
-            Mode::Turn(t, swung) => Mode::Turn(t + 1, swung),
+            Mode::Turn(t) if t >= TURN_T => { self.fade.1 = 1.0; Mode::Out(Next::Turn) }
+            Mode::Turn(t) => Mode::Turn(t + 1),
             Mode::Turned(t) if t >= TURNED_T => Mode::Play,
             Mode::Turned(t) => {
                 if t == TURNED_HOLD { Self::swing(c, r#"{"view":"home","seconds":0.8}"#); }
@@ -4492,7 +4487,7 @@ impl QuartzPlugin for Pilgrimage {
                 if let Some(go) = self.world.come_back() { Self::send(c, go); }
                 Mode::Cut(After::Walk)
             }
-            Mode::Out(Next::Turn(_)) => {
+            Mode::Out(Next::Turn) => {
                 // Home in the dark, before the road turns: a swing left side-on would stay.
                 Self::swing(c, r#"{"view":"home","seconds":0.05}"#);
                 if let Some(go) = self.world.turn(&self.fight, ahead) { Self::send(c, go); }
@@ -4604,8 +4599,7 @@ impl QuartzPlugin for Pilgrimage {
                 match after {
                     After::Wake => Mode::Wake(0),
                     After::Walk => Mode::Play,
-                    After::Turned if Self::swing_free(c) => { Self::swing(c, TURNED_VIEW); Mode::Turned(0) }
-                    After::Turned => Mode::Play,
+                    After::Turned => { Self::swing(c, TURNED_VIEW); Mode::Turned(0) }
                     _ => Mode::Rise(0),
                 }
             }

@@ -3953,9 +3953,9 @@ fn anim_looks() {
 }
 
 /// Turning round on the road: the view swings out to the side as the hero walks back across it,
-/// dips to dark, and swings in behind them on the way back; turned again at once (into the
-/// crossing just walked out of, whose camera is its own) the hero turns where they stand and the
-/// view comes back home. `cargo test --release turn_sweep -- --ignored --test-threads=1`, then
+/// dips to dark, and swings in behind them on the way back; turned again inside a crossing, the
+/// view swings out and back in the same way, every world of the crossing with it.
+/// `cargo test --release turn_sweep -- --ignored --test-threads=1`, then
 /// look at `target/shots/turn_*.png`.
 #[test]
 #[ignore]
@@ -3971,9 +3971,9 @@ fn turn_sweep() {
     p.ticks(30);
     p.shot("turn_0_before");
     p.tap("t");
-    assert!(p.until_mode(20, |m| matches!(m, Mode::Turn(t, true) if *t >= 18)), "the turn never swung: {:?} {}", p.mode(), p.status());
+    assert!(p.until_mode(20, |m| matches!(m, Mode::Turn(t) if *t >= 18)), "the turn never swung: {:?} {}", p.mode(), p.status());
     p.shot("turn_1_swinging");
-    assert!(p.until_mode(40, |m| matches!(m, Mode::Turn(t, _) if *t >= 35)), "{}", p.status());
+    assert!(p.until_mode(40, |m| matches!(m, Mode::Turn(t) if *t >= 35)), "{}", p.status());
     p.shot("turn_2_side");
     assert!(p.until_mode(900, |m| matches!(m, Mode::Turned(t) if *t >= 2)), "never swung back in: {:?} {}", p.mode(), p.status());
     p.shot("turn_3_back");
@@ -3989,9 +3989,9 @@ fn turn_sweep() {
     p.fell_all();
     p.ticks(2);
     p.tap("t");
-    assert!(p.until_mode(20, |m| matches!(m, Mode::Turn(t, true) if *t >= 18)), "the turn in a crossing never swung: {:?} {}", p.mode(), p.status());
+    assert!(p.until_mode(20, |m| matches!(m, Mode::Turn(t) if *t >= 18)), "the turn in a crossing never swung: {:?} {}", p.mode(), p.status());
     p.shot("turn_6_swinging_in_crossing");
-    assert!(p.until_mode(40, |m| matches!(m, Mode::Turn(t, _) if *t >= 35)), "{}", p.status());
+    assert!(p.until_mode(40, |m| matches!(m, Mode::Turn(t) if *t >= 35)), "{}", p.status());
     p.shot("turn_7_side_in_crossing");
     assert!(p.until_playing(900), "the turn in the crossing never ended: {}", p.status());
     p.ticks(60);
